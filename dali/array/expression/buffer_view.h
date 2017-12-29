@@ -34,6 +34,7 @@ struct BufferView : public Expression {
     virtual std::vector<Array> arguments() const;
 
     virtual bool spans_entire_memory() const;
+    virtual bool is_assignable() const;
 
     virtual memory::Device preferred_device() const ;
 

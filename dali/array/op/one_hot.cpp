@@ -41,7 +41,8 @@ namespace op {
                                      /*arguments=*/{"on_value", "off_value", "indices"},
                                      /*kernel=*/"T is_on = indices_[query.template axis_reduced_shape<0, ndim-1>()] == query[ndim - 1];\n"
                                                 "return on_value_[0] * is_on + (1.0 - is_on) * off_value_[0]",
-                                     /*name=*/kernel_name(node_to_info));
+                                     /*name=*/kernel_name(node_to_info),
+                                     /*is_assignable=*/false);
             }
 
             std::vector<Array> arguments() const {return {on_value_, off_value_};}

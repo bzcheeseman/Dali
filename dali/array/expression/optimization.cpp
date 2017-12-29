@@ -31,6 +31,8 @@ namespace {
             return node;
         }
         if (node.is_control_flow()) {
+            auto cflow_left = op::static_as_control_flow(node)->left_;
+            cflow_left.set_expression(all_assignments_or_buffers(cflow_left).expression());
             for (auto& arg : op::static_as_control_flow(node)->conditions_) {
                 arg.set_expression(all_assignments_or_buffers(arg).expression());
             }
@@ -38,7 +40,7 @@ namespace {
             if (!node.is_assignment()) {
                 node.set_expression(op::to_assignment(node).expression());
             }
-            Assignment* node_assign = static_cast<Assignment*>(node.expression().get());
+            Assignment* node_assign = op::static_as_assignment(node);
             if (node_assign->right_.is_assignment()) {
                 Assignment* node_right_assign = op::static_as_assignment(node_assign->right_);
                 if (node_right_assign->operator_t_ == OPERATOR_T_EQL &&
@@ -49,6 +51,8 @@ namespace {
             for (auto& arg : right_args(node)) {
                 arg.set_expression(all_assignments_or_buffers(arg).expression());
             }
+            node_assign->left_.set_expression(all_assignments_or_buffers(node_assign->left_).expression());
+
         }
         return node;
     }
@@ -64,6 +68,7 @@ namespace {
         std::vector<Array> children;
         if (root.is_assignment()) {
             children.emplace_back(op::static_as_assignment(root)->right_);
+            children.emplace_back(op::static_as_assignment(root)->left_);
         } else {
             children = root.expression()->arguments();
         }

@@ -34,7 +34,12 @@ namespace op {
                 return std::make_shared<GatherFromRows>(source_, indices_);
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+            bool is_assignable() const {
+                return source_.is_assignable();
+            }
+
+            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type,
+                                    bool assignment_code) const {
                 int source_rank = node_to_info.at(source_.expression().get()).computation_rank;
                 int indices_rank = node_to_info.at(indices_.expression().get()).computation_rank;
                 int self_rank = node_to_info.at(this).computation_rank;
@@ -57,7 +62,19 @@ namespace op {
                                      /*has_shape=*/true,
                                      /*arguments=*/{"source", "indices"},
                                      /*kernel=*/kernel,
-                                     /*name=*/kernel_name(node_to_info));
+                                     /*name=*/kernel_name(node_to_info),
+                                     /*is_assignable=*/assignment_code);
+            }
+
+            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+                return prefix_code(node_to_info, device_type, false);
+            }
+
+            std::string assignment_prefix_code(OPERATOR_T operator_t,
+                                               memory::DeviceT device_type,
+                                               const node_to_info_t& node_to_info,
+                                               int computation_rank) const {
+                return prefix_code(node_to_info, device_type, true);
             }
 
             std::vector<Array> arguments() const {
@@ -107,9 +124,9 @@ namespace op {
                     memory::DeviceT device_type) const {
                 return utils::make_message(kernel_name(node_to_info), "(",
                                             op::jit::get_call_code_nd(source_, symbol_table, node_to_info, device_type),
-                                            ",",
+                                            ", ",
                                             op::jit::get_call_code_nd(indices_, symbol_table, node_to_info, device_type),
-                                            ",", symbol_table.get_shape(this), ")");
+                                            ", ", symbol_table.get_shape(this), ")");
             }
         };
         const hash_t GatherFromRows::optype_hash = std::hash<std::string>()(typeid(GatherFromRows).name());

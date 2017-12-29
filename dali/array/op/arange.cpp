@@ -64,7 +64,8 @@ struct Arange : public JITNode {
                              /*has_shape=*/true,
                              /*arguments=*/{"start", "step"},
                              /*kernel=*/"start_[0] + indices_to_offset(shape_, query) * step_[0]",
-                             /*name=*/kernel_name(node_to_info));
+                             /*name=*/kernel_name(node_to_info),
+                             /*is_assignable=*/false);
     }
 
     virtual expression_ptr copy() const {

@@ -26,6 +26,7 @@ struct Expression {
     virtual expression_ptr copy() const = 0;
     virtual std::vector<Array> arguments() const = 0;
 
+
     Expression(const std::vector<int>& shape,
                DType dtype,
                int offset=0,
@@ -52,6 +53,7 @@ struct Expression {
 
     virtual expression_ptr operator()(int idx) const;
     virtual bool is_transpose() const;
+
     virtual expression_ptr broadcast_to_shape(const std::vector<int>& shape) const;
     virtual expression_ptr transpose() const;
     virtual expression_ptr transpose(const std::vector<int>& axes) const;
@@ -76,6 +78,7 @@ struct Expression {
     virtual std::string full_name() const;
     virtual bool supports_operator(OPERATOR_T operator_t) const;
     virtual bool spans_entire_memory() const;
+    virtual bool is_assignable() const;
 
     void for_all_suboperations(std::function<void(const Array&)>) const;
 };

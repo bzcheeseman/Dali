@@ -22,7 +22,7 @@ memory::Device ControlFlow::preferred_device() const {
 
 std::vector<Array> ControlFlow::arguments() const {
     std::vector<Array> args({left_,});
-    args.insert(args.begin(), conditions_.begin(), conditions_.end());
+    args.insert(args.end(), conditions_.begin(), conditions_.end());
     return args;
 }
 
@@ -36,6 +36,10 @@ bool ControlFlow::spans_entire_memory() const {
 
 bool ControlFlow::supports_operator(OPERATOR_T operator_t) const {
     return left_.expression()->supports_operator(operator_t);
+}
+
+bool ControlFlow::is_assignable() const {
+    return left_.is_assignable();
 }
 
 namespace op {

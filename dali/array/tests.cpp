@@ -400,7 +400,7 @@ TEST(ArrayTests, copy_constructor_force_copy) {
 TEST(ArrayTests, copy_constructor_force_reference) {
     Array original = op::arange(9).reshape({3, 3});
     Array copy(original, false);
-    copy += 1;
+    copy += 2;
     for (int i = 0;  i < original.number_of_elements(); i++) {
         if (i > 0) {
             ASSERT_TRUE(original(i).is_buffer());
@@ -1303,8 +1303,6 @@ TEST(GatherTests, gather_from_rows_simple) {
     }
 }
 
-#ifdef DONT_COMPILE
-
 TEST(GatherTests, scatter_simple) {
     auto indices = Array::zeros({6}, DTYPE_INT32);
     std::vector<int> vals = {0, 0, 1, 1, 1, 2};
@@ -1314,7 +1312,7 @@ TEST(GatherTests, scatter_simple) {
     auto dest = Array::zeros({3}, DTYPE_INT32);
     auto gathered = dest[indices];
     ASSERT_EQ(gathered.shape(), indices.shape());
-    gathered += 1;
+    (gathered += 1).eval();
     EXPECT_EQ(2, int(dest[0]));
     EXPECT_EQ(3, int(dest[1]));
     EXPECT_EQ(1, int(dest[2]));
@@ -1331,6 +1329,7 @@ TEST(GatherTests, scatter_to_rows_simple) {
     auto gathered = dest.gather_from_rows(indices);
     ASSERT_EQ(gathered.shape(), indices.shape());
     gathered += 1;
+    gathered.eval();
 
     for (int i = 0; i < vals.size(); i++) {
         for (int j = 0; j < dest.shape()[1]; j++) {
@@ -1342,5 +1341,3 @@ TEST(GatherTests, scatter_to_rows_simple) {
         }
     }
 }
-
-#endif

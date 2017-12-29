@@ -146,13 +146,10 @@ std::vector<int> get_common_shape(const std::vector<Array>& arrays) {
     return get_common_shape(arg_shapes);
 }
 
-
-    // start_(0) + indices_to_offset(shape_, query) * step_(0);\n"
-
 std::string define_kernel(int ndim, bool has_shape,
                           const std::vector<std::string>& arguments,
-                          std::string kernel, std::string kernel_name) {
-
+                          std::string kernel, std::string kernel_name,
+                          bool assignment_code) {
     ASSERT2(kernel_name.size() > 0, "kernel_name must be a non-empty string.");
     ASSERT2(ndim > 0, utils::make_message("ndim must be strictly positive (got ndim=", ndim, ")."));
     size_t num_args = arguments.size();
@@ -163,6 +160,7 @@ std::string define_kernel(int ndim, bool has_shape,
     }
     std::string name = utils::make_message(char(std::toupper(kernel_name[0])),
                                            kernel_name.substr(1),
+                                           assignment_code ? "Assign" : "",
                                            "Kernel");
 
     std::string templated_caller;
@@ -188,7 +186,11 @@ std::string define_kernel(int ndim, bool has_shape,
         ss_call_arguments_definition << "const C" << (i+1) << "& " << arguments[i];
         ss_call_arguments << arguments[i];
         ss_constructor_arguments << arguments[i] << "_(" << arguments[i] << ")";
-        ss_member_variables << "    const C" << (i+1) << " " << arguments[i] << "_;\n";
+        if (assignment_code) {
+            ss_member_variables << "    C" << (i+1) << " " << arguments[i] << "_;\n";
+        } else {
+            ss_member_variables << "    const C" << (i+1) << " " << arguments[i] << "_;\n";
+        }
         if (i + 1 != num_args) {
             ss_declarer << ", ";
             ss_caller << ", ";
@@ -227,29 +229,49 @@ std::string define_kernel(int ndim, bool has_shape,
         typedefinition = "    typedef typename C1::T T;\n";
     }
 
-    std::string kernel_tail;
-    if (utils::endswith(kernel, ";\n")) {
-        kernel_tail = "";
-    } else {
-        if (utils::endswith(kernel, ";")) {
-            kernel_tail = "\n";
-        } else {
-            kernel_tail = ";\n";
-        }
+    kernel = utils::trim(kernel);
+    if (!utils::endswith(kernel, ";\n") && !utils::endswith(kernel, ";")) {
+        kernel = utils::make_message(kernel, ";");
     }
-    std::string kernel_head;
     if (kernel.find("return") == std::string::npos) {
-        kernel_head = "return ";
+        kernel = utils::make_message("return ", kernel);
+    }
+    std::stringstream ss_kernel;
+    for (const auto& line : utils::split(kernel, '\n', false)) {
+        ss_kernel << "        " << utils::trim(line) << "\n";
+    }
+    kernel = ss_kernel.str();
+
+    std::string return_type;
+    if (assignment_code) {
+        return_type = "const T&";
+    } else {
+        return_type = "T";
+    }
+    std::string const_query;
+    std::string modifiable_query;
+    if (assignment_code) {
+        const_query = utils::make_message(
+            "    XINLINE const T& operator[](const Shape<ndim>& query) const {\n",
+            kernel,
+            "    }\n");
+        modifiable_query = utils::make_message(
+            "    XINLINE T& operator[](const Shape<ndim>& query) {\n",
+            kernel,
+            "    }\n");
+    } else {
+        const_query = utils::make_message(
+        "    XINLINE T operator[](const Shape<ndim>& query) const {\n",
+        kernel,
+        "    }\n");
     }
 
     return utils::make_message(templated_declarer, "\n",
         "struct ", name, " {\n", member_variables,
         "    static const int ndim = ", ndim, ";\n", typedefinition, get_shape_fun,
-        "    XINLINE ", name, "(", call_arguments_definition, ")"
-        "       : ", constructor_arguments, " {}\n"
-        "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
-        "        ", kernel_head, kernel, kernel_tail,
-        "    }\n"
+        "    XINLINE ", name, "(", call_arguments_definition, ")\n"
+        "       : ", constructor_arguments, " {}\n",
+        const_query, modifiable_query,
         "};\n", templated_declarer, "\n",
         name, templated_caller, " ", kernel_name,
         "(", call_arguments_definition, ") {\n"

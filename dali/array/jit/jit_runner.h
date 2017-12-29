@@ -20,7 +20,8 @@ namespace op {
 
         typedef std::unordered_map<const Expression*, CompilationInfo> node_to_info_t;
 
-
+        // Convenience class for keeping track of shapes, names, declarations
+        // and later using them in the template engine
         struct SymbolTable {
             std::vector<const BufferView*> arrays_;
             std::vector<const ScalarView*> scalars_;
@@ -40,7 +41,9 @@ namespace op {
 
         struct JITNode : public Expression {
             static const hash_t optype_hash;
-            // implement these
+            ////////////////////
+            // MUST IMPLEMENT //
+            ////////////////////
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
                                                        SymbolTable& symbol_table,
@@ -50,14 +53,31 @@ namespace op {
                                                  memory::DeviceT device_type) const = 0;
 
 
-            ///////////////////////////////////////////////////////////////////////////////
-            //            REIMPLEMENT AS YOU SEE FIT                                     //
-            ///////////////////////////////////////////////////////////////////////////////
+            ////////////////////////////////
+            // REIMPLEMENT AS YOU SEE FIT //
+            ////////////////////////////////
 
             virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
             virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
             virtual memory::Device preferred_device() const;
 
+            ///////////////////////////////////////////////////////
+            // REIMPLEMENT IF YOU WANT TO MAKE A NODE ASSIGNABLE //
+            ///////////////////////////////////////////////////////
+
+            virtual std::string assignment_code(const Array& dest,
+                                                const Array& root,
+                                                OPERATOR_T operator_t,
+                                                const SymbolTable& symbol_table,
+                                                const node_to_info_t& node_to_info,
+                                                memory::DeviceT device_type,
+                                                int computation_rank) const;
+            virtual std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
+                                                   std::string dst, std::string src) const;
+            virtual std::string assignment_prefix_code(OPERATOR_T operator_t,
+                                                       const node_to_info_t& node_to_info,
+                                                       memory::DeviceT device_type,
+                                                       int computation_rank) const;
             // internals:
             const int min_computation_rank_;
             JITNode(int min_computation_rank,
@@ -66,12 +86,15 @@ namespace op {
                     int offset=0,
                     const std::vector<int>& strides={});
             JITNode(const JITNode& other);
-
             virtual bool supports_operator(OPERATOR_T operator_t) const;
         };
 
+        // return a shared pointer to the underlying jit node, checks for dynamic_cast
         std::shared_ptr<JITNode> as_jit_node(Array array);
+        // return a pointer to the underlying jit node, does not dynamic_cast
+        JITNode* static_as_jit_node(const Array& array);
         hash_t node_hash(const node_to_info_t& node_to_info, const Array& arr);
+        // does dynamic_cast to check if an expression is a jit node:
         bool is_jit_node(const Array& arr);
 
         void compute_node_compilation_info(const Array& a,

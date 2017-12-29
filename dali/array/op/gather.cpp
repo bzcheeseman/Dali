@@ -11,6 +11,22 @@ namespace {
     }
 }
 
+std::string operator_to_atomic(OPERATOR_T operator_t, std::string left, std::string right) {
+    if (operator_t == OPERATOR_T_EQL) {
+        return utils::make_message("atomicExch(&", left, ", ", right, ")");
+    } else if (operator_t == OPERATOR_T_ADD) {
+        return utils::make_message("atomicAdd(&", left, ", ", right, ")");
+    } else if (operator_t == OPERATOR_T_SUB) {
+        return utils::make_message("atomicAdd(&", left, ", -", right, ")");
+    } else if (operator_t == OPERATOR_T_DIV) {
+        return utils::make_message("atomicExch(&", left, ", ", left, " / ", right, ")");
+    } else if (operator_t == OPERATOR_T_MUL) {
+        return utils::make_message("atomicExch(&", left, ", ", left, " * ", right, ")");
+    } else {
+        ASSERT2(false, utils::make_message("no way to convert operator ", operator_to_name(operator_t), " into an atomic."));
+    }
+}
+
 namespace op {
     namespace jit {
         struct Gather : public JITNode {
@@ -27,7 +43,8 @@ namespace op {
                 return utils::make_message("gather_kernel", node_to_info.at(this).computation_rank, "d");
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type,
+                                    bool assignment_code) const {
                 std::string kernel;
                 bool is_2d = node_to_info.at(this).computation_rank == 2 &&
                              node_to_info.at(source_.expression().get()).computation_rank == 2;
@@ -38,11 +55,34 @@ namespace op {
                              "source_query[0] = indices_[query.template axis_reduced_shape<0, C2::ndim>()];\n"
                              "return source_[source_query];\n";
                 }
-                return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
-                                     /*has_shape=*/true,
-                                     /*arguments=*/{"source", "indices"},
-                                     /*kernel=*/kernel,
-                                     /*name=*/kernel_name(node_to_info));
+                return define_kernel(
+                    /*ndim=*/node_to_info.at(this).computation_rank,
+                    /*has_shape=*/true,
+                    /*arguments=*/{"source", "indices"},
+                    /*kernel=*/kernel,
+                    /*name=*/kernel_name(node_to_info),
+                    /*is_assignable=*/assignment_code);
+            }
+
+            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+                return prefix_code(node_to_info, device_type, false);
+            }
+
+            std::string assignment_prefix_code(OPERATOR_T operator_t,
+                                               const node_to_info_t& node_to_info,
+                                               memory::DeviceT device_type,
+                                               int computation_rank) const {
+                return prefix_code(node_to_info, device_type, true);
+            }
+
+            std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
+                                           std::string dst, std::string src) const {
+#ifdef DALI_USE_CUDA
+                if (device_type == memory::DEVICE_T_GPU) {
+                    return operator_to_atomic(operator_t, dst, src);
+                }
+#endif
+                return utils::make_message(dst, " ", operator_to_name(operator_t), " ", src);
             }
 
             std::vector<Array> arguments() const {
@@ -69,6 +109,10 @@ namespace op {
                     );
                 }
                 return false;
+            }
+
+            bool is_assignable() const {
+                return source_.is_assignable();
             }
 
             expression_ptr collapse_axis_with_axis_minus_one(int axis) const {
@@ -124,10 +168,10 @@ namespace op {
                                          const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const {
                 return utils::make_message(kernel_name(node_to_info), "(",
-                                            op::jit::get_call_code_nd(source_, symbol_table, node_to_info, device_type),
-                                            ",",
-                                            op::jit::get_call_code_nd(indices_, symbol_table, node_to_info, device_type),
-                                            ",", symbol_table.get_shape(this), ")");
+                                           op::jit::get_call_code_nd(source_, symbol_table, node_to_info, device_type),
+                                           ", ",
+                                           op::jit::get_call_code_nd(indices_, symbol_table, node_to_info, device_type),
+                                           ", ", symbol_table.get_shape(this), ")");
             }
         };
         const hash_t Gather::optype_hash = std::hash<std::string>()(typeid(Gather).name());

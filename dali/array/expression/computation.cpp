@@ -31,8 +31,7 @@ std::unordered_map<const char*, std::vector<to_computation_t> > IMPLEMENTATIONS;
 void convert_array_to_ops(const Array& element,
                           std::vector<std::shared_ptr<Computation>>& steps,
                           std::vector<Array>& elements) {
-    if (element.is_buffer()) {
-    } else if (element.is_assignment()) {
+    if (element.is_assignment()) {
         auto assignment = op::static_as_assignment(element);
         auto assignment_left = assignment->left_;
         auto hashname = typeid(*assignment->right_.expression()).name();
@@ -73,7 +72,7 @@ void convert_array_to_ops(const Array& element,
             cflow->left_, OPERATOR_T_EQL, element, element));
         convert_array_to_ops(cflow->left_, steps, elements);
         elements.insert(elements.end(), conditions.begin(), conditions.end());
-    } else {
+    } else if (!element.is_assignable()) {
         throw std::runtime_error(utils::make_message(
             "Can only convert Assignments and Buffers "
             "to ops (got ", element.expression_name(), ")."));

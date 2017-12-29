@@ -41,6 +41,10 @@ bool Assignment::spans_entire_memory() const {
     return left_.spans_entire_memory();
 }
 
+bool Assignment::is_assignable() const {
+    return true;
+}
+
 expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
     if (right_.is_axis_collapsible_with_axis_minus_one(axis)) {
         return std::make_shared<Assignment>(
@@ -110,7 +114,7 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
         if (!right.expression()->supports_operator(operator_t)) {
             assigned_right = to_assignment(right);
         }
-        if (!left.is_buffer() && !left.is_assignment()) {
+        if (!left.is_assignable()) {
             assigned_left = to_assignment(left);
         }
         if (assigned_left.is_assignment()) {

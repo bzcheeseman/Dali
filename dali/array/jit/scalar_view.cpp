@@ -145,7 +145,8 @@ struct TileScalar : public JITNode {
                              /*has_shape=*/true,
                              /*arguments=*/{"scalar",},
                              /*kernel=*/"scalar_[0]",
-                             /*name=*/kernel_name(node_to_info));
+                             /*name=*/kernel_name(node_to_info),
+                             /*is_assignable=*/false);
     }
 
     virtual expression_ptr copy() const {

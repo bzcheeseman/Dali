@@ -115,6 +115,7 @@ class Array  {
     std::vector<int> subshape() const;
     bool contiguous_memory() const;
     bool spans_entire_memory() const;
+    bool is_assignable() const;
 
 
     /* Creating a view into memory */

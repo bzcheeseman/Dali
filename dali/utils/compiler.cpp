@@ -171,7 +171,7 @@ void Compiler::write_code(const std::string& fname,
         << code
         << "\nextern \"C\" void maker ("
         << function_arguments
-        << "){\nrun("
+        << "){\n    run("
         << call_args
         << ");\n}\n";
     out.flush();

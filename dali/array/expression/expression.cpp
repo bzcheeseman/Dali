@@ -144,6 +144,9 @@ bool Expression::is_matrix() const {
     return ndim() == 2;
 }
 
+bool Expression::is_assignable() const {
+    return false;
+}
 
 bool Expression::contiguous_memory() const {
     if (strides_.empty()) {

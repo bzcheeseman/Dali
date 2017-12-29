@@ -17,6 +17,10 @@
 #include "dali/array/op/elementwise_operation.h"
 #include "dali/array/jit/scalar_view.h"
 
+// TODO:
+// - ensure duplicate code not injected by prefix_code during assignment
+// - ensure it is easy to specify prefix_code just for assignments vs. regular prefix_code
+
 namespace op {
 namespace jit {
 
@@ -69,7 +73,7 @@ std::shared_ptr<JITNode> as_jit_node(Array array) {
     return casted;
 }
 
-JITNode* static_as_jit_node(Array array) {
+JITNode* static_as_jit_node(const Array& array) {
     return static_cast<JITNode*>(array.expression().get());
 }
 
@@ -90,7 +94,12 @@ void SymbolTable::declare_shape(const Expression* ptr) {
 }
 
 std::string SymbolTable::get_name(const Expression* ptr) const {
-    return declaration_table_.at(ptr);
+    auto name_pos = declaration_table_.find(ptr);
+    ASSERT2(name_pos != declaration_table_.end(), utils::make_message(
+        "No name was declared for expression ", ptr->full_name(),
+        ".\nDon't forget to call `symbol_table.declare_array(this)/declare_scalar(this)`"
+        "inside compute_node_compilation_info."));
+    return name_pos->second;
 }
 
 std::string SymbolTable::get_shape(const Expression* ptr) const {
@@ -98,14 +107,13 @@ std::string SymbolTable::get_shape(const Expression* ptr) const {
     ASSERT2(name_pos != shape_declaration_table_.end(), utils::make_message(
         "No shape was declared for expression ", ptr->full_name(),
         ".\nDon't forget to call `symbol_table.declare_shape(this)` inside compute_node_compilation_info."));
-    return shape_declaration_table_.at(ptr);
+    return name_pos->second;
 }
 
 std::string SymbolTable::variable_declarations(const node_to_info_t& node_to_info) const {
     std::stringstream result;
     for (int i = 0; i < arrays_.size(); ++i) {
         auto name = utils::make_message("array_", i, "_view");
-
         declaration_table_[(const Expression*)arrays_[i]] = name;
         if (buffer_requires_strides(arrays_[i], node_to_info.at((const Expression*)arrays_[i]).computation_shape)) {
             result << build_array_definition(
@@ -221,7 +229,6 @@ JITNode::JITNode(int min_computation_rank,
 JITNode::JITNode(const JITNode& other) : Expression(other),
                                          min_computation_rank_(other.min_computation_rank_) {};
 
-
 std::string JITNode::prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
     return "";
 }
@@ -254,10 +261,51 @@ bool JITNode::supports_operator(OPERATOR_T operator_t) const {
     return true;
 }
 
+std::string JITNode::assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
+                                        std::string dst, std::string src) const {
+    return utils::make_message(dst, " ", operator_to_name(operator_t), " ", src);
+}
+
+std::string JITNode::assignment_prefix_code(OPERATOR_T operator_t,
+                                            const node_to_info_t& node_to_info,
+                                            memory::DeviceT device_type,
+                                            int computation_rank) const {
+#ifdef DALI_USE_CUDA
+    if (device_type == memory::DEVICE_T_GPU) {
+        if (computation_rank == 1) {
+            return utils::make_message(
+                "template<typename Destination, typename Source>\n"
+                "void __global__\n",
+                "assign_kernel(Destination dst, Source src, int num_el) {\n"
+                "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
+                "    int stride = blockDim.x * gridDim.x;\n"
+                "    for (int i = idx; i < num_el; i += stride) {\n"
+                "        ", assignment_code_nd(operator_t, device_type, "dst[i]", "src[i]"), ";\n"
+                "    }\n"
+                "}\n"
+            );
+        } else {
+            return utils::make_message(
+                "template<typename Destination, typename Source>\n"
+                "void __global__\n",
+                "assign_kernel(Destination dst, Source src, int num_el, Shape<", computation_rank, "> shape) {\n"
+                "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
+                "    int stride = blockDim.x * gridDim.x;\n"
+                "    for (int i = idx; i < num_el; i += stride) {\n"
+                "        auto nd_idx = index_to_dim(idx, shape);\n"
+                "        ", assignment_code_nd(operator_t, device_type, "dst[nd_idx]", "src[nd_idx]"), ";\n"
+                "    }\n"
+                "}\n"
+            );
+        }
+    }
+#endif
+    return "";
+}
+
 struct JITRunner : public JITNode {
     static const hash_t optype_hash;
-    Array dest_;
-    Array root_;
+    Array dest_, root_;
     std::vector<Array> leaves_;
     const OPERATOR_T operator_t_;
 
@@ -265,8 +313,6 @@ struct JITRunner : public JITNode {
     JITRunner(Array root, const std::vector<Array>& leaves, OPERATOR_T operator_t, Array dest);
     virtual std::vector<Array> arguments() const;
     virtual memory::Device preferred_device() const;
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const;
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
@@ -277,15 +323,8 @@ struct JITRunner : public JITNode {
                                          memory::DeviceT device_type) const;
 
     std::string get_code_template(memory::Device device,
-                      const SymbolTable& symbol_table,
-                      const node_to_info_t& node_to_info) const;
-
-    std::string dest_assignment_code(const SymbolTable& symbol_table,
-                                     const node_to_info_t& node_to_info,
-                                     memory::DeviceT device_type) const;
-    std::string assignment_code(const SymbolTable& symbol_table,
-                                const node_to_info_t& node_to_info,
-                                memory::DeviceT device_type) const;
+                                  const SymbolTable& symbol_table,
+                                  const node_to_info_t& node_to_info) const;
 
     std::function<void(void**, const int*, const int**, const int**, const void**, const int**)> compile(
         memory::Device,
@@ -385,45 +424,39 @@ void JITRunner::compute_node_compilation_info(int desired_computation_rank,
     (*node_to_info)[this].hash = hasher.value();
 }
 
-std::string JITRunner::assignment_code(const SymbolTable& symbol_table,
-                                       const node_to_info_t& node_to_info,
-                                       memory::DeviceT device_type) const {
-    std::string dest_call_code = op::jit::get_call_code_nd(dest_, symbol_table, node_to_info, device_type);
-    auto root = static_as_jit_node(root_);
-    int computation_rank = node_to_info.at(this).computation_rank;
-    std::string indexing_nd = computation_rank == 1 ? "[i]" : "[" + generate_accessor_string(computation_rank) + "]";
-    return utils::make_message(
-        dest_call_code, indexing_nd, " ",
-        operator_to_name(operator_t_),
-        " ",
-        root->get_call_code_nd(symbol_table, node_to_info, device_type), indexing_nd, ";\n"
-    );
-}
-
 std::string JITRunner::get_call_code_nd(const SymbolTable& symbol_table,
                                         const node_to_info_t& node_to_info,
                                         memory::DeviceT device_type) const {
-    std::string dest_call_code = op::jit::get_call_code_nd(dest_, symbol_table, node_to_info, device_type);
+    return "";
+}
 
-    auto root = static_as_jit_node(root_);
-    int computation_rank = node_to_info.at(this).computation_rank;
+std::string JITNode::assignment_code(const Array& dest,
+                                     const Array& root,
+                                     OPERATOR_T operator_t,
+                                     const SymbolTable& symbol_table,
+                                     const node_to_info_t& node_to_info,
+                                     memory::DeviceT device_type,
+                                     int computation_rank) const {
+    auto jit_root = static_as_jit_node(root);
+    std::string root_call = jit_root->get_call_code_nd(symbol_table, node_to_info, device_type);
+    std::string dest_call_code = op::jit::get_call_code_nd(dest, symbol_table, node_to_info, device_type);
     if (device_type == memory::DEVICE_T_CPU) {
+        std::string indexing_nd = computation_rank == 1 ? "[i]" : "[" + generate_accessor_string(computation_rank) + "]";
+        std::string assign_line = assignment_code_nd(
+            operator_t, device_type, utils::make_message(dest_call_code, indexing_nd),
+            utils::make_message(root_call, indexing_nd));
         if (computation_rank == 1) {
             return utils::make_message(
                 "    int num_el = ", dest_call_code, ".shape().numel();\n",
                 "    #pragma clang loop vectorize(enable)\n",
                 "    #pragma clang loop interleave(enable)\n",
                 "    for (int i = 0; i < num_el; ++i) {\n",
-                "        ", assignment_code(symbol_table, node_to_info, device_type),
+                "        ", assign_line, ";\n"
                 "    }\n"
             );
         } else {
             return construct_for_loop(
-                computation_rank,
-                assignment_code(symbol_table, node_to_info, device_type),
-                dest_call_code,
-                4
-            );
+                computation_rank, assign_line, dest_call_code, 4);
         }
     }
 #ifdef DALI_USE_CUDA
@@ -437,7 +470,7 @@ std::string JITRunner::get_call_code_nd(const SymbolTable& symbol_table,
                 "    // assert(grid_size <= MAX_BLOCKS);\n"
                 "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n"
                 "        ", dest_call_code, ",\n"
-                "        ", root->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
+                "        ", root_call, ",\n"
                 "        num_el\n"
                 "    );\n"
             );
@@ -451,7 +484,7 @@ std::string JITRunner::get_call_code_nd(const SymbolTable& symbol_table,
                 "    // assert(grid_size <= MAX_BLOCKS);\n"
                 "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n"
                 "        ", dest_call_code, ",\n"
-                "        ", root->get_call_code_nd(symbol_table, node_to_info, device_type), ",\n"
+                "        ", root_call, ",\n"
                 "        num_el, shape\n"
                 "    );\n"
             );
@@ -463,70 +496,47 @@ std::string JITRunner::get_call_code_nd(const SymbolTable& symbol_table,
     }
 }
 
-
 std::string JITRunner::get_code_template(memory::Device device,
                                          const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info) const {
     std::unordered_set<hash_t> prefix_code_visited;
     std::stringstream result;
-    result << prefix_code(node_to_info, device.type());
-    auto add_prefix_code = [&](const Array& arr) {
-        if (is_jit_node(arr)) {
-            auto pc      = static_as_jit_node(arr)->prefix_code(node_to_info, device.type());
-            auto pc_hash = utils::get_hash(pc);
-            if (prefix_code_visited.find(pc_hash) == prefix_code_visited.end()) {
-                result << pc;
-                prefix_code_visited.insert(pc_hash);
-            }
+    auto insert_once = [&](const std::string& pc) {
+        auto pc_hash = utils::get_hash(pc);
+        if (prefix_code_visited.find(pc_hash) == prefix_code_visited.end()) {
+            result << pc;
+            prefix_code_visited.insert(pc_hash);
         }
     };
+    int computation_rank = node_to_info.at(this).computation_rank;
+    if (!dest_.is_buffer()) {
+        insert_once(as_jit_node(dest_)->assignment_prefix_code(operator_t_, node_to_info, device.type(), computation_rank));
+    } else {
+        insert_once(assignment_prefix_code(operator_t_, node_to_info, device.type(), computation_rank));
+    }
+    auto add_prefix_code = [&](const Array& arr) {
+        if (is_jit_node(arr)) {
+            insert_once(
+                static_as_jit_node(arr)->prefix_code(node_to_info, device.type()));
+        }
+    };
+    dest_.expression()->for_all_suboperations(add_prefix_code);
     add_prefix_code(root_);
     root_.expression()->for_all_suboperations(add_prefix_code);
     result << "void run(void** array_data, const int* offsets, "
               "const int** sizes, const int** strides, "
               "const void** scalar_arguments, const int** shapes) {\n";
-
     // DECLARE SYMBOLS
     result << symbol_table.variable_declarations(node_to_info) << "\n";
-    result << get_call_code_nd(symbol_table, node_to_info, device.type());
+    if (!dest_.is_buffer()) {
+        result << as_jit_node(dest_)->assignment_code(dest_, root_, operator_t_, symbol_table, node_to_info, device.type(),
+                                            computation_rank);
+    } else {
+        result << assignment_code(dest_, root_, operator_t_, symbol_table, node_to_info, device.type(),
+                                  computation_rank);
+    }
     result << "}\n";
     return result.str();
-}
-
-
-std::string JITRunner::prefix_code(const node_to_info_t& node_to_info,
-                                   memory::DeviceT device_type) const {
-#ifdef DALI_USE_CUDA
-    if (device_type == memory::DEVICE_T_GPU) {
-        if (node_to_info.at(this).computation_rank == 1) {
-            return utils::make_message(
-                "template<typename Destination, typename Source>\n"
-                "void __global__\n"
-                "assign_kernel(Destination dst, Source src, int num_el) {\n"
-                "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
-                "    int stride = blockDim.x * gridDim.x;\n"
-                "    for (int i = idx; i < num_el; i += stride) {\n"
-                "        dst[i] ", operator_to_name(operator_t_), " src[i];\n"
-                "    }\n"
-                "}\n"
-            );
-        } else {
-            return utils::make_message(
-                "template<typename Destination, typename Source>\n"
-                "void __global__\n"
-                "assign_kernel(Destination dst, Source src, int num_el, Shape<", node_to_info.at(this).computation_rank, "> shape) {\n"
-                "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
-                "    int stride = blockDim.x * gridDim.x;\n"
-                "    for (int i = idx; i < num_el; i += stride) {\n"
-                "        auto nd_idx = index_to_dim(idx, shape);\n"
-                "        dst[nd_idx] ", operator_to_name(operator_t_), " src[nd_idx];\n"
-                "    }\n"
-                "}\n"
-            );
-        }
-    }
-#endif
-    return "";
 }
 
 std::function<void(void**, const int*, const int**, const int**, const void**, const int**)> JITRunner::compile(
@@ -598,12 +608,14 @@ std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
 Array jit_merge(const Array& root) {
     std::vector<Array> leaves;
     auto assign = static_as_assignment(root);
-    // TODO(jonathan): find a better way to infer if this is a buffer
-    auto root_buffer = root.buffer_arg();
-    ASSERT2(!root_buffer.is_stateless(), utils::make_message(
-        "Assignment destination for JIT assignment ", root.full_expression_name(),
-        " does not contain a valid buffer destination (check if left side of "
-        "the assignment is assignable)."));
+    ASSERT2(assign->left_.is_assignable(), utils::make_message(
+        "Assignment destination is not assignable (",
+        assign->left_.full_expression_name(), ")."));
+    // auto root_buffer = root.buffer_arg();
+    // ASSERT2(!root_buffer.is_stateless(), utils::make_message(
+    //     "Assignment destination for JIT assignment ", root.full_expression_name(),
+    //     " does not contain a valid buffer destination (check if left side of "
+    //     "the assignment is assignable)."));
     auto root_operator = assign->operator_t_;
     Array left_leaf, replaced;
     for (auto& arg : right_args(root)) {
@@ -641,18 +653,11 @@ Array jit_merge(const Array& root) {
     }
     auto new_root = assign->right_;
 
-
-    ASSERT2(root.shape() == root_buffer.shape(), utils::make_message(
-      "changing shape post assignment (buffer_shape = ", root_buffer.shape(), ", original shape ", root.shape(),
-      " in expression ", root.full_expression_name(), ")."));
-    ASSERT2(root.offset() == root_buffer.offset(), "changing offset post assignment.");
-    ASSERT2(root.strides() == root_buffer.strides(), "changing strides post assignment.");
-
     return Array(std::make_shared<Assignment>(
         // keep the original target buffer:
-        root_buffer, root_operator,
+        assign->left_, root_operator,
         // use the merged operation instead
-        Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, root_buffer)))
+        Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, assign->left_)))
     );
 }
 

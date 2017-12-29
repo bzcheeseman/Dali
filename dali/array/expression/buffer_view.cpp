@@ -103,6 +103,10 @@ bool BufferView::supports_operator(OPERATOR_T operator_t) const {
     return true;
 }
 
+bool BufferView::is_assignable() const {
+    return true;
+}
+
 bool BufferView::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return contiguous_memory();
 }

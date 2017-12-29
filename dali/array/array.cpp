@@ -20,6 +20,8 @@
 #include "dali/array/op/elementwise_operation.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/reducers.h"
+#include "dali/array/op/gather.h"
+#include "dali/array/op/gather_from_rows.h"
 #include "dali/array/jit/scalar_view.h"
 
 
@@ -242,9 +244,12 @@ void Array::eval(bool wait) const {
         for (auto& step : computable) {
             step->run_and_cleanup();
         }
-        ASSERT2(is_buffer(), utils::make_message(
-            "After computation expression was not converted "
-            "back to a BufferView (expression = ", full_expression_name(), ")."));
+        // TODO(jonathan): ensure this returns something
+        // that it either a buffer, or an assignable location
+        // such as a Gather, or GatherFromRows
+        // ASSERT2(is_buffer(), utils::make_message(
+        //     "After computation expression was not converted "
+        //     "back to a BufferView (expression = ", full_expression_name(), ")."));
     }
 }
 
@@ -527,11 +532,18 @@ std::vector<int> Array::subshape() const {
 }
 
 bool Array::contiguous_memory() const {
+    alert_stateless_call(!is_stateless(), "contiguous_memory");
     return expression()->contiguous_memory();
 }
 
 bool Array::spans_entire_memory() const {
+    alert_stateless_call(!is_stateless(), "spans_entire_memory");
     return expression()->spans_entire_memory();
+}
+
+bool Array::is_assignable() const {
+    alert_stateless_call(!is_stateless(), "is_assignable");
+    return expression()->is_assignable();
 }
 
 Array Array::operator[](const int& idx) const {
@@ -539,11 +551,11 @@ Array Array::operator[](const int& idx) const {
 }
 
 Array Array::gather_from_rows(const Array& indices) const {
-    throw std::runtime_error("gather_from_rows(const Array& indices) not implemented yet");
+    return op::gather_from_rows(*this, indices);
 }
 
 Array Array::operator[](const Array& indices) const {
-    throw std::runtime_error("operator[](const Array& indices) not implemented yet");
+    return op::gather(*this, indices);
 }
 
 SlicingInProgress<Array> Array::operator[](const Slice& s) const {

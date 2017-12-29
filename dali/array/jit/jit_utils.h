@@ -45,5 +45,6 @@ std::vector<int> get_common_shape(const std::vector<Array>& arrays);
 
 std::string define_kernel(int ndim, bool has_shape,
                           const std::vector<std::string>& arguments,
-                          std::string kernel, std::string kernel_name);
+                          std::string kernel, std::string kernel_name,
+                          bool is_assignable);
 #endif

@@ -56,7 +56,8 @@ struct Diag : public JITNode {
                              /*arguments=*/{"diag",},
                              /*kernel=*/utils::make_message("query[", ndim - 1, "] == query[", ndim - 2, "] ? "
                                                             "diag_[query[", node_to_info.at(this).computation_rank - 1,"]] : 0"),
-                             /*name=*/kernel_name(node_to_info));
+                             /*name=*/kernel_name(node_to_info),
+                             /*is_assignable=*/false);
     }
 
     virtual expression_ptr copy() const {

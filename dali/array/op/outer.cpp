@@ -21,7 +21,8 @@ namespace op {
                                      /*has_shape=*/true,
                                      /*arguments=*/{"left", "right"},
                                      /*kernel=*/"left_[query[ndim - 2]] * right_[query[ndim - 1]]",
-                                     /*name=*/kernel_name(node_to_info));
+                                     /*name=*/kernel_name(node_to_info),
+                                     /*is_assignable=*/false);
             }
 
             std::vector<Array> arguments() const {return {left_, right_};}

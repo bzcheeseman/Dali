@@ -626,6 +626,7 @@ Array jit_merge(const Array& root) {
             // detach the assignment subgraph and only keep the left node(bufferview)
             auto leaf_arg = Array();
             leaf_arg.set_expression(arg.expression());
+            // TODO(jonathan): ensure this uses buffer_arg, or this may fail in rare cases
             arg.set_expression(static_as_assignment(arg)->left_.expression());
             leaves.emplace_back(leaf_arg);
         } else {
@@ -778,9 +779,16 @@ int registered_buffer = register_implementation(
 int registered_control_flow = register_implementation(
     typeid(ControlFlow).name(),
     [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
-        auto cflow = static_as_control_flow(x);
         Array runner(std::make_shared<JITRunner>(
-            op::identity(cflow->left_), std::vector<Array>({x}), operator_t, dest
+            op::identity(static_as_control_flow(x)->left_.buffer_arg()), std::vector<Array>({x}), operator_t, dest
+        ));
+        return std::make_shared<JITRunnerImpl>(dest, operator_t, runner, assignment);
+    });
+int registered_assignment = register_implementation(
+    typeid(Assignment).name(),
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+        Array runner(std::make_shared<JITRunner>(
+            op::identity(static_as_assignment(x)->left_.buffer_arg()), std::vector<Array>({x}), operator_t, dest
         ));
         return std::make_shared<JITRunnerImpl>(dest, operator_t, runner, assignment);
     });

@@ -31,7 +31,11 @@ bool ControlFlow::is_axis_collapsible_with_axis_minus_one(int axis) const {
 }
 
 bool ControlFlow::spans_entire_memory() const {
-  return left_.spans_entire_memory();
+    return left_.spans_entire_memory();
+}
+
+bool ControlFlow::supports_operator(OPERATOR_T operator_t) const {
+    return left_.expression()->supports_operator(operator_t);
 }
 
 namespace op {

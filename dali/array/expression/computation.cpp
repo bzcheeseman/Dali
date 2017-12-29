@@ -51,8 +51,13 @@ void convert_array_to_ops(const Array& element,
             }
             if (found_impl) {
                 elements.emplace_back(assignment->left_);
-                auto args = assignment->right_.expression()->arguments();
-                elements.insert(elements.end(), args.begin(), args.end());
+                // TODO(jonathan): this is a hack and should be removed
+                if (assignment->right_.is_assignment()) {
+                    elements.emplace_back(assignment->right_);
+                } else {
+                    auto args = assignment->right_.expression()->arguments();
+                    elements.insert(elements.end(), args.begin(), args.end());
+                }
             }
         }
         if (!found_impl) {

@@ -19,6 +19,7 @@
 #include "dali/array/op/outer.h"
 #include "dali/array/op/one_hot.h"
 #include "dali/array/op/gather.h"
+#include "dali/array/op/gather_from_rows.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/buffer_view.h"
 #include "dali/array/functor.h"
@@ -1266,7 +1267,19 @@ TEST(GatherTests, gather_simple_elementwise) {
                                 1e-6));
 }
 
-#ifdef DONT_COMPILE
+
+namespace {
+    Array reference_gather_from_rows(Array source, Array indices) {
+        ASSERT2(source.ndim() == 2, "reference only supports 2D source");
+        ASSERT2(indices.ndim() == 1, "reference only supports 1D indices");
+        ASSERT2(indices.number_of_elements() == source.shape()[0], "wrong indices size.");
+        Array result({source.shape()[0]}, source.dtype());
+        for (int i = 0; i < indices.number_of_elements(); i++) {
+            op::assign(result[i], OPERATOR_T_EQL, source[i][int(indices[i])]).eval();
+        }
+        return result;
+    }
+}
 
 TEST(GatherTests, gather_from_rows_simple) {
     auto indices = op::arange(5);
@@ -1289,6 +1302,8 @@ TEST(GatherTests, gather_from_rows_simple) {
         }
     }
 }
+
+#ifdef DONT_COMPILE
 
 TEST(GatherTests, scatter_simple) {
     auto indices = Array::zeros({6}, DTYPE_INT32);

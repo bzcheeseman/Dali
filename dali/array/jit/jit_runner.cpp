@@ -94,6 +94,10 @@ std::string SymbolTable::get_name(const Expression* ptr) const {
 }
 
 std::string SymbolTable::get_shape(const Expression* ptr) const {
+    auto name_pos = shape_declaration_table_.find(ptr);
+    ASSERT2(name_pos != shape_declaration_table_.end(), utils::make_message(
+        "No shape was declared for expression ", ptr->full_name(),
+        ".\nDon't forget to call `symbol_table.declare_shape(this)` inside compute_node_compilation_info."));
     return shape_declaration_table_.at(ptr);
 }
 

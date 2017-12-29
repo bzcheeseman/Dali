@@ -1313,6 +1313,7 @@ TEST(GatherTests, scatter_simple) {
     auto gathered = dest[indices];
     ASSERT_EQ(gathered.shape(), indices.shape());
     (gathered += 1).eval();
+    ASSERT_FALSE(gathered.is_buffer());
     EXPECT_EQ(2, int(dest[0]));
     EXPECT_EQ(3, int(dest[1]));
     EXPECT_EQ(1, int(dest[2]));
@@ -1326,10 +1327,15 @@ TEST(GatherTests, scatter_to_rows_simple) {
     }
     auto dest = Array::zeros({7, 3}, DTYPE_INT32);
     dest = 42;
+    // we eval here to ensure we don't try to assign to the tiled 42.
+    // (in fact, we should add a rule that the assignment above be
+    // non-optimizable/displaceable)
+    dest.eval();
     auto gathered = dest.gather_from_rows(indices);
     ASSERT_EQ(gathered.shape(), indices.shape());
     gathered += 1;
     gathered.eval();
+    ASSERT_FALSE(gathered.is_buffer());
 
     for (int i = 0; i < vals.size(); i++) {
         for (int j = 0; j < dest.shape()[1]; j++) {

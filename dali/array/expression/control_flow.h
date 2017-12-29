@@ -18,6 +18,8 @@ struct ControlFlow : public Expression {
     virtual bool spans_entire_memory() const;
     virtual bool supports_operator(OPERATOR_T operator_t) const;
     virtual bool is_assignable() const;
+    virtual expression_ptr buffer_arg() const;
+    virtual bool all_conditions_are_met() const;
 };
 namespace op {
     ControlFlow* static_as_control_flow(const Array& arr);

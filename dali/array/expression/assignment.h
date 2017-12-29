@@ -19,7 +19,7 @@ struct Assignment : public Expression {
     virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const;
     virtual bool spans_entire_memory() const;
     virtual bool is_assignable() const;
-
+    virtual expression_ptr buffer_arg() const;
 };
 
 namespace op {

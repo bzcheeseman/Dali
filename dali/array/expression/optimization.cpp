@@ -32,27 +32,37 @@ namespace {
         }
         if (node.is_control_flow()) {
             auto cflow_left = op::static_as_control_flow(node)->left_;
-            cflow_left.set_expression(all_assignments_or_buffers(cflow_left).expression());
-            for (auto& arg : op::static_as_control_flow(node)->conditions_) {
-                arg.set_expression(all_assignments_or_buffers(arg).expression());
-            }
-        } else {
-            if (!node.is_assignment()) {
-                node.set_expression(op::to_assignment(node).expression());
-            }
-            Assignment* node_assign = op::static_as_assignment(node);
-            if (node_assign->right_.is_assignment()) {
-                Assignment* node_right_assign = op::static_as_assignment(node_assign->right_);
-                if (node_right_assign->operator_t_ == OPERATOR_T_EQL &&
-                    node_right_assign->right_.expression()->supports_operator(node_assign->operator_t_)) {
-                    node_assign->right_.set_expression(node_right_assign->right_.expression());
+            // TODO(jonathan): this should be registered as an optimization:
+            if (op::static_as_control_flow(node)->all_conditions_are_met()) {
+                node.set_expression(cflow_left.expression());
+            } else {
+                cflow_left.set_expression(all_assignments_or_buffers(cflow_left).expression());
+                for (auto& arg : op::static_as_control_flow(node)->conditions_) {
+                    arg.set_expression(all_assignments_or_buffers(arg).expression());
                 }
             }
-            for (auto& arg : right_args(node)) {
-                arg.set_expression(all_assignments_or_buffers(arg).expression());
+        } else {
+            if (!node.is_assignment() && !node.is_assignable()) {
+                node.set_expression(op::to_assignment(node).expression());
             }
-            node_assign->left_.set_expression(all_assignments_or_buffers(node_assign->left_).expression());
-
+            if (node.is_assignment()) {
+                Assignment* node_assign = op::static_as_assignment(node);
+                if (node_assign->right_.is_assignment()) {
+                    Assignment* node_right_assign = op::static_as_assignment(node_assign->right_);
+                    if (node_right_assign->operator_t_ == OPERATOR_T_EQL &&
+                        node_right_assign->right_.expression()->supports_operator(node_assign->operator_t_)) {
+                        node_assign->right_.set_expression(node_right_assign->right_.expression());
+                    }
+                }
+                for (auto& arg : right_args(node)) {
+                    arg.set_expression(all_assignments_or_buffers(arg).expression());
+                }
+                node_assign->left_.set_expression(all_assignments_or_buffers(node_assign->left_).expression());
+            } else {
+                for (auto& arg : node.expression()->arguments()) {
+                    arg.set_expression(all_assignments_or_buffers(arg).expression());
+                }
+            }
         }
         return node;
     }

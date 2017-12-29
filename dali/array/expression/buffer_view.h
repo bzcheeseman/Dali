@@ -30,6 +30,7 @@ struct BufferView : public Expression {
     BufferView(const BufferView& other);
 
     virtual expression_ptr copy() const;
+    virtual expression_ptr buffer_arg() const;
 
     virtual std::vector<Array> arguments() const;
 

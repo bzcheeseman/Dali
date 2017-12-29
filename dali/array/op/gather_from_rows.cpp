@@ -34,6 +34,10 @@ namespace op {
                 return std::make_shared<GatherFromRows>(source_, indices_);
             }
 
+            expression_ptr buffer_arg() const {
+                return copy();
+            }
+
             bool is_assignable() const {
                 return source_.is_assignable();
             }
@@ -71,10 +75,11 @@ namespace op {
             }
 
             std::string assignment_prefix_code(OPERATOR_T operator_t,
-                                               memory::DeviceT device_type,
                                                const node_to_info_t& node_to_info,
+                                               memory::DeviceT device_type,
                                                int computation_rank) const {
-                return prefix_code(node_to_info, device_type, true);
+                return (JITNode::assignment_prefix_code(operator_t, node_to_info, device_type, computation_rank) +
+                        prefix_code(node_to_info, device_type, true));
             }
 
             std::vector<Array> arguments() const {

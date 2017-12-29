@@ -385,6 +385,10 @@ expression_ptr Expression::copyless_reshape(const vector<int>& new_shape) const 
     return nullptr;
 }
 
+expression_ptr Expression::buffer_arg() const {
+    return nullptr;
+}
+
 expression_ptr Expression::right_fit_ndim(int target_ndim) const {
     if (ndim() == target_ndim) return copy();
     if (ndim() > target_ndim) {

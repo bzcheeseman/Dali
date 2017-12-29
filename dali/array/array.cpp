@@ -221,19 +221,11 @@ void Array::disown_buffer(memory::Device buffer_location) {
 }
 
 Array Array::buffer_arg() const {
-    if (is_buffer()) {
-        return *this;
+    auto arg = expression()->buffer_arg();
+    if (arg == nullptr) {
+        return Array();
     }
-    if (is_assignment()) {
-        return op::static_as_assignment(*this)->left_.buffer_arg();
-    }
-    if (is_control_flow()) {
-        return op::static_as_control_flow(*this)->left_.buffer_arg();
-    }
-    // returning false
-    // TODO(jonathan): make this return something better
-    //                 than a stateless array
-    return Array();
+    return Array(arg);
 }
 
 void Array::eval(bool wait) const {

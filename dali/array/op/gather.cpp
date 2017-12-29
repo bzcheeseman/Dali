@@ -64,6 +64,10 @@ namespace op {
                     /*is_assignable=*/assignment_code);
             }
 
+            expression_ptr buffer_arg() const {
+                return copy();
+            }
+
             std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
                 return prefix_code(node_to_info, device_type, false);
             }
@@ -72,7 +76,8 @@ namespace op {
                                                const node_to_info_t& node_to_info,
                                                memory::DeviceT device_type,
                                                int computation_rank) const {
-                return prefix_code(node_to_info, device_type, true);
+                return (JITNode::assignment_prefix_code(operator_t, node_to_info, device_type, computation_rank) +
+                        prefix_code(node_to_info, device_type, true));
             }
 
             std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,

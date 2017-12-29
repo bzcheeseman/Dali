@@ -54,6 +54,7 @@ struct Expression {
     virtual expression_ptr operator()(int idx) const;
     virtual bool is_transpose() const;
 
+    virtual expression_ptr buffer_arg() const;
     virtual expression_ptr broadcast_to_shape(const std::vector<int>& shape) const;
     virtual expression_ptr transpose() const;
     virtual expression_ptr transpose(const std::vector<int>& axes) const;

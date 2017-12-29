@@ -17,10 +17,6 @@
 #include "dali/array/op/elementwise_operation.h"
 #include "dali/array/jit/scalar_view.h"
 
-// TODO:
-// - ensure duplicate code not injected by prefix_code during assignment
-// - ensure it is easy to specify prefix_code just for assignments vs. regular prefix_code
-
 namespace op {
 namespace jit {
 
@@ -303,6 +299,17 @@ std::string JITNode::assignment_prefix_code(OPERATOR_T operator_t,
     return "";
 }
 
+expression_ptr JITNode::only_buffers() const {
+    auto self_copy = copy();
+    for (auto& arg : self_copy->arguments()) {
+        auto buffer_arg = arg.buffer_arg();
+        if (!buffer_arg.is_stateless()) {
+            arg.set_expression(buffer_arg.expression());
+        }
+    }
+    return self_copy;
+}
+
 struct JITRunner : public JITNode {
     static const hash_t optype_hash;
     Array dest_, root_;
@@ -530,7 +537,7 @@ std::string JITRunner::get_code_template(memory::Device device,
     result << symbol_table.variable_declarations(node_to_info) << "\n";
     if (!dest_.is_buffer()) {
         result << as_jit_node(dest_)->assignment_code(dest_, root_, operator_t_, symbol_table, node_to_info, device.type(),
-                                            computation_rank);
+                                                      computation_rank);
     } else {
         result << assignment_code(dest_, root_, operator_t_, symbol_table, node_to_info, device.type(),
                                   computation_rank);
@@ -611,14 +618,17 @@ Array jit_merge(const Array& root) {
     ASSERT2(assign->left_.is_assignable(), utils::make_message(
         "Assignment destination is not assignable (",
         assign->left_.full_expression_name(), ")."));
-    // auto root_buffer = root.buffer_arg();
-    // ASSERT2(!root_buffer.is_stateless(), utils::make_message(
-    //     "Assignment destination for JIT assignment ", root.full_expression_name(),
-    //     " does not contain a valid buffer destination (check if left side of "
-    //     "the assignment is assignable)."));
+    auto root_buffer = root.buffer_arg();
+    ASSERT2(!root_buffer.is_stateless(), utils::make_message(
+        "Assignment destination for JIT assignment ", root.full_expression_name(),
+        " does not contain a valid buffer destination (check if left side of "
+        "the assignment is assignable)."));
     auto root_operator = assign->operator_t_;
     Array left_leaf, replaced;
-    for (auto& arg : right_args(root)) {
+    std::vector<Array> all_args = right_args(root);
+    auto root_args = root_buffer.expression()->arguments();
+    all_args.insert(all_args.end(), root_args.begin(), root_args.end());
+    for (auto& arg : all_args) {
         if (arg.is_assignment() &&
             is_jit_runner(static_as_assignment(arg)->right_)) {
             // grab leaves from existing jit-runner recursively:
@@ -645,6 +655,18 @@ Array jit_merge(const Array& root) {
             // TODO(jonathan): ensure this uses buffer_arg, or this may fail in rare cases
             arg.set_expression(static_as_assignment(arg)->left_.expression());
             leaves.emplace_back(leaf_arg);
+        // } else if (arg.is_control_flow()) {
+        //     // detach the assignment subgraph and only keep the left node(bufferview)
+        //     auto leaf_arg = Array();
+        //     leaf_arg.set_expression(arg.expression());
+        //     // TODO(jonathan): ensure this uses buffer_arg, or this may fail in rare cases
+        //     arg.set_expression(static_as_control_flow(arg)->left_.expression());
+        //     leaves.emplace_back(leaf_arg);
+        } else if (arg.is_assignable() && is_jit_node(arg)) {
+            auto leaf_arg = Array();
+            leaf_arg.set_expression(arg.expression());
+            arg.set_expression(static_as_jit_node(arg)->only_buffers());
+            leaves.emplace_back(leaf_arg);
         } else {
             // this node is either an assignment, or a buffer,
             // and is needed as an input here:
@@ -652,12 +674,11 @@ Array jit_merge(const Array& root) {
         }
     }
     auto new_root = assign->right_;
-
     return Array(std::make_shared<Assignment>(
         // keep the original target buffer:
-        assign->left_, root_operator,
+        root_buffer, root_operator,
         // use the merged operation instead
-        Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, assign->left_)))
+        Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, root_buffer)))
     );
 }
 
@@ -671,7 +692,6 @@ struct JITRunnerImpl : public Computation {
         );
         SymbolTable symbol_table;
         node_to_info_t node_to_info;
-
         jit_right->compute_node_compilation_info(desired_computation_rank,
                                                  left_.shape(),
                                                  symbol_table,
@@ -789,7 +809,7 @@ int registered_control_flow = register_implementation(
     typeid(ControlFlow).name(),
     [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         Array runner(std::make_shared<JITRunner>(
-            op::identity(static_as_control_flow(x)->left_.buffer_arg()), std::vector<Array>({x}), operator_t, dest
+            op::identity(x.buffer_arg()), std::vector<Array>({x}), operator_t, dest
         ));
         return std::make_shared<JITRunnerImpl>(dest, operator_t, runner, assignment);
     });
@@ -797,7 +817,7 @@ int registered_assignment = register_implementation(
     typeid(Assignment).name(),
     [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         Array runner(std::make_shared<JITRunner>(
-            op::identity(static_as_assignment(x)->left_.buffer_arg()), std::vector<Array>({x}), operator_t, dest
+            op::identity(x.buffer_arg()), std::vector<Array>({x}), operator_t, dest
         ));
         return std::make_shared<JITRunnerImpl>(dest, operator_t, runner, assignment);
     });

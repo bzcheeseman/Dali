@@ -87,6 +87,7 @@ namespace op {
                     const std::vector<int>& strides={});
             JITNode(const JITNode& other);
             virtual bool supports_operator(OPERATOR_T operator_t) const;
+            virtual expression_ptr only_buffers() const;
         };
 
         // return a shared pointer to the underlying jit node, checks for dynamic_cast

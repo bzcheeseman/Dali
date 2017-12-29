@@ -19,6 +19,7 @@ void Computation::run_and_cleanup() {
     buffer_expression->shape_ = assignment_expression->shape_;
     buffer_expression->offset_ = assignment_expression->offset_;
     assignment_.set_expression(buffer_expression);
+
 }
 
 struct ReleaseControlFlow : public Computation {

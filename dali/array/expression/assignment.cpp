@@ -20,6 +20,10 @@ expression_ptr Assignment::copy() const {
     return std::make_shared<Assignment>(*this);
 }
 
+expression_ptr Assignment::buffer_arg() const {
+    return left_.expression()->buffer_arg();
+}
+
 memory::Device Assignment::preferred_device() const {
     return left_.preferred_device();
 }

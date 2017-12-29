@@ -42,6 +42,16 @@ bool ControlFlow::is_assignable() const {
     return left_.is_assignable();
 }
 
+bool ControlFlow::all_conditions_are_met() const {
+    return std::all_of(conditions_.begin(), conditions_.end(), [](const Array& array) {
+        return array.is_buffer();
+    });
+}
+
+expression_ptr ControlFlow::buffer_arg() const {
+    return left_.expression()->buffer_arg();
+}
+
 namespace op {
 ControlFlow* static_as_control_flow(const Array& arr) {
     return static_cast<ControlFlow*>(arr.expression().get());
@@ -50,6 +60,9 @@ ControlFlow* static_as_control_flow(const Array& arr) {
 Array control_dependency(Array condition, Array result) {
     if (condition.is_control_flow()) {
         ControlFlow* cflow = static_as_control_flow(condition);
+        if (cflow->all_conditions_are_met()) {
+            return result;
+        }
         if (cflow->left_.is_buffer()) {
             return Array(std::make_shared<ControlFlow>(result, cflow->conditions_));
         }

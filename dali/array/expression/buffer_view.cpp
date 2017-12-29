@@ -60,6 +60,9 @@ expression_ptr BufferView::copy() const {
     return std::make_shared<BufferView>(*this);
 }
 
+expression_ptr BufferView::buffer_arg() const {
+    return copy();
+}
 
 memory::Device BufferView::preferred_device() const {
     return memory_->preferred_device;

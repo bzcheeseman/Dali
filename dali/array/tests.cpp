@@ -20,8 +20,10 @@
 #include "dali/array/op/one_hot.h"
 #include "dali/array/op/gather.h"
 #include "dali/array/op/gather_from_rows.h"
+#include "dali/array/jit/scalar_view.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/buffer_view.h"
+#include "dali/array/expression/control_flow.h"
 #include "dali/array/functor.h"
 
 int vector_dot(Array left, Array right) {
@@ -1346,4 +1348,14 @@ TEST(GatherTests, scatter_to_rows_simple) {
             }
         }
     }
+}
+
+
+TEST(ArrayTests, destination_is_control_flow) {
+    auto res = op::assign(op::control_dependency(
+        2 + Array::zeros({2, 3}, DTYPE_INT32),
+        2 + Array::zeros({2, 3}, DTYPE_INT32)), OPERATOR_T_ADD, op::control_dependency(
+        2 + Array::zeros({2, 3}, DTYPE_INT32),
+        2 + Array::zeros({2, 3}, DTYPE_INT32)) * 2);
+    EXPECT_TRUE(Array::equals(op::jit::tile_scalar(6, {2, 3}), res));
 }

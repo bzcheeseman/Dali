@@ -119,9 +119,9 @@ namespace utils {
 
 
 
-    std::string& trim(std::string&);
-    std::string& ltrim(std::string&);
-    std::string& rtrim(std::string&);
+    std::string trim(const std::string&);
+    std::string ltrim(const std::string&);
+    std::string rtrim(const std::string&);
 
     void ensure_directory(std::string&);
 

@@ -599,7 +599,7 @@ Array Array::copyless_ravel() const {
 
 Array Array::reshape(const std::vector<int>& shape) const {
     alert_stateless_call(!is_stateless(), "reshape");
-    return Array(expression()->reshape(shape));
+    GUARD_OPERATION(expression()->reshape(shape));
 }
 
 Array Array::broadcast_to_shape(const std::vector<int>& shape) const {
@@ -619,7 +619,7 @@ bool Array::is_axis_collapsible_with_axis_minus_one(int axis) const {
 
 Array Array::copyless_reshape(const std::vector<int>& shape) const {
     alert_stateless_call(!is_stateless(), "copyless_reshape");
-    return Array(expression()->copyless_reshape(shape));
+    GUARD_OPERATION(expression()->copyless_reshape(shape));
 }
 
 

@@ -18,6 +18,7 @@
 #include "dali/array/op/uniform.h"
 #include "dali/array/op/outer.h"
 #include "dali/array/op/one_hot.h"
+#include "dali/array/op/gather.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/buffer_view.h"
 #include "dali/array/functor.h"
@@ -1231,3 +1232,100 @@ TEST(ReducerTests, lse_reduce) {
     EXPECT_EQ(5, int(a[0][0]));
     EXPECT_EQ(5, int(a[1][0]));
 }
+
+
+namespace {
+    Array reference_gather(Array source, Array indices) {
+        auto result_shape = indices.shape();
+        auto source_shape  = source.shape();
+        result_shape.insert(result_shape.end(), source_shape.begin() + 1, source_shape.end());
+        Array result(result_shape, source.dtype());
+        source = source.reshape({source_shape.front(), -1});
+        auto result_view = result.reshape({-1, source.shape().back()});
+        for (int i = 0; i < indices.number_of_elements(); i++) {
+            op::assign(result_view[i], OPERATOR_T_EQL, source[int(indices[i])]).eval();
+        }
+        return result;
+    }
+}
+
+
+TEST(GatherTests, gather_simple) {
+    auto indices = op::arange(5);
+    auto source = op::arange(5 * 6).reshape({5, 6});
+    EXPECT_TRUE(Array::equals(op::gather(source, indices), reference_gather(source, indices)));
+    auto source2 = op::arange(5 * 6 * 7).reshape({5, 6, 7});
+    EXPECT_TRUE(Array::equals(op::gather(source2, indices), reference_gather(source2, indices)));
+}
+
+TEST(GatherTests, gather_simple_elementwise) {
+    auto indices = op::arange(5);
+    auto source = op::arange(5 * 6).reshape({5, 6}).astype(DTYPE_DOUBLE);
+    EXPECT_TRUE(Array::allclose(op::gather(op::sigmoid(source), indices),
+                                reference_gather(op::sigmoid(source), indices),
+                                1e-6));
+}
+
+#ifdef DONT_COMPILE
+
+TEST(GatherTests, gather_from_rows_simple) {
+    auto indices = op::arange(5);
+    auto source = op::arange(5 * 6).reshape({5, 6});
+    EXPECT_TRUE(Array::equals(op::gather_from_rows(source, indices), reference_gather_from_rows(source, indices)));
+
+    auto source2 = op::arange(5 * 6 * 7).reshape({5, 6, 7});
+    Array result_2d = op::gather_from_rows(source2, indices);
+    std::vector<std::vector<int>> expected_result({
+        {  0,   1,   2,   3,   4,   5,   6},
+        { 49,  50,  51,  52,  53,  54,  55},
+        { 98,  99, 100, 101, 102, 103, 104},
+        {147, 148, 149, 150, 151, 152, 153},
+        {196, 197, 198, 199, 200, 201, 202}
+    });
+    ASSERT_EQ(result_2d.shape(), std::vector<int>({int(expected_result.size()), int(expected_result[0].size())}));
+    for (int i = 0; i < result_2d.shape()[0]; i++) {
+        for (int j = 0; j < result_2d.shape()[1]; j++) {
+            EXPECT_EQ(expected_result[i][j], int(result_2d[i][j]));
+        }
+    }
+}
+
+TEST(GatherTests, scatter_simple) {
+    auto indices = Array::zeros({6}, DTYPE_INT32);
+    std::vector<int> vals = {0, 0, 1, 1, 1, 2};
+    for (int i = 0; i < vals.size(); i++) {
+        (indices[i] = vals[i]).eval();
+    }
+    auto dest = Array::zeros({3}, DTYPE_INT32);
+    auto gathered = dest[indices];
+    ASSERT_EQ(gathered.shape(), indices.shape());
+    gathered += 1;
+    EXPECT_EQ(2, int(dest[0]));
+    EXPECT_EQ(3, int(dest[1]));
+    EXPECT_EQ(1, int(dest[2]));
+}
+
+TEST(GatherTests, scatter_to_rows_simple) {
+    auto indices = Array::zeros({6}, DTYPE_INT32);
+    std::vector<int> vals = {0, 0, 1, 1, 1, 2};
+    for (int i = 0; i < vals.size(); i++) {
+        (indices[i] = vals[i]).eval();
+    }
+    auto dest = Array::zeros({7, 3}, DTYPE_INT32);
+    dest = 42;
+    auto gathered = dest.gather_from_rows(indices);
+    ASSERT_EQ(gathered.shape(), indices.shape());
+    gathered += 1;
+
+    for (int i = 0; i < vals.size(); i++) {
+        for (int j = 0; j < dest.shape()[1]; j++) {
+            if (j != vals[i]) {
+                EXPECT_EQ(42, int(dest[i][j]));
+            } else {
+                EXPECT_EQ(43, int(dest[i][j]));
+            }
+        }
+    }
+}
+
+#endif

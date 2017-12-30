@@ -20,18 +20,15 @@ namespace op {
     namespace jit {
         struct GatherFromRows : public JITNode {
             static const hash_t optype_hash;
-            Array source_, indices_;
-
             GatherFromRows(Array source, Array indices) :
-                    JITNode(std::max(1, source.ndim() - 1), op_shape(indices.shape(), source.shape()), source.dtype()),
-                    source_(source), indices_(indices) {}
+                    JITNode(std::max(1, source.ndim() - 1), op_shape(indices.shape(), source.shape()), source.dtype(), {source, indices}) {}
 
             virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
                 return utils::make_message("gather_from_rows_kernel_", node_to_info.at(this).computation_rank, "d");
             }
 
             expression_ptr copy() const {
-                return std::make_shared<GatherFromRows>(source_, indices_);
+                return std::make_shared<GatherFromRows>(arguments_[0], arguments_[1]);
             }
 
             expression_ptr buffer_arg() const {
@@ -39,13 +36,13 @@ namespace op {
             }
 
             bool is_assignable() const {
-                return source_.is_assignable();
+                return arguments_[0].is_assignable();
             }
 
             std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type,
                                     bool assignment_code) const {
-                int source_rank = node_to_info.at(source_.expression().get()).computation_rank;
-                int indices_rank = node_to_info.at(indices_.expression().get()).computation_rank;
+                int source_rank = node_to_info.at(arguments_[0].expression().get()).computation_rank;
+                int indices_rank = node_to_info.at(arguments_[1].expression().get()).computation_rank;
                 int self_rank = node_to_info.at(this).computation_rank;
                 std::string kernel;
                 if (self_rank == 1) {
@@ -82,10 +79,6 @@ namespace op {
                         prefix_code(node_to_info, device_type, true));
             }
 
-            std::vector<Array> arguments() const {
-                return {source_, indices_};
-            }
-
             void compute_node_compilation_info(
                     int desired_computation_rank,
                     const std::vector<int>& desired_computation_shape,
@@ -93,7 +86,7 @@ namespace op {
                     node_to_info_t* node_to_info) const {
                 (*node_to_info)[this].computation_rank = desired_computation_rank;
 
-                auto source_original_bshape = source_.shape();
+                auto source_original_bshape = arguments_[0].shape();
                 int source_ndim = source_original_bshape.size();
                 // indices dim 1, dim2, etc... source dim 3, dim 4, etc...
                 std::vector<int> source_shape(
@@ -113,13 +106,13 @@ namespace op {
                     desired_computation_shape.end() - (source_ndim - 2)
                 );
 
-                op::jit::compute_node_compilation_info(source_, source_ndim, source_shape, symbol_table, node_to_info);
-                op::jit::compute_node_compilation_info(indices_, 1, indices_shape, symbol_table, node_to_info);
+                op::jit::compute_node_compilation_info(arguments_[0], source_ndim, source_shape, symbol_table, node_to_info);
+                op::jit::compute_node_compilation_info(arguments_[1], 1, indices_shape, symbol_table, node_to_info);
                 symbol_table.declare_shape(this);
                 (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
-                                                            .add(node_to_info->at(source_.expression().get()).hash)
-                                                            .add(node_to_info->at(indices_.expression().get()).hash)
+                                                            .add(node_to_info->at(arguments_[0].expression().get()).hash)
+                                                            .add(node_to_info->at(arguments_[1].expression().get()).hash)
                                                             .value();
             }
 
@@ -128,9 +121,9 @@ namespace op {
                     const node_to_info_t& node_to_info,
                     memory::DeviceT device_type) const {
                 return utils::make_message(kernel_name(node_to_info), "(",
-                                            op::jit::get_call_code_nd(source_, symbol_table, node_to_info, device_type),
+                                            op::jit::get_call_code_nd(arguments_[0], symbol_table, node_to_info, device_type),
                                             ", ",
-                                            op::jit::get_call_code_nd(indices_, symbol_table, node_to_info, device_type),
+                                            op::jit::get_call_code_nd(arguments_[1], symbol_table, node_to_info, device_type),
                                             ", ", symbol_table.get_shape(this), ")");
             }
         };

@@ -8,20 +8,18 @@ namespace jit {
 
 struct Diag : public JITNode {
     static const hash_t optype_hash;
-    Array diag_;
-    Diag(Array diag, int rows, int cols) : JITNode(2, {rows, cols}, diag.dtype()), diag_(diag) {}
-    virtual std::vector<Array> arguments() const {
-        return {diag_,};
-    }
+    Diag(Array diag, int rows, int cols) : JITNode(2, {rows, cols}, diag.dtype(), {diag}) {}
+
     virtual memory::Device preferred_device() const {
-        return diag_.preferred_device();
+        return arguments_[0].preferred_device();
     }
+
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const {
         return utils::make_message(
             kernel_name(node_to_info), "(",
-            as_jit_node(diag_)->get_call_code_nd(symbol_table, node_to_info, device_type), ", ",
+            as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, node_to_info, device_type), ", ",
             symbol_table.get_shape(this), ")");
     }
 
@@ -32,7 +30,7 @@ struct Diag : public JITNode {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         (*node_to_info)[this].computation_shape = desired_computation_shape;
         symbol_table.declare_shape(this);
-        op::jit::compute_node_compilation_info(diag_,
+        op::jit::compute_node_compilation_info(arguments_[0],
                                                1,
                                                {shape_[0]},
                                                symbol_table,
@@ -40,7 +38,7 @@ struct Diag : public JITNode {
         utils::Hasher hasher;
         hasher.add(optype_hash)
               .add(desired_computation_rank)
-              .add(node_to_info->at(diag_.expression().get()).hash);
+              .add(node_to_info->at(arguments_[0].expression().get()).hash);
         (*node_to_info)[this].hash = hasher.value();
     }
 
@@ -61,7 +59,7 @@ struct Diag : public JITNode {
     }
 
     virtual expression_ptr copy() const {
-        return std::make_shared<Diag>(diag_, shape_[0], shape_[1]);
+        return std::make_shared<Diag>(arguments_[0], shape_[0], shape_[1]);
     }
 };
 

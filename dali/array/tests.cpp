@@ -1359,3 +1359,208 @@ TEST(ArrayTests, destination_is_control_flow) {
         2 + Array::zeros({2, 3}, DTYPE_INT32)) * 2);
     EXPECT_TRUE(Array::equals(op::jit::tile_scalar(6, {2, 3}), res));
 }
+
+TEST(JITTests, repeated_op) {
+    // repeated operations can cause the graph simplification
+    // process to get confused:
+    Array a = 42;
+    EXPECT_FALSE(Array::equals(a + a, a));
+}
+
+TEST(BinaryTests, add) {
+    int size = 10;
+
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = op::arange(size).astype(dtype);
+        auto b = op::arange(size).astype(dtype);
+        Array dst = op::add(a, b);
+        EXPECT_TRUE(Array::equals(dst, a + b));
+    }
+
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = op::arange(size).astype(dtype);
+        auto b = op::arange(size).astype(dtype);
+        Array dst = op::arange(size).astype(dtype) + 2;
+        dst = op::add(a, b);
+        EXPECT_TRUE(Array::equals(dst, a + b));
+    }
+
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = op::arange(size).astype(dtype);
+        auto b = op::arange(size).astype(dtype);
+        Array dst = op::arange(size).astype(dtype) + 2;
+        dst += op::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                op::arange(size).astype(dtype) + 2 + a + b
+            )
+        );
+    }
+
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = op::arange(size).astype(dtype);
+        auto b = op::arange(size).astype(dtype);
+        Array dst = op::arange(size).astype(dtype) + 2;
+        dst -= op::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                op::arange(size).astype(dtype) + 2 - (a + b)
+            )
+        );
+    }
+
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = op::arange(size).astype(dtype);
+        auto b = op::arange(size).astype(dtype);
+        Array dst = op::arange(size).astype(dtype) + 2;
+        dst *= op::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                (op::arange(size).astype(dtype) + 2) * (a + b)
+            )
+        );
+    }
+}
+
+TEST(BinaryTests, add_strided) {
+    int size = 10;
+    // single striding
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = op::arange(size).astype(dtype);
+        Array b = op::arange(2 * size).astype(dtype)[Slice(0, 2*size, 2)];
+        Array dst = op::arange(size).astype(dtype) + 2;
+        dst -= op::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                op::arange(size).astype(dtype) + 2 - (a + b)
+            )
+        );
+    }
+
+    // double striding:
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        Array a = op::arange(size).astype(dtype);
+        Array b = op::arange(2 * size).astype(dtype)[Slice(0, 2*size, 2)];
+        Array dst = (op::arange(2 * size).astype(dtype) + 2)[Slice(0, 2 * size, 2)];
+        dst -= op::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                (op::arange(2 * size).astype(dtype) + 2)[Slice(0, 2 * size, 2)] - (a + b)
+            )
+        );
+    }
+
+    // triple striding:
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        Array a = op::arange(3 * size).astype(dtype)[Slice(0, 3 * size, 3)];
+        Array b = op::arange(2 * size).astype(dtype)[Slice(0, 2 * size, 2)];
+        Array dst = (op::arange(2 * size).astype(dtype) + 2)[Slice(0, 2 * size, 2)];
+        dst -= op::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                (op::arange(2 * size).astype(dtype) + 2)[Slice(0, 2 * size, 2)] - (a + b)
+            )
+        );
+    }
+}
+
+TEST(BinaryTests, add_strided_nd) {
+    int size = 10;
+    // single striding
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        Array a = op::arange(5 * size).reshape({5, size}).astype(dtype);
+        Array b = op::arange(5 * 2 * size).reshape({5, 2 * size}).astype(dtype)[Slice()][Slice(0, 2*size, 2)];
+        Array dst = op::arange(5 * size).reshape({5, size}).astype(dtype) + 2;
+        dst -= op::add(a, b);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                op::arange(5 * size).reshape({5, size}).astype(dtype) + 2 - (a + b)
+            )
+        );
+    }
+}
+
+
+#define DALI_DEFINE_REFERENCE_BINARY_OP(FUNCNAME, FUNCTOR_NAME)\
+    Array reference_ ##FUNCNAME (Array x, Array y) {\
+        Array out = Array::zeros_like(x);\
+        auto raveled_x = x.ravel();\
+        auto raveled_y = y.ravel();\
+        auto raveled_out = out.ravel();\
+        if (x.dtype() == DTYPE_DOUBLE) {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<double>::Map((double)raveled_x(i), (double)raveled_y(i))).eval();\
+            }\
+        } else if (x.dtype() == DTYPE_FLOAT) {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<float>::Map((float)raveled_x(i), (float)raveled_y(i))).eval();\
+            }\
+        } else {\
+            for (int i = 0; i < raveled_x.number_of_elements(); i++) {\
+                (raveled_out(i) = functor::FUNCTOR_NAME<int>::Map((int)raveled_x(i), (int)raveled_y(i))).eval();\
+            }\
+        }\
+        return out;\
+    }
+
+DALI_DEFINE_REFERENCE_BINARY_OP(eltmul, eltmul);
+DALI_DEFINE_REFERENCE_BINARY_OP(eltdiv, eltdiv);
+DALI_DEFINE_REFERENCE_BINARY_OP(prelu, prelu);
+DALI_DEFINE_REFERENCE_BINARY_OP(pow, power);
+DALI_DEFINE_REFERENCE_BINARY_OP(equals, equals);
+
+#define DALI_RTC_BINARY_TEST(funcname)\
+    TEST(BinaryTests, elementwise_binary_ ##funcname) { \
+        for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {\
+            int size = 4;\
+            auto a = op::arange(2 * size).reshape({2, size}).astype(dtype);\
+            auto b = op::arange(2 * size).reshape({2, size}).astype(dtype) + 1;\
+            Array dst = op::arange(2 * size).reshape({2, size}).astype(dtype) + 2;\
+            dst = op::funcname(a, b);\
+            Array reference = reference_ ##funcname(a, b);\
+            EXPECT_TRUE(Array::allclose(dst, reference, 1e-2));\
+        }\
+    }
+
+
+DALI_RTC_BINARY_TEST(eltmul);
+DALI_RTC_BINARY_TEST(eltdiv);
+DALI_RTC_BINARY_TEST(prelu);
+DALI_RTC_BINARY_TEST(pow);
+DALI_RTC_BINARY_TEST(equals);
+
+
+TEST(BinaryTests, chained_add) {
+    int size = 10;
+    // single striding
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        auto a = op::arange(5 * size).reshape({5, size}).astype(dtype);
+        Array b = op::arange(5 * 2 * size).reshape({5, 2 * size}).astype(dtype)[Slice()][Slice(0, 2 * size, 2)];
+        Array c = op::arange(5 * 3 * size).reshape({5, 3 * size}).astype(dtype)[Slice()][Slice(0, 3 * size, 3)];
+        Array dst = op::arange(5 * size).reshape({5, size}).astype(dtype) + 2;
+        // these two additions are a single kernel:
+        dst -= op::add(op::add(a, b), c);
+        EXPECT_TRUE(
+            Array::equals(
+                dst,
+                op::arange(5 * size).reshape({5, size}).astype(dtype) + 2 - (a + b + c)
+            )
+        );
+    }
+}
+
+TEST(BinaryTests, cast_binary) {
+    // auto casts to the right type before adding:
+    for (auto dtype : {DTYPE_INT32, DTYPE_FLOAT, DTYPE_DOUBLE}) {
+        Array res = op::add(op::arange(10).astype(dtype), op::arange(10).astype(DTYPE_INT32));
+        EXPECT_EQ(dtype, res.dtype());
+        EXPECT_TRUE(Array::allclose(op::arange(10).astype(dtype) * 2, res, 1e-8));
+    }
+}

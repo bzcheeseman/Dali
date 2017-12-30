@@ -32,8 +32,6 @@ struct BufferView : public Expression {
     virtual expression_ptr copy() const;
     virtual expression_ptr buffer_arg() const;
 
-    virtual std::vector<Array> arguments() const;
-
     virtual bool spans_entire_memory() const;
     virtual bool is_assignable() const;
 

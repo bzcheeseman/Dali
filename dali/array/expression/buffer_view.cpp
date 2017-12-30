@@ -35,7 +35,7 @@ BufferView::BufferView(std::shared_ptr<memory::SynchronizedMemory> memory,
                        DType dtype,
                        int offset,
                        const std::vector<int>& strides) :
-        Expression(shape, dtype, offset, strides),
+        Expression(shape, dtype, {}, offset, strides),
         memory_(memory){
     ASSERT2(shape_strictly_positive(shape), utils::make_message("Shape "
         "elements must be strictly positive (got ", shape, ")."));
@@ -66,11 +66,6 @@ expression_ptr BufferView::buffer_arg() const {
 
 memory::Device BufferView::preferred_device() const {
     return memory_->preferred_device;
-}
-
-
-std::vector<Array> BufferView::arguments() const {
-    return {};
 }
 
 bool BufferView::spans_entire_memory() const {

@@ -12,7 +12,6 @@
 namespace op {
 namespace jit {
 struct ReducerExpression : public JITNode {
-    Array argument_;
     const std::string functor_name_;
 
     // MUST IMPLEMENT
@@ -24,23 +23,18 @@ struct ReducerExpression : public JITNode {
                       const Array& argument,
                       const std::vector<int>& output_shape,
                       DType dtype, int min_computation_rank) :
-        JITNode(min_computation_rank, output_shape, dtype),
-        functor_name_(functor_name),
-        argument_(argument) {
-    }
-
-    virtual std::vector<Array> arguments() const {
-        return {argument_};
+        JITNode(min_computation_rank, output_shape, dtype, {argument}),
+        functor_name_(functor_name) {
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const {
-        int all_reduce_comp_rank = node_to_info.at(argument_.expression().get()).computation_rank;
+        int all_reduce_comp_rank = node_to_info.at(arguments_[0].expression().get()).computation_rank;
         return utils::make_message(
             kernel_name(), all_reduce_comp_rank,
             "d<", functor_name_, ", " , dtype_to_cpp_name(dtype_), ">(",
-            op::jit::get_call_code_nd(argument_, symbol_table, node_to_info, device_type), ")");
+            op::jit::get_call_code_nd(arguments_[0], symbol_table, node_to_info, device_type), ")");
     }
 };  // struct ReducerExpression
 
@@ -76,7 +70,7 @@ struct AllReducerExpression : public ReducerExpression {
 
     virtual expression_ptr copy() const {
         return std::make_shared<AllReducerExpression>(
-            functor_name_, argument_, argument_.dtype()
+            functor_name_, arguments_[0], arguments_[0].dtype()
         );
     }
 };
@@ -116,7 +110,7 @@ struct AxisReducerExpression : public ReducerExpression {
 
     virtual expression_ptr copy() const {
         return std::make_shared<AxisReducerExpression>(
-            functor_name_, argument_, argument_.dtype()
+            functor_name_, arguments_[0], arguments_[0].dtype()
         );
     }
 };
@@ -191,15 +185,15 @@ void AllReducerExpression::compute_node_compilation_info(
         SymbolTable& symbol_table,
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
-    op::jit::compute_node_compilation_info(argument_,
-                                           min_computation_rank(argument_),
-                                           argument_.shape(),
+    op::jit::compute_node_compilation_info(arguments_[0],
+                                           min_computation_rank(arguments_[0]),
+                                           arguments_[0].shape(),
                                            symbol_table,
                                            node_to_info);
     (*node_to_info)[this].hash = utils::Hasher().add(optype_hash())
                                                 .add(desired_computation_rank)
                                                 .add(functor_name_)
-                                                .add(node_to_info->at(argument_.expression().get()).hash)
+                                                .add(node_to_info->at(arguments_[0].expression().get()).hash)
                                                 .value();
 }
 
@@ -207,7 +201,7 @@ std::string AllReducerExpression::prefix_code(
         const node_to_info_t& node_to_info,
         memory::DeviceT device_type) const {
     return create_all_reduce_kernel_caller(
-        node_to_info.at(argument_.expression().get()).computation_rank,
+        node_to_info.at(arguments_[0].expression().get()).computation_rank,
         node_to_info.at(this).computation_rank
     );
 }
@@ -243,12 +237,12 @@ void AxisReducerExpression::compute_node_compilation_info(
         node_to_info_t* node_to_info) const {
     (*node_to_info)[this].computation_rank = desired_computation_rank;
     auto desired_argument_shape = desired_computation_shape;
-    if (argument_.ndim() > 0) {
-        desired_argument_shape.emplace_back(argument_.shape().back());
+    if (arguments_[0].ndim() > 0) {
+        desired_argument_shape.emplace_back(arguments_[0].shape().back());
     } else {
         desired_argument_shape.emplace_back(1);
     }
-    op::jit::compute_node_compilation_info(argument_,
+    op::jit::compute_node_compilation_info(arguments_[0],
                                            desired_computation_rank + 1,
                                            desired_argument_shape,
                                            symbol_table,
@@ -256,19 +250,19 @@ void AxisReducerExpression::compute_node_compilation_info(
     (*node_to_info)[this].hash = utils::Hasher().add(optype_hash())
                                                 .add(desired_computation_rank)
                                                 .add(functor_name_)
-                                                .add(node_to_info->at(argument_.expression().get()).hash)
+                                                .add(node_to_info->at(arguments_[0].expression().get()).hash)
                                                 .value();
 }
 
 bool AxisReducerExpression::is_axis_collapsible_with_axis_minus_one(int dim) const {
-    return argument_.is_axis_collapsible_with_axis_minus_one(dim - 1);
+    return arguments_[0].is_axis_collapsible_with_axis_minus_one(dim - 1);
 }
 
 expression_ptr AxisReducerExpression::collapse_axis_with_axis_minus_one(int axis) const {
     return std::make_shared<AxisReducerExpression>(
         functor_name_,
-        argument_.collapse_axis_with_axis_minus_one(axis - 1),
-        argument_.dtype()
+        arguments_[0].collapse_axis_with_axis_minus_one(axis - 1),
+        arguments_[0].dtype()
     );
 }
 
@@ -279,15 +273,15 @@ expression_ptr AxisReducerExpression::transpose(
     new_permutation.emplace_back(permutation.size());
     return std::make_shared<AxisReducerExpression>(
         functor_name_,
-        argument_.transpose(new_permutation),
-        argument_.dtype()
+        arguments_[0].transpose(new_permutation),
+        arguments_[0].dtype()
     );
 }
 
 std::string AxisReducerExpression::prefix_code(
         const node_to_info_t& node_to_info,
         memory::DeviceT device_type) const {
-    return create_axis_reduce_kernel_caller(node_to_info.at(argument_.expression().get()).computation_rank);
+    return create_axis_reduce_kernel_caller(node_to_info.at(arguments_[0].expression().get()).computation_rank);
 }
 
 
@@ -299,7 +293,7 @@ std::string ArgumentAllReducerExpression::prefix_code(
         const node_to_info_t& node_to_info,
         memory::DeviceT device_type) const {
     return create_argument_all_reduce_kernel_caller(
-        node_to_info.at(argument_.expression().get()).computation_rank,
+        node_to_info.at(arguments_[0].expression().get()).computation_rank,
         node_to_info.at(this).computation_rank
     );
 }
@@ -319,13 +313,13 @@ std::string ArgumentAxisReducerExpression::prefix_code(
         const node_to_info_t& node_to_info,
         memory::DeviceT device_type) const {
     return create_argument_axis_reduce_kernel_caller(
-        node_to_info.at(argument_.expression().get()).computation_rank);
+        node_to_info.at(arguments_[0].expression().get()).computation_rank);
 }
 
 expression_ptr ArgumentAxisReducerExpression::collapse_axis_with_axis_minus_one(int axis) const {
     return std::make_shared<ArgumentAxisReducerExpression>(
         functor_name_,
-        argument_.collapse_axis_with_axis_minus_one(axis - 1),
+        arguments_[0].collapse_axis_with_axis_minus_one(axis - 1),
         DTYPE_INT32
     );
 }
@@ -337,7 +331,7 @@ expression_ptr ArgumentAxisReducerExpression::transpose(const std::vector<int>& 
 
     return std::make_shared<ArgumentAxisReducerExpression>(
         functor_name_,
-        argument_.transpose(new_permutation),
+        arguments_[0].transpose(new_permutation),
         DTYPE_INT32
     );
 }

@@ -20,7 +20,6 @@ namespace jit {
 
     struct ElementwiseExpression : public JITNode {
         static const hash_t optype_hash;
-        const std::vector<Array> arguments_;
         const std::string functor_name_;
 
         static int compute_min_computation_rank(const std::vector<Array>& arguments) {
@@ -38,9 +37,8 @@ namespace jit {
                               DType dtype) :
                 JITNode(compute_min_computation_rank(arguments),
                         get_common_shape(arguments),
-                        dtype),
-                functor_name_(functor_name),
-                arguments_(arguments) {
+                        dtype, arguments),
+                functor_name_(functor_name) {
             ASSERT2(arguments.size() > 0,
                 "Elementwise expression state must have at least one argument.");
         }
@@ -54,10 +52,6 @@ namespace jit {
 
         virtual std::string name() const {
             return functor_name_;
-        }
-
-        virtual std::vector<Array> arguments() const  {
-            return arguments_;
         }
 
         virtual expression_ptr copy() const {

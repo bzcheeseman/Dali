@@ -8,9 +8,9 @@ namespace op {
     namespace jit {
         struct Outer : public JITNode {
             static const hash_t optype_hash;
-            Array left_, right_;
-            Outer(Array left, Array right) : JITNode(2, {left.shape()[0], right.shape()[0]}, left.dtype()),
-                left_(left), right_(right) {}
+            const Array& left_, right_;
+            Outer(Array left, Array right) : JITNode(2, {left.shape()[0], right.shape()[0]}, left.dtype(), {left, right}),
+                left_(arguments_[0]), right_(arguments_[1]) {}
 
             std::string kernel_name(const node_to_info_t& node_to_info) const {
                 return utils::make_message("outer", node_to_info.at(this).computation_rank, "d");

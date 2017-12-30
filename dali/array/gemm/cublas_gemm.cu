@@ -113,8 +113,8 @@ struct CublasGemmImpl : public Computation {
         // TODO(szymon): make less brittle (please :)
         Array dst = left_;
         op::MatMul* mm = static_cast<op::MatMul*>(right_.expression().get());
-        Array lhs = mm->left_;
-        Array rhs = mm->right_;
+        Array lhs = mm->arguments_[0];
+        Array rhs = mm->arguments_[1];
         auto op_dtype = dst.dtype();
         auto device = dst.preferred_device();
         double destination_multiplier_ = 0;

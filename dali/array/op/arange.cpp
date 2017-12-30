@@ -8,24 +8,20 @@ namespace jit {
 
 struct Arange : public JITNode {
     static const hash_t optype_hash;
-    Array start_;
-    Array step_;
     Arange(Array start, Array step, int size) :
-        JITNode(1, {size}, start.dtype()), start_(start), step_(step) {
+        JITNode(1, {size}, start.dtype(), {start, step}) {
     }
-    virtual std::vector<Array> arguments() const {
-        return {start_, step_};
-    }
+
     virtual memory::Device preferred_device() const {
-        return start_.preferred_device();
+        return arguments_[0].preferred_device();
     }
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const {
         return utils::make_message(
             kernel_name(node_to_info), "(",
-            op::jit::get_call_code_nd(start_, symbol_table, node_to_info, device_type), ", ",
-            op::jit::get_call_code_nd(step_, symbol_table, node_to_info, device_type), ", ",
+            op::jit::get_call_code_nd(arguments_[0], symbol_table, node_to_info, device_type), ", ",
+            op::jit::get_call_code_nd(arguments_[1], symbol_table, node_to_info, device_type), ", ",
             symbol_table.get_shape(this), ")");
     }
 
@@ -36,12 +32,12 @@ struct Arange : public JITNode {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         (*node_to_info)[this].computation_shape = desired_computation_shape;
         symbol_table.declare_shape(this);
-        op::jit::compute_node_compilation_info(start_,
+        op::jit::compute_node_compilation_info(arguments_[0],
                                                1,
                                                {1},
                                                symbol_table,
                                                node_to_info);
-        op::jit::compute_node_compilation_info(step_,
+        op::jit::compute_node_compilation_info(arguments_[1],
                                                1,
                                                {1},
                                                symbol_table,
@@ -49,8 +45,8 @@ struct Arange : public JITNode {
         utils::Hasher hasher;
         hasher.add(optype_hash)
               .add(desired_computation_rank)
-              .add(node_to_info->at(start_.expression().get()).hash)
-              .add(node_to_info->at(step_.expression().get()).hash);
+              .add(node_to_info->at(arguments_[0].expression().get()).hash)
+              .add(node_to_info->at(arguments_[1].expression().get()).hash);
         (*node_to_info)[this].hash = hasher.value();
     }
 
@@ -69,7 +65,7 @@ struct Arange : public JITNode {
     }
 
     virtual expression_ptr copy() const {
-        return std::make_shared<Arange>(start_, step_, shape_[0]);
+        return std::make_shared<Arange>(arguments_[0], arguments_[1], shape_[0]);
     }
 };
 

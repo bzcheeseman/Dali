@@ -16,12 +16,13 @@
 #include "dali/utils/print_utils.h"
 
 class Array  {
-  private:
+  public:
     struct ArrayState {
         mutable std::shared_ptr<Expression> expression_;
         ArrayState(std::shared_ptr<Expression> expression);
         // std::mutex mutex;
     };
+  private:
     mutable std::shared_ptr<ArrayState> state_;
 
     template<typename T>

@@ -7,9 +7,10 @@
 Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
         Expression(left.shape(),
                    left.dtype(),
+                   {left, right},
                    left.offset(),
                    left.strides()),
-                   left_(left), operator_t_(operator_t), right_(right) {
+                   left_(arguments_[0]), operator_t_(operator_t), right_(arguments_[1]) {
 }
 
 Assignment::Assignment(const Assignment& other) :

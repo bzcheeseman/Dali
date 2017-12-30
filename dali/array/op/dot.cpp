@@ -16,16 +16,12 @@ namespace {
 namespace op {
     MatMul::MatMul(Array left, Array right) :
         Expression({left.shape()[0], right.shape()[1]},
-                   type_promotion(left, right)),
-                   left_(left), right_(right) {}
-    std::vector<Array> MatMul::arguments() const {
-        return {left_, right_};
-    }
+                   type_promotion(left, right), {left, right}) {}
     expression_ptr MatMul::copy() const {
         return std::make_shared<MatMul>(*this);
     }
     memory::Device MatMul::preferred_device() const {
-        return device_promotion(left_, right_);
+        return device_promotion(arguments_[0], arguments_[1]);
     }
     bool MatMul::supports_operator(OPERATOR_T operator_t) const {
         return (operator_t == OPERATOR_T_EQL ||

@@ -20,15 +20,16 @@ struct Expression {
     DType            dtype_;
     std::vector<int> strides_;
     int              offset_; // expressing in number of numbers (not bytes)
+    const std::vector<Array> arguments_;
 
     // implemented these for all expression subclasses
     virtual memory::Device preferred_device() const = 0;
     virtual expression_ptr copy() const = 0;
-    virtual std::vector<Array> arguments() const = 0;
 
-
+    const std::vector<Array>& arguments() const;
     Expression(const std::vector<int>& shape,
                DType dtype,
+               const std::vector<Array>& arguments,
                int offset=0,
                const std::vector<int>& strides={});
 

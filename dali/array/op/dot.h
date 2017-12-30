@@ -6,10 +6,7 @@
 
 namespace op {
     struct MatMul : public Expression {
-        Array left_;
-        Array right_;
         MatMul(Array left, Array right);
-        std::vector<Array> arguments() const;
         using Expression::copy;
         virtual expression_ptr copy() const;
         memory::Device preferred_device() const;

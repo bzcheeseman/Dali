@@ -26,11 +26,9 @@
 
 namespace op {
     struct Uniform : public Expression {
-        Array low_;
-        Array high_;
+        const Array& low_, high_;
         Uniform(Array low, Array high, const std::vector<int>& shape) :
-            Expression(shape, low.dtype()), low_(low), high_(high) {}
-        std::vector<Array> arguments() const {return {low_, high_};}
+            Expression(shape, low.dtype(), {low, high}), low_(arguments_[0]), high_(arguments_[1]) {}
         using Expression::copy;
         virtual expression_ptr copy() const {return std::make_shared<Uniform>(*this);}
         memory::Device preferred_device() const {return memory::default_preferred_device;}

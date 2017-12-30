@@ -14,15 +14,10 @@ namespace jit {
 
 const hash_t ScalarView::optype_hash = std::hash<std::string>()(typeid(ScalarView).name());
 
-ScalarView::ScalarView(DType type) : JITNode(1, {}, type) {}
+ScalarView::ScalarView(DType type) : JITNode(1, {}, type, {}) {}
 
 memory::Device ScalarView::preferred_device() const {
     return memory::default_preferred_device;
-}
-
-
-std::vector<Array> ScalarView::arguments() const {
-    return {};
 }
 
 std::string ScalarView::get_call_code_nd(const SymbolTable& symbol_table,
@@ -89,18 +84,14 @@ Array wrap_scalar(double value) {
 
 struct TileScalar : public JITNode {
     static const hash_t optype_hash;
-    Array scalar_;
     TileScalar(Array scalar, const std::vector<int>& shape) :
-        JITNode(1, shape, scalar.dtype()), scalar_(scalar) {
-    }
-    virtual std::vector<Array> arguments() const {
-        return {scalar_};
+        JITNode(1, shape, scalar.dtype(), {scalar}) {
     }
     virtual bool spans_entire_memory() const {
         return true;
     }
     virtual memory::Device preferred_device() const {
-        return scalar_.preferred_device();
+        return arguments_[0].preferred_device();
     }
 
     virtual std::string name() const {
@@ -112,7 +103,7 @@ struct TileScalar : public JITNode {
                                          memory::DeviceT device_type) const {
         return utils::make_message(
             kernel_name(node_to_info), "(",
-            as_jit_node(scalar_)->get_call_code_nd(symbol_table, node_to_info, device_type),
+            as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, node_to_info, device_type),
             ", ", symbol_table.get_shape(this), ")");
     }
 
@@ -123,7 +114,7 @@ struct TileScalar : public JITNode {
         (*node_to_info)[this].computation_rank = desired_computation_rank;
         (*node_to_info)[this].computation_shape = desired_computation_shape;
         symbol_table.declare_shape(this);
-        op::jit::compute_node_compilation_info(scalar_,
+        op::jit::compute_node_compilation_info(arguments_[0],
                                                1,
                                                {1},
                                                symbol_table,
@@ -131,7 +122,7 @@ struct TileScalar : public JITNode {
         utils::Hasher hasher;
         hasher.add(optype_hash)
               .add(desired_computation_rank)
-              .add(node_to_info->at(scalar_.expression().get()).hash);
+              .add(node_to_info->at(arguments_[0].expression().get()).hash);
         (*node_to_info)[this].hash = hasher.value();
     }
 
@@ -150,7 +141,7 @@ struct TileScalar : public JITNode {
     }
 
     virtual expression_ptr copy() const {
-        return std::make_shared<TileScalar>(scalar_, shape_);
+        return std::make_shared<TileScalar>(arguments_[0], shape_);
     }
 };
 

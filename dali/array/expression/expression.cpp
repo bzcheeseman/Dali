@@ -64,10 +64,12 @@ namespace {
 
 Expression::Expression(const std::vector<int>& shape,
                        DType dtype,
+                       const std::vector<Array>& arguments,
                        int offset,
                        const std::vector<int>& strides) :
         shape_(shape),
         dtype_(dtype),
+        arguments_(arguments),
         offset_(offset),
         strides_(strides) {
     compact_strides(shape_, &strides_);
@@ -79,7 +81,8 @@ Expression::Expression(const Expression& other) :
         shape_(other.shape_),
         dtype_(other.dtype_),
         offset_(other.offset_),
-        strides_(other.strides_) {
+        strides_(other.strides_),
+        arguments_(other.arguments_) {
 }
 
 expression_ptr Expression::copy(const std::vector<int>& shape,
@@ -554,6 +557,10 @@ std::string Expression::name() const {
     int status;
     char * demangled = abi::__cxa_demangle(hasname, 0, 0, &status);
     return std::string(demangled);
+}
+
+const std::vector<Array>& Expression::arguments() const {
+    return arguments_;
 }
 
 std::string Expression::full_name() const {

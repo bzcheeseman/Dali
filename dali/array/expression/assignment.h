@@ -5,9 +5,8 @@
 #include "dali/array/expression/expression.h"
 
 struct Assignment : public Expression {
-    Array left_;
+    const Array& left_, right_;
     OPERATOR_T operator_t_;
-    Array right_;
 
     virtual expression_ptr copy() const;
     Assignment(Array left, OPERATOR_T operator_t, Array right);

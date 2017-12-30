@@ -66,7 +66,7 @@ void convert_array_to_ops(const Array& element,
         }
     } else if (element.is_control_flow()) {
         auto cflow = op::static_as_control_flow(element);
-        auto conditions = cflow->conditions_;
+        auto conditions = cflow->conditions();
         // insert dummy node that turns ControlFlow node back into a BufferView
         // when all conditions are met.
         steps.emplace_back(std::make_shared<ReleaseControlFlow>(

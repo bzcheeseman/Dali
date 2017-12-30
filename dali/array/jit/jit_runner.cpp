@@ -214,8 +214,9 @@ std::vector<std::vector<int>> SymbolTable::collect_shapes(const node_to_info_t& 
 JITNode::JITNode(int min_computation_rank,
                  const std::vector<int>& shape,
                  DType dtype,
+                 const std::vector<Array>& arguments,
                  int offset,
-                 const std::vector<int>& strides) : Expression(shape, dtype, offset, strides),
+                 const std::vector<int>& strides) : Expression(shape, dtype, arguments, offset, strides),
                                                     min_computation_rank_(min_computation_rank) {
     ASSERT2(min_computation_rank > 0, utils::make_message(
         "JITNode computation rank must be greater than 0 (got "
@@ -313,12 +314,10 @@ expression_ptr JITNode::only_buffers() const {
 struct JITRunner : public JITNode {
     static const hash_t optype_hash;
     Array dest_, root_;
-    std::vector<Array> leaves_;
     const OPERATOR_T operator_t_;
 
     virtual expression_ptr copy() const;
     JITRunner(Array root, const std::vector<Array>& leaves, OPERATOR_T operator_t, Array dest);
-    virtual std::vector<Array> arguments() const;
     virtual memory::Device preferred_device() const;
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
@@ -364,15 +363,11 @@ std::shared_ptr<JITRunner> as_jit_runner(const Array& array) {
 
 // JIT RUNNER //
 JITRunner::JITRunner(Array root, const std::vector<Array>& leaves, OPERATOR_T operator_t, Array dest) :
-        JITNode(as_jit_node(root)->min_computation_rank_, dest.shape(), root.dtype()),
-        root_(root), leaves_(leaves), operator_t_(operator_t), dest_(dest) {
+        JITNode(as_jit_node(root)->min_computation_rank_, dest.shape(), root.dtype(), leaves),
+        root_(root), operator_t_(operator_t), dest_(dest) {
     if (is_jit_runner(root)) {
         throw std::runtime_error("JITRunner should not contain a JITRunner.");
     }
-}
-
-std::vector<Array> JITRunner::arguments() const {
-    return leaves_;
 }
 
 expression_ptr JITRunner::copy() const {
@@ -632,7 +627,7 @@ Array jit_merge(const Array& root) {
         if (arg.is_assignment() &&
             is_jit_runner(static_as_assignment(arg)->right_)) {
             // grab leaves from existing jit-runner recursively:
-            auto extra_leaves = as_jit_runner(static_as_assignment(arg)->right_)->leaves_;
+            auto extra_leaves = as_jit_runner(static_as_assignment(arg)->right_)->arguments_;
             leaves.insert(leaves.end(), extra_leaves.begin(), extra_leaves.end());
             // if the node is an assignment to a buffer, ensure that
             // the assignment op gets included within this op

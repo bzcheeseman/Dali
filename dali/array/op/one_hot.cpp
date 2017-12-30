@@ -22,13 +22,12 @@ namespace op {
     namespace jit {
         struct OneHot : public JITNode {
             static const hash_t optype_hash;
-            Array indices_;
-            Array on_value_;
-            Array off_value_;
+            const Array& indices_, on_value_, off_value_;
 
             OneHot(Array indices, int depth, Array on_value, Array off_value) :
-                    JITNode(min_computation_rank(indices) + 1, one_hot_shape(indices.shape(), depth), on_value.dtype()),
-                    indices_(indices), on_value_(on_value), off_value_(off_value) {
+                    JITNode(min_computation_rank(indices) + 1, one_hot_shape(indices.shape(), depth),
+                            on_value.dtype(), {indices, on_value, off_value}),
+                    indices_(arguments_[0]), on_value_(arguments_[1]), off_value_(arguments_[2]) {
             }
 
             std::string kernel_name(const node_to_info_t& node_to_info) const {
@@ -45,7 +44,6 @@ namespace op {
                                      /*is_assignable=*/false);
             }
 
-            std::vector<Array> arguments() const {return {on_value_, off_value_};}
             expression_ptr copy() const {return std::make_shared<OneHot>(indices_, on_value_, off_value_, shape_.back());}
 
             virtual void compute_node_compilation_info(int desired_computation_rank,

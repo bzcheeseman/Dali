@@ -3,6 +3,8 @@
 #include "dali/array/expression/control_flow.h"
 #include "dali/utils/make_message.h"
 
+#include <unordered_set>
+
 std::vector<Array> right_args(Array node) {
     return op::static_as_assignment(node)->right_.expression()->arguments();
 }
@@ -36,8 +38,7 @@ namespace {
             if (op::static_as_control_flow(node)->all_conditions_are_met()) {
                 node.set_expression(cflow_left.expression());
             } else {
-                cflow_left.set_expression(all_assignments_or_buffers(cflow_left).expression());
-                for (auto& arg : op::static_as_control_flow(node)->conditions_) {
+                for (auto& arg : node.expression()->arguments_) {
                     arg.set_expression(all_assignments_or_buffers(arg).expression());
                 }
             }
@@ -74,18 +75,10 @@ namespace {
         if (root.is_buffer()) {
             return root;
         }
-        // recurse on children:
-        std::vector<Array> children;
-        if (root.is_assignment()) {
-            children.emplace_back(op::static_as_assignment(root)->right_);
-            children.emplace_back(op::static_as_assignment(root)->left_);
-        } else {
-            children = root.expression()->arguments();
-        }
-
-        // recurse on arguments of node:
-        for (auto& arg : children) {
-            arg.set_expression(simplify_destination(arg).expression());
+        // recurse on children/arguments of node:
+        for (const auto& arg : root.expression()->arguments()) {
+            auto new_exp = simplify_destination(arg);
+            arg.set_expression(new_exp.expression());
         }
         for (const auto& optimization : OPTIMIZATIONS) {
             if (optimization.matches(root)) {
@@ -106,6 +99,25 @@ namespace {
         }
         return root;
     }
+
+
+    void deduplicate_arrays(Array root) {
+        std::unordered_set<Array::ArrayState*> visited;
+        std::vector<Array> parents = {root};
+        while (!parents.empty()) {
+            auto parent = parents.back();
+            parents.pop_back();
+            for (auto& child : parent.expression()->arguments()) {
+                auto ptr = child.state().get();
+                if (visited.find(ptr) != visited.end()) {
+                    child.set_state(std::make_shared<Array::ArrayState>(child.expression()));
+                } else {
+                    visited.insert(ptr);
+                }
+                parents.emplace_back(child);
+            }
+        }
+    }
 }
 
 int register_optimization(std::function<bool(const Array&)> condition,
@@ -116,6 +128,7 @@ int register_optimization(std::function<bool(const Array&)> condition,
 }
 
 Array canonical(const Array& array) {
+    deduplicate_arrays(array);
     // assignment pass
     auto node = all_assignments_or_buffers(array);
 

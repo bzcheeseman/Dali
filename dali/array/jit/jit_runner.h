@@ -83,6 +83,7 @@ namespace op {
             JITNode(int min_computation_rank,
                     const std::vector<int>& shape,
                     DType dtype,
+                    const std::vector<Array>& arguments,
                     int offset=0,
                     const std::vector<int>& strides={});
             JITNode(const JITNode& other);

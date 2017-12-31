@@ -3,6 +3,16 @@
 #include "dali/utils/make_message.h"
 #include "dali/utils/core_utils.h"
 
+namespace {
+    std::string add_if_missing(std::string code, const std::string& missing) {
+        if (utils::endswith(code, missing)) {
+            return code;
+        } else {
+            return utils::make_message(code, missing);
+        }
+    }
+}
+
 // keeps rightmost (lowest) dimensions
 std::string insert_auto_reshaped_variable(const std::string& name, int rank) {
     if (rank == 1) {
@@ -57,7 +67,7 @@ std::string generate_accessor_string(int rank) {
     return ss.str();
 }
 
-std::string construct_for_loop(int rank, const std::string& code, const std::string& varname, int indent) {
+std::string construct_for_loop(int rank, std::string code, const std::string& varname, int indent) {
     std::string for_loop;
 
     for (int rank_num = 0; rank_num < rank; rank_num++) {
@@ -73,6 +83,7 @@ std::string construct_for_loop(int rank, const std::string& code, const std::str
             iname, "++) {\n"
         );
     }
+    code = add_if_missing(code, ";\n");
     for_loop += utils::make_message(
         std::string(indent + rank * 4, ' '),
         code

@@ -22,12 +22,11 @@ namespace op {
     namespace jit {
         struct OneHot : public JITNode {
             static const hash_t optype_hash;
-            const Array& indices_, on_value_, off_value_;
+            // const Array& on_value_, off_value_;
 
-            OneHot(Array indices, int depth, Array on_value, Array off_value) :
+            OneHot(Array on_value, Array off_value, Array indices, int depth) :
                     JITNode(min_computation_rank(indices) + 1, one_hot_shape(indices.shape(), depth),
-                            on_value.dtype(), {indices, on_value, off_value}),
-                    indices_(arguments_[0]), on_value_(arguments_[1]), off_value_(arguments_[2]) {
+                            on_value.dtype(), {on_value, off_value, indices}) {
             }
 
             std::string kernel_name(const node_to_info_t& node_to_info) const {
@@ -44,7 +43,7 @@ namespace op {
                                      /*is_assignable=*/false);
             }
 
-            expression_ptr copy() const {return std::make_shared<OneHot>(indices_, on_value_, off_value_, shape_.back());}
+            expression_ptr copy() const {return std::make_shared<OneHot>(arguments_[0], arguments_[1], arguments_[2], shape_.back());}
 
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
@@ -53,13 +52,14 @@ namespace op {
                 (*node_to_info)[this].computation_rank = desired_computation_rank;
                 (*node_to_info)[this].computation_shape = desired_computation_shape;
                 symbol_table.declare_shape(this);
-                op::jit::compute_node_compilation_info(indices_, desired_computation_rank - 1, drop_last(desired_computation_shape), symbol_table, node_to_info);
-                op::jit::compute_node_compilation_info(on_value_, 1, {1}, symbol_table, node_to_info);
-                op::jit::compute_node_compilation_info(off_value_, 1, {1}, symbol_table, node_to_info);
+                op::jit::compute_node_compilation_info(arguments_[0], 1, {1}, symbol_table, node_to_info);
+                op::jit::compute_node_compilation_info(arguments_[1], 1, {1}, symbol_table, node_to_info);
+                op::jit::compute_node_compilation_info(arguments_[2], desired_computation_rank - 1, drop_last(desired_computation_shape), symbol_table, node_to_info);
                 (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
-                                                            .add(node_to_info->at(on_value_.expression().get()).hash)
-                                                            .add(node_to_info->at(off_value_.expression().get()).hash)
+                                                            .add(node_to_info->at(arguments_[0].expression().get()).hash)
+                                                            .add(node_to_info->at(arguments_[1].expression().get()).hash)
+                                                            .add(node_to_info->at(arguments_[2].expression().get()).hash)
                                                             .value();
             }
 
@@ -68,11 +68,11 @@ namespace op {
                     const node_to_info_t& node_to_info,
                     memory::DeviceT device_type) const {
                 return utils::make_message(kernel_name(node_to_info), "(",
-                                           op::jit::get_call_code_nd(on_value_, symbol_table, node_to_info, device_type),
+                                           op::jit::get_call_code_nd(arguments_[0], symbol_table, node_to_info, device_type),
                                            ", ",
-                                           op::jit::get_call_code_nd(off_value_, symbol_table, node_to_info, device_type),
+                                           op::jit::get_call_code_nd(arguments_[1], symbol_table, node_to_info, device_type),
                                            ", ",
-                                           op::jit::get_call_code_nd(indices_, symbol_table, node_to_info, device_type),
+                                           op::jit::get_call_code_nd(arguments_[2], symbol_table, node_to_info, device_type),
                                            ", ",
                                            symbol_table.get_shape(this), ")");
             }
@@ -89,6 +89,6 @@ namespace op {
         ASSERT2(depth > 0, utils::make_message(
             "depth must be strictly positive (got depth=", depth, ")."));
         std::tie(on_value, off_value) = ensure_arguments_compatible(on_value, off_value, "one_hot");
-        return Array(std::make_shared<jit::OneHot>(indices, depth, on_value, off_value));
+        return Array(std::make_shared<jit::OneHot>(on_value, off_value, indices, depth));
     }
 }  // namespace op

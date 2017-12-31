@@ -201,31 +201,31 @@ namespace jit {
     }
 
     Array unsafe_cast(Array a, DType type) {
+        if (a.dtype() == type) {
+            return a;
+        }
         return Array(std::make_shared<jit::CastExpression>(type, a));
     }
 
     Array round(Array a) {
+        if (a.dtype() == DTYPE_INT32) {
+            return a;
+        }
         return Array(std::make_shared<jit::RoundExpression>(a));
     }
 
     std::tuple<Array, Array> ensure_arguments_compatible(
             const Array& a, const Array& b, const std::string& functor_name) {
-        // perform type promotion:
-        if (a.dtype() != b.dtype()) {
-            auto new_type = type_promotion(a, b);
-            if (a.dtype() == new_type) {
-                // b's dtype is being promoted
-                return std::tuple<Array,Array>(a, astype(b, new_type));
-            } else {
-                // a's dtype is being promoted
-                return std::tuple<Array,Array>(astype(a, new_type), b);
-            }
-        } else {
-            ASSERT2(jit::ndim_compatible(a, b), utils::make_message(
+        ASSERT2(jit::ndim_compatible(a, b), utils::make_message(
                 "Arguments to binary elementwise operation with kernel '",
                 functor_name, "' must have the same rank (got left.ndim = ",
                 a.ndim(), ", left.shape = ", a.shape(), ", and right.ndim = ",
                 b.ndim(), ", right.shape = ", b.shape(), ")."));
+        // perform type promotion:
+        if (a.dtype() != b.dtype()) {
+            auto new_type = type_promotion(a, b);
+            return std::tuple<Array,Array>(astype(a, new_type), astype(b, new_type));
+        } else {
             return std::tuple<Array,Array>(a, b);
         }
     }

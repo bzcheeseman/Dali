@@ -31,7 +31,7 @@ std::string generate_accessor_string(int rank);
 // Declare a nested c++ for loop for a specific rank (dimensionality)
 // that calls `code` in the center of the loop (modified a variable
 // of type `Shape` named "query" contains the current indices for the loop)
-std::string construct_for_loop(int rank, const std::string& code, const std::string& varname, int indent);
+std::string construct_for_loop(int rank, std::string code, const std::string& varname, int indent);
 
 // check that output Array matches the desired dtype and shape.
 void ensure_output_array_compatible(const Array& out,

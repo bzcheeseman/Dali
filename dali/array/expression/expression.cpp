@@ -444,8 +444,14 @@ expression_ptr Expression::pluck_axis(int axis, const Slice& slice_unnormalized)
     ASSERT2(axis >= 0 && axis < shape_.size(), utils::make_message("pluck_axis"
         " dimension (", axis, ") must be positive and less the dimensionality "
         "of the plucked array (", ndim(), ")."));
-
-    Slice slice = Slice::normalize_and_check(slice_unnormalized, shape_[axis]);
+    Slice slice;
+    if (strides_.size() > 0 && strides_[axis] == 0 &&
+        slice_unnormalized.end &&
+        (slice_unnormalized.end.value() - slice_unnormalized.start > 0)) {
+        slice = Slice::normalize_and_check(Slice(0, 1), shape_[axis]);
+    } else {
+        slice = Slice::normalize_and_check(slice_unnormalized, shape_[axis]);
+    }
 
     const vector<int>& old_shape = shape_;
     auto old_strides             = normalized_strides();

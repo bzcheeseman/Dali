@@ -248,8 +248,18 @@ std::string define_kernel(int ndim, bool has_shape,
         kernel = utils::make_message("return ", kernel);
     }
     std::stringstream ss_kernel;
+    int stack_depth = 2, new_stack_depth;
     for (const auto& line : utils::split(kernel, '\n', false)) {
-        ss_kernel << "        " << utils::trim(line) << "\n";
+        new_stack_depth = stack_depth + std::count(line.begin(), line.end(), '{') - std::count(line.begin(), line.end(), '}');
+        if (new_stack_depth == stack_depth - 1) {
+            ss_kernel << std::string(new_stack_depth * 4, ' ');
+        } else if (new_stack_depth == stack_depth + 1) {
+            ss_kernel << std::string(stack_depth * 4, ' ');
+        } else {
+            ss_kernel << std::string(new_stack_depth * 4, ' ');
+        }
+        stack_depth = new_stack_depth;
+        ss_kernel << utils::trim(line) << "\n";
     }
     kernel = ss_kernel.str();
 

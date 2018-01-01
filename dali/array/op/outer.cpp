@@ -24,8 +24,6 @@ namespace op {
                                      /*name=*/kernel_name(node_to_info),
                                      /*is_assignable=*/false);
             }
-
-            std::vector<Array> arguments() const {return {left_, right_};}
             expression_ptr copy() const {return std::make_shared<Outer>(left_, right_);}
 
             virtual void compute_node_compilation_info(int desired_computation_rank,

@@ -563,6 +563,32 @@ const std::vector<Array>& Expression::arguments() const {
     return arguments_;
 }
 
+std::string Expression::pretty_print_full_name(Expression* highlight, int indent) const {
+
+    std::stringstream ss;
+    if (this == highlight) {
+        ss << utils::red;
+    }
+    ss << std::string(indent, ' ') << name();
+    auto args = arguments();
+    if (args.size() > 0) {
+        ss << "(\n";
+        for (size_t i = 0; i < args.size(); i++) {
+            ss << args[i].expression()->pretty_print_full_name(highlight, indent + 4);
+            if (i + 1 != args.size()) {
+                ss << ",\n";
+            } else {
+                ss << "\n";
+            }
+        }
+        ss << std::string(indent, ' ') << ")";
+    }
+    if (this == highlight) {
+        ss << utils::reset_color;
+    }
+    return ss.str();
+}
+
 std::string Expression::full_name() const {
     std::stringstream ss;
     ss << name();

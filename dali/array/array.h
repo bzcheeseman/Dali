@@ -37,6 +37,7 @@ class Array  {
     Array();
     std::string expression_name() const;
     std::string full_expression_name() const;
+    std::string pretty_print_full_expression_name(Expression* highlight = nullptr) const;
 
     /* Various ways of constructing array */
     Array(std::shared_ptr<Expression>);
@@ -69,12 +70,12 @@ class Array  {
 
     void eval(bool wait=true) const;
 
-
     // IO methods
     static Array load(const std::string& fname);
     static Array load(FILE * fp);
     static void save(const std::string& fname, const Array& arr, const std::ios_base::openmode& mode=std::ios_base::out);
     static void save(std::basic_ostream<char>& stream, const Array& arr);
+
     static bool equals(const Array& left, const Array& right);
     static bool state_equals(const Array& left, const Array& right);
     // compare two arrays and considered close if abs(left - right) <= atolerance
@@ -226,6 +227,7 @@ class Array  {
 
     /* shortcuts for array ops */
     Array dot(const Array& other) const;
+    Array operator-() const;
 };
 bool operator==(const Array& left, const Array& right);
 

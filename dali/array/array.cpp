@@ -46,8 +46,7 @@ void alert_stateless_call(const bool& stateful, const char* fieldname) {
 
 
 Array::ArrayState::ArrayState(std::shared_ptr<Expression> expression):
-    expression_(expression) {
-}
+    expression_(expression) {}
 
 std::shared_ptr<Expression> Array::expression() const {
     return state_->expression_;
@@ -86,6 +85,15 @@ std::string Array::full_expression_name() const {
     }
     return expression()->full_name();
 }
+
+std::string Array::pretty_print_full_expression_name(Expression* highlight) const {
+    if (is_stateless()) {
+        return expression_name();
+    }
+    return expression()->pretty_print_full_name(highlight);
+}
+
+
 
 template<typename T>
 T Array::scalar_value() const {
@@ -796,6 +804,10 @@ void Array::clear() {
 
 Array Array::dot(const Array& other) const {
     return op::dot(*this, other);
+}
+
+Array Array::operator-() const {
+    return op::eltmul(-1, *this);
 }
 
 bool operator==(const Array& left, const Array& right) {

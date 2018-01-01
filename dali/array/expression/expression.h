@@ -78,6 +78,7 @@ struct Expression {
     virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
     virtual std::string name() const;
     virtual std::string full_name() const;
+    virtual std::string pretty_print_full_name(Expression* highlight, int indent=0) const;
     virtual bool supports_operator(OPERATOR_T operator_t) const;
     virtual bool spans_entire_memory() const;
     virtual bool is_assignable() const;

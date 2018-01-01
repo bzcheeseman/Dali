@@ -5,7 +5,7 @@
 #include "dali/array/array.h"
 
 // gets the right-hand side arguments from an assignment node.
-std::vector<Array> right_args(Array node);
+const std::vector<Array>& right_args(Array node);
 
 int register_optimization(std::function<bool(const Array&)> condition,
 					      std::function<Array(const Array&)> transformation,

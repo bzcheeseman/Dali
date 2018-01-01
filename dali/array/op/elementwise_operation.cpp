@@ -217,7 +217,7 @@ namespace jit {
     std::tuple<Array, Array> ensure_arguments_compatible(
             const Array& a, const Array& b, const std::string& functor_name) {
         ASSERT2(jit::ndim_compatible(a, b), utils::make_message(
-                "Arguments to binary elementwise operation with kernel '",
+                "Arguments to binary operation '",
                 functor_name, "' must have the same rank (got left.ndim = ",
                 a.ndim(), ", left.shape = ", a.shape(), ", and right.ndim = ",
                 b.ndim(), ", right.shape = ", b.shape(), ")."));

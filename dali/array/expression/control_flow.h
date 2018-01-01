@@ -6,7 +6,7 @@
 #include "dali/array/expression/expression.h"
 
 struct ControlFlow : public Expression {
-    const Array& left_;
+    const Array& left() const;
     ControlFlow(Array left, const std::vector<Array>& conditions);
     ControlFlow(const ControlFlow& other);
     virtual memory::Device preferred_device() const;

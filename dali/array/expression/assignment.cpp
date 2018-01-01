@@ -9,12 +9,20 @@ Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
                    left.dtype(),
                    {left, right},
                    left.offset(),
-                   left.strides()),
-                   left_(arguments_[0]), operator_t_(operator_t), right_(arguments_[1]) {
+                   left.strides()), operator_t_(operator_t) {
+}
+
+
+const Array& Assignment::left() const {
+    return arguments_[0];
+}
+
+const Array& Assignment::right() const {
+    return arguments_[1];
 }
 
 Assignment::Assignment(const Assignment& other) :
-        Assignment(other.left_, other.operator_t_, other.right_) {
+        Assignment(other.left(), other.operator_t_, other.right()) {
 }
 
 expression_ptr Assignment::copy() const {
@@ -22,15 +30,11 @@ expression_ptr Assignment::copy() const {
 }
 
 expression_ptr Assignment::buffer_arg() const {
-    return left_.expression()->buffer_arg();
+    return left().expression()->buffer_arg();
 }
 
 memory::Device Assignment::preferred_device() const {
-    return left_.preferred_device();
-}
-
-std::vector<Array> Assignment::arguments() const {
-    return {left_, right_};
+    return left().preferred_device();
 }
 
 std::string Assignment::name() const {
@@ -43,7 +47,7 @@ bool Assignment::is_axis_collapsible_with_axis_minus_one(int axis) const {
 }
 
 bool Assignment::spans_entire_memory() const {
-    return left_.spans_entire_memory();
+    return left().spans_entire_memory();
 }
 
 bool Assignment::is_assignable() const {
@@ -51,14 +55,14 @@ bool Assignment::is_assignable() const {
 }
 
 expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
-    if (right_.is_axis_collapsible_with_axis_minus_one(axis)) {
+    if (right().is_axis_collapsible_with_axis_minus_one(axis)) {
         return std::make_shared<Assignment>(
-            left_.collapse_axis_with_axis_minus_one(axis),
+            left().collapse_axis_with_axis_minus_one(axis),
             operator_t_,
-            right_.collapse_axis_with_axis_minus_one(axis)
+            right().collapse_axis_with_axis_minus_one(axis)
         );
     } else {
-        auto collapsed_self = left_.collapse_axis_with_axis_minus_one(axis);
+        auto collapsed_self = left().collapse_axis_with_axis_minus_one(axis);
         return op::control_dependency(Array(copy()), collapsed_self).expression();
     }
 }
@@ -126,32 +130,32 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
             auto left_assign = static_as_assignment(assigned_left);
             auto left_operator_t = left_assign->operator_t_;
             if (left_operator_t == OPERATOR_T_ADD) {
-                assigned_right = op::add(assigned_right, left_assign->right_);
+                assigned_right = op::add(assigned_right, left_assign->right());
             } else if (left_operator_t == OPERATOR_T_SUB) {
-                assigned_right = op::subtract(assigned_right, left_assign->right_);
+                assigned_right = op::subtract(assigned_right, left_assign->right());
             } else if (left_operator_t == OPERATOR_T_SUB) {
-                assigned_right = op::subtract(assigned_right, left_assign->right_);
+                assigned_right = op::subtract(assigned_right, left_assign->right());
             } else if (left_operator_t == OPERATOR_T_EQL) {
                 // TODO(jonathan): factorize mapping from operator -> binary func
                 // into one place
                 if (operator_t == OPERATOR_T_ADD) {
-                    assigned_right = op::add(left_assign->right_, assigned_right);
+                    assigned_right = op::add(left_assign->right(), assigned_right);
                     operator_t = OPERATOR_T_EQL;
                 } else if (operator_t == OPERATOR_T_SUB) {
-                    assigned_right = op::subtract(left_assign->right_, assigned_right);
+                    assigned_right = op::subtract(left_assign->right(), assigned_right);
                     operator_t = OPERATOR_T_EQL;
                 } else if (operator_t == OPERATOR_T_DIV) {
-                    assigned_right = op::eltdiv(left_assign->right_, assigned_right);
+                    assigned_right = op::eltdiv(left_assign->right(), assigned_right);
                     operator_t = OPERATOR_T_EQL;
                 } else if (operator_t == OPERATOR_T_MUL) {
-                    assigned_right = op::eltmul(left_assign->right_, assigned_right);
+                    assigned_right = op::eltmul(left_assign->right(), assigned_right);
                     operator_t = OPERATOR_T_EQL;
                 }
             } else {
                 // TODO(jonathan): fill this in
                 ASSERT2(false, "not sure what to do");
             }
-            assigned_left = left_assign->left_;
+            assigned_left = left_assign->left();
         }
         // a temp is added so that non overwriting operators
         // can be run independently from the right side's evaluation.

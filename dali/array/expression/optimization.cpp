@@ -1,12 +1,13 @@
 #include "optimization.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/control_flow.h"
+#include "dali/array/jit/scalar_view.h"
 #include "dali/utils/make_message.h"
 
 #include <unordered_set>
 
-std::vector<Array> right_args(Array node) {
-    return op::static_as_assignment(node)->right_.expression()->arguments();
+const std::vector<Array>& right_args(Array node) {
+    return op::static_as_assignment(node)->right().expression()->arguments();
 }
 
 namespace {
@@ -33,12 +34,12 @@ namespace {
             return node;
         }
         if (node.is_control_flow()) {
-            auto cflow_left = op::static_as_control_flow(node)->left_;
+            auto cflow_left = op::static_as_control_flow(node)->left();
             // TODO(jonathan): this should be registered as an optimization:
             if (op::static_as_control_flow(node)->all_conditions_are_met()) {
                 node.set_expression(cflow_left.expression());
             } else {
-                for (auto& arg : node.expression()->arguments_) {
+                for (auto& arg : node.expression()->arguments()) {
                     arg.set_expression(all_assignments_or_buffers(arg).expression());
                 }
             }
@@ -48,17 +49,17 @@ namespace {
             }
             if (node.is_assignment()) {
                 Assignment* node_assign = op::static_as_assignment(node);
-                if (node_assign->right_.is_assignment()) {
-                    Assignment* node_right_assign = op::static_as_assignment(node_assign->right_);
+                if (node_assign->right().is_assignment()) {
+                    Assignment* node_right_assign = op::static_as_assignment(node_assign->right());
                     if (node_right_assign->operator_t_ == OPERATOR_T_EQL &&
-                        node_right_assign->right_.expression()->supports_operator(node_assign->operator_t_)) {
-                        node_assign->right_.set_expression(node_right_assign->right_.expression());
+                        node_right_assign->right().expression()->supports_operator(node_assign->operator_t_)) {
+                        node_assign->right().set_expression(node_right_assign->right().expression());
                     }
                 }
                 for (auto& arg : right_args(node)) {
                     arg.set_expression(all_assignments_or_buffers(arg).expression());
                 }
-                node_assign->left_.set_expression(all_assignments_or_buffers(node_assign->left_).expression());
+                node_assign->left().set_expression(all_assignments_or_buffers(node_assign->left()).expression());
             } else {
                 for (auto& arg : node.expression()->arguments()) {
                     arg.set_expression(all_assignments_or_buffers(arg).expression());
@@ -101,23 +102,48 @@ namespace {
     }
 
 
-    void deduplicate_arrays(Array root) {
-        std::unordered_set<Array::ArrayState*> visited;
-        std::vector<Array> parents = {root};
-        while (!parents.empty()) {
-            auto parent = parents.back();
-            parents.pop_back();
-            for (auto& child : parent.expression()->arguments()) {
-                auto ptr = child.state().get();
-                if (visited.find(ptr) != visited.end()) {
-                    child.set_state(std::make_shared<Array::ArrayState>(child.expression()));
-                } else {
-                    visited.insert(ptr);
-                }
-                parents.emplace_back(child);
+    void deduplicate_arrays(const Array& root,
+                            std::unordered_set<Array::ArrayState*>& visited,
+                            std::unordered_set<const Array*>& visited_arrays) {
+        // check if this ArrayState has been used multiple times
+        // (e.g. an Array that points to the same expression)
+        auto ptr = root.state().get();
+        if (visited.find(ptr) != visited.end()) {
+            root.set_state(std::make_shared<Array::ArrayState>(
+                root.expression()
+            ));
+        } else {
+            visited.insert(ptr);
+        }
+        // Also check if any of the children of this array
+        // already exist elsewhere. If so, then this means that
+        // while the parent was copied over, the children were not
+        // deep copied & should thus be copied
+        bool found_duplicates = false;
+        for (auto& child : root.expression()->arguments()) {
+            if (visited_arrays.find(&child) != visited_arrays.end()) {
+                found_duplicates = true;
+                break;
+            } else {
+                visited_arrays.insert(&child);
             }
         }
+        // perform a deep copy on the children
+        if (found_duplicates) {
+            root.set_expression(root.expression()->copy());
+        }
+        // recurse down the tree
+        for (auto& child : root.expression()->arguments()) {
+            deduplicate_arrays(child, visited, visited_arrays);
+        }
     }
+
+    void deduplicate_arrays(Array root) {
+        std::unordered_set<Array::ArrayState*> visited;
+        std::unordered_set<const Array*> visited_arrays;
+        deduplicate_arrays(root, visited, visited_arrays);
+    }
+
 }
 
 int register_optimization(std::function<bool(const Array&)> condition,

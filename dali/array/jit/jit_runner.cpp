@@ -300,8 +300,8 @@ std::string JITNode::assignment_prefix_code(OPERATOR_T operator_t,
     return "";
 }
 
-expression_ptr JITNode::only_buffers() const {
-    auto self_copy = copy();
+expression_ptr only_buffers(std::shared_ptr<Expression> expr) {
+    auto self_copy = expr->copy();
     for (auto& arg : self_copy->arguments()) {
         auto buffer_arg = arg.buffer_arg();
         if (!buffer_arg.is_stateless()) {
@@ -353,8 +353,8 @@ bool is_jit_runner(const Array& array) {
 
 bool is_jit_assignment(const Array& node) {
     return (node.is_assignment() &&
-            is_jit_node(static_as_assignment(node)->right_) &&
-            !is_jit_runner(static_as_assignment(node)->right_));
+            is_jit_node(static_as_assignment(node)->right()) &&
+            !is_jit_runner(static_as_assignment(node)->right()));
 }
 
 std::shared_ptr<JITRunner> as_jit_runner(const Array& array) {
@@ -581,7 +581,7 @@ Array jit_root(const Array& array) {
 
 std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
     auto assign = static_as_assignment(node);
-    auto rightside = jit_root(assign->right_);
+    auto rightside = jit_root(assign->right());
     auto operator_t = assign->operator_t_;
     if (operator_t == OPERATOR_T_EQL) {
         // in cases where assignment was an implicit cast, ensure that type gets
@@ -594,13 +594,13 @@ std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
         }
         return std::tuple<Array, Array>(rightside, Array());
     } else if (operator_t == OPERATOR_T_ADD) {
-        return std::tuple<Array, Array>(op::add(assign->left_, rightside), assign->left_);
+        return std::tuple<Array, Array>(op::add(assign->left(), rightside), assign->left());
     } else if (operator_t == OPERATOR_T_SUB) {
-        return std::tuple<Array, Array>(op::subtract(assign->left_, rightside), assign->left_);
+        return std::tuple<Array, Array>(op::subtract(assign->left(), rightside), assign->left());
     } else if (operator_t == OPERATOR_T_MUL) {
-        return std::tuple<Array, Array>(op::eltmul(assign->left_, rightside), assign->left_);
+        return std::tuple<Array, Array>(op::eltmul(assign->left(), rightside), assign->left());
     } else if (operator_t == OPERATOR_T_DIV) {
-        return std::tuple<Array, Array>(op::eltdiv(assign->left_, rightside), assign->left_);
+        return std::tuple<Array, Array>(op::eltdiv(assign->left(), rightside), assign->left());
     } else {
         throw std::runtime_error(utils::make_message("No way to replace_assign_with_inplace using operator ",
                                                      operator_to_name(operator_t), "."));
@@ -610,9 +610,9 @@ std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
 Array jit_merge(const Array& root) {
     std::vector<Array> leaves;
     auto assign = static_as_assignment(root);
-    ASSERT2(assign->left_.is_assignable(), utils::make_message(
+    ASSERT2(assign->left().is_assignable(), utils::make_message(
         "Assignment destination is not assignable (",
-        assign->left_.full_expression_name(), ")."));
+        assign->left().full_expression_name(), ")."));
     auto root_buffer = root.buffer_arg();
     ASSERT2(!root_buffer.is_stateless(), utils::make_message(
         "Assignment destination for JIT assignment ", root.full_expression_name(),
@@ -625,9 +625,9 @@ Array jit_merge(const Array& root) {
     all_args.insert(all_args.end(), root_args.begin(), root_args.end());
     for (auto& arg : all_args) {
         if (arg.is_assignment() &&
-            is_jit_runner(static_as_assignment(arg)->right_)) {
+            is_jit_runner(static_as_assignment(arg)->right())) {
             // grab leaves from existing jit-runner recursively:
-            auto extra_leaves = as_jit_runner(static_as_assignment(arg)->right_)->arguments_;
+            auto extra_leaves = as_jit_runner(static_as_assignment(arg)->right())->arguments_;
             leaves.insert(leaves.end(), extra_leaves.begin(), extra_leaves.end());
             // if the node is an assignment to a buffer, ensure that
             // the assignment op gets included within this op
@@ -643,24 +643,17 @@ Array jit_merge(const Array& root) {
             // now that the jitrunners and assignments are gone, connect
             // up the new operation in the graph:
             arg.set_expression(replaced.expression());
-        } else if (arg.is_assignment()) {
+        } else if (arg.is_assignment() | arg.is_control_flow()) {
             // detach the assignment subgraph and only keep the left node(bufferview)
             auto leaf_arg = Array();
             leaf_arg.set_expression(arg.expression());
-            // TODO(jonathan): ensure this uses buffer_arg, or this may fail in rare cases
-            arg.set_expression(static_as_assignment(arg)->left_.expression());
+            arg.set_expression(arg.expression()->buffer_arg());
             leaves.emplace_back(leaf_arg);
-        // } else if (arg.is_control_flow()) {
-        //     // detach the assignment subgraph and only keep the left node(bufferview)
-        //     auto leaf_arg = Array();
-        //     leaf_arg.set_expression(arg.expression());
-        //     // TODO(jonathan): ensure this uses buffer_arg, or this may fail in rare cases
-        //     arg.set_expression(static_as_control_flow(arg)->left_.expression());
-        //     leaves.emplace_back(leaf_arg);
-        } else if (arg.is_assignable() && is_jit_node(arg)) {
+        } else if (arg.is_assignable() && is_jit_node(arg)) {
+            // detach the assignment subgraph and only keep the left node(bufferview)
             auto leaf_arg = Array();
             leaf_arg.set_expression(arg.expression());
-            arg.set_expression(static_as_jit_node(arg)->only_buffers());
+            arg.set_expression(only_buffers(arg.expression()));
             leaves.emplace_back(leaf_arg);
         } else {
             // this node is either an assignment, or a buffer,
@@ -668,10 +661,10 @@ Array jit_merge(const Array& root) {
             leaves.emplace_back(arg);
         }
     }
-    auto new_root = assign->right_;
+    auto new_root = assign->right();
     return Array(std::make_shared<Assignment>(
         // keep the original target buffer:
-        root_buffer, root_operator,
+        assign->left(), root_operator,
         // use the merged operation instead
         Array(std::make_shared<JITRunner>(new_root, leaves, root_operator, root_buffer)))
     );

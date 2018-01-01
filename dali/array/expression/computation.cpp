@@ -22,7 +22,7 @@ void Computation::run_and_cleanup() {
 
 }
 
-struct ReleaseControlFlow : public Computation {
+struct Noop : public Computation {
     using Computation::Computation;
     void run() {}
 };
@@ -34,14 +34,14 @@ void convert_array_to_ops(const Array& element,
                           std::vector<Array>& elements) {
     if (element.is_assignment()) {
         auto assignment = op::static_as_assignment(element);
-        auto assignment_left = assignment->left_;
-        auto hashname = typeid(*assignment->right_.expression()).name();
+        auto assignment_left = assignment->left();
+        auto hashname = typeid(*assignment->right().expression()).name();
         bool found_impl = false;
         if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {
             for (const auto& impl_creator : IMPLEMENTATIONS[hashname]) {
                 auto impl = impl_creator(assignment_left,
                                          assignment->operator_t_,
-                                         assignment->right_,
+                                         assignment->right(),
                                          element);
                 if (impl != nullptr) {
                     steps.emplace_back(impl);
@@ -50,28 +50,28 @@ void convert_array_to_ops(const Array& element,
                 }
             }
             if (found_impl) {
-                elements.emplace_back(assignment->left_);
+                elements.emplace_back(assignment->left());
                 // TODO(jonathan): this is a hack and should be removed
-                if (assignment->right_.is_assignment()) {
-                    elements.emplace_back(assignment->right_);
+                if (assignment->right().is_assignment()) {
+                    elements.emplace_back(assignment->right());
                 } else {
-                    auto args = assignment->right_.expression()->arguments();
+                    auto args = assignment->right().expression()->arguments();
                     elements.insert(elements.end(), args.begin(), args.end());
                 }
             }
         }
         if (!found_impl) {
             throw std::runtime_error(utils::make_message(
-                "No implementation found for ", assignment->right_.expression_name(), "."));
+                "No implementation found for ", assignment->right().expression_name(), "."));
         }
     } else if (element.is_control_flow()) {
         auto cflow = op::static_as_control_flow(element);
         auto conditions = cflow->conditions();
         // insert dummy node that turns ControlFlow node back into a BufferView
         // when all conditions are met.
-        steps.emplace_back(std::make_shared<ReleaseControlFlow>(
-            cflow->left_, OPERATOR_T_EQL, element, element));
-        convert_array_to_ops(cflow->left_, steps, elements);
+        steps.emplace_back(std::make_shared<Noop>(
+            cflow->left(), OPERATOR_T_EQL, element, element));
+        convert_array_to_ops(cflow->left(), steps, elements);
         elements.insert(elements.end(), conditions.begin(), conditions.end());
     } else if (!element.is_assignable()) {
         throw std::runtime_error(utils::make_message(

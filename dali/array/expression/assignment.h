@@ -5,15 +5,14 @@
 #include "dali/array/expression/expression.h"
 
 struct Assignment : public Expression {
-    const Array& left_, right_;
     OPERATOR_T operator_t_;
-
+    const Array& left() const;
+    const Array& right() const;
     virtual expression_ptr copy() const;
     Assignment(Array left, OPERATOR_T operator_t, Array right);
     Assignment(const Assignment& other);
     virtual std::string name() const;
     virtual memory::Device preferred_device() const;
-    virtual std::vector<Array> arguments() const;
     virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
     virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const;
     virtual bool spans_entire_memory() const;

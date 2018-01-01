@@ -5,18 +5,21 @@ std::vector<Array> join_array(std::vector<Array> left, const std::vector<Array>&
     return left;
 }
 
+const Array& ControlFlow::left() const {
+    return arguments_[0];
+}
+
 // TODO should pass strides + offset to Expression
 ControlFlow::ControlFlow(Array left, const std::vector<Array>& conditions) :
         Expression(left.shape(),
                    left.dtype(),
                    join_array({left}, conditions),
                    left.offset(),
-                   left.strides()),
-                   left_(arguments_[0]) {
+                   left.strides()) {
 }
 
 ControlFlow::ControlFlow(const ControlFlow& other) :
-        ControlFlow(other.left_, std::vector<Array>(other.arguments_.begin() + 1, other.arguments_.end())) {
+        ControlFlow(other.left(), std::vector<Array>(other.arguments_.begin() + 1, other.arguments_.end())) {
 }
 
 expression_ptr ControlFlow::copy() const {
@@ -24,23 +27,23 @@ expression_ptr ControlFlow::copy() const {
 }
 
 memory::Device ControlFlow::preferred_device() const {
-    return left_.preferred_device();
+    return left().preferred_device();
 }
 
 bool ControlFlow::is_axis_collapsible_with_axis_minus_one(int axis) const {
-    return left_.is_axis_collapsible_with_axis_minus_one(axis);
+    return left().is_axis_collapsible_with_axis_minus_one(axis);
 }
 
 bool ControlFlow::spans_entire_memory() const {
-    return left_.spans_entire_memory();
+    return left().spans_entire_memory();
 }
 
 bool ControlFlow::supports_operator(OPERATOR_T operator_t) const {
-    return left_.expression()->supports_operator(operator_t);
+    return left().expression()->supports_operator(operator_t);
 }
 
 bool ControlFlow::is_assignable() const {
-    return left_.is_assignable();
+    return left().is_assignable();
 }
 
 bool ControlFlow::all_conditions_are_met() const {
@@ -54,7 +57,7 @@ std::vector<Array> ControlFlow::conditions() const {
 }
 
 expression_ptr ControlFlow::buffer_arg() const {
-    return left_.expression()->buffer_arg();
+    return left().expression()->buffer_arg();
 }
 
 namespace op {
@@ -68,7 +71,7 @@ Array control_dependency(Array condition, Array result) {
         if (cflow->all_conditions_are_met()) {
             return result;
         }
-        if (cflow->left_.is_buffer()) {
+        if (cflow->left().is_buffer()) {
             return Array(std::make_shared<ControlFlow>(result, cflow->conditions()));
         }
     }

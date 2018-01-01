@@ -1361,10 +1361,29 @@ TEST(ArrayTests, destination_is_control_flow) {
 }
 
 TEST(JITTests, repeated_op) {
-    // repeated operations can cause the graph simplification
+    // reused Arrays can cause the graph simplification
     // process to get confused:
     Array a = 42;
     EXPECT_FALSE(Array::equals(a + a, a));
+}
+
+TEST(JITTests, nested_repeated_op) {
+    auto a = op::arange(5);
+    EXPECT_FALSE(Array::equals(a, a + a));
+}
+
+TEST(JITTests, nested_nested_repeated_op) {
+    int size = 10;
+    // single striding
+    Array a = op::arange(5 * size).reshape({5, size});
+    Array dst = op::arange(5 * size).reshape({5, size});
+    dst -= op::add(a, a);
+    EXPECT_TRUE(
+        Array::equals(
+            dst,
+            -op::arange(5 * size).reshape({5, size})
+        )
+    );
 }
 
 TEST(BinaryTests, add) {

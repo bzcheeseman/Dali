@@ -70,6 +70,10 @@ std::string Compiler::kCudaCxxExecutable = STR(DALI_CUDA_CXX_COMPILER);
 std::string Compiler::kCompilerId     = STR(DALI_CXX_COMPILER_ID);
 
 
+bool Compiler::is_loaded(hash_t hash) const {
+    return hash_to_f_ptr_.find(hash) != hash_to_f_ptr_.end();
+}
+
 bool Compiler::load(hash_t hash) {
     if (hash_to_f_ptr_.find(hash) != hash_to_f_ptr_.end()) {
         return true;

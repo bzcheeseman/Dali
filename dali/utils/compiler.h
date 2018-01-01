@@ -110,6 +110,7 @@ class Compiler {
     std::string header_file_includes() const;
 
     bool load(hash_t hash);
+    bool is_loaded(hash_t hash) const;
 
     void write_code(const std::string& fname,
                     const std::string& code,

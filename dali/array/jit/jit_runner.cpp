@@ -551,7 +551,8 @@ std::function<void(void**, const int*, const int**, const int**, const void**, c
                                  .add(node_to_info.at(this).hash)
                                  .value();
     // check if the operation needs to be runtime compiled
-    if (!array_op_compiler.load(hash) || should_always_recompile()) {
+    if ((should_always_recompile() && !array_op_compiler.is_loaded(hash)) ||
+        !array_op_compiler.load(hash)) {
         DALI_SCOPE("compilation");
         auto code_template = get_code_template(
             device,

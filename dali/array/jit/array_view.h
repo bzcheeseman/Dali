@@ -3,6 +3,10 @@
 #include "dali/macros.h"
 #include <initializer_list>
 
+XINLINE int int_min(const int& left, const int& right) {
+    return left < right ? left : right;
+}
+
 template<int num_dims>
 struct Shape {
     int sizes_[num_dims];

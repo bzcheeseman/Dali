@@ -2,7 +2,6 @@
 #include "dali/array/array.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/control_flow.h"
-#include "dali/array/jit/jit_runner.h"
 
 #include "dali/utils/make_message.h"
 #include <unordered_map>
@@ -50,7 +49,6 @@ void convert_array_to_ops(const Array& element,
                 }
             }
             if (found_impl) {
-                elements.emplace_back(assignment->left());
                 // TODO(jonathan): this is a hack and should be removed
                 if (assignment->right().is_assignment()) {
                     elements.emplace_back(assignment->right());
@@ -58,6 +56,7 @@ void convert_array_to_ops(const Array& element,
                     auto args = assignment->right().expression()->arguments();
                     elements.insert(elements.end(), args.begin(), args.end());
                 }
+                elements.emplace_back(assignment->left());
             }
         }
         if (!found_impl) {
@@ -71,8 +70,8 @@ void convert_array_to_ops(const Array& element,
         // when all conditions are met.
         steps.emplace_back(std::make_shared<Noop>(
             cflow->left(), OPERATOR_T_EQL, element, element));
-        convert_array_to_ops(cflow->left(), steps, elements);
         elements.insert(elements.end(), conditions.begin(), conditions.end());
+        elements.emplace_back(cflow->left());
     } else if (!element.is_assignable()) {
         throw std::runtime_error(utils::make_message(
             "Can only convert Assignments and Buffers "

@@ -22,7 +22,6 @@ namespace op {
     namespace jit {
         struct OneHot : public JITNode {
             static const hash_t optype_hash;
-            // const Array& on_value_, off_value_;
 
             OneHot(Array on_value, Array off_value, Array indices, int depth) :
                     JITNode(min_computation_rank(indices) + 1, one_hot_shape(indices.shape(), depth),
@@ -67,14 +66,9 @@ namespace op {
                     const SymbolTable& symbol_table,
                     const node_to_info_t& node_to_info,
                     memory::DeviceT device_type) const {
-                return utils::make_message(kernel_name(node_to_info), "(",
-                                           op::jit::get_call_code_nd(arguments_[0], symbol_table, node_to_info, device_type),
-                                           ", ",
-                                           op::jit::get_call_code_nd(arguments_[1], symbol_table, node_to_info, device_type),
-                                           ", ",
-                                           op::jit::get_call_code_nd(arguments_[2], symbol_table, node_to_info, device_type),
-                                           ", ",
-                                           symbol_table.get_shape(this), ")");
+                return generate_call_code_nd(this, kernel_name(node_to_info),
+                                             symbol_table, node_to_info, device_type,
+                                             /*has_shape=*/true);
             }
         };
         const hash_t OneHot::optype_hash = std::hash<std::string>()(typeid(OneHot).name());

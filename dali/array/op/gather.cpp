@@ -165,11 +165,10 @@ namespace op {
             std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const {
-                return utils::make_message(kernel_name(node_to_info), "(",
-                                           op::jit::get_call_code_nd(arguments_[0], symbol_table, node_to_info, device_type),
-                                           ", ",
-                                           op::jit::get_call_code_nd(arguments_[1], symbol_table, node_to_info, device_type),
-                                           ", ", symbol_table.get_shape(this), ")");
+                return generate_call_code_nd(this,
+                                         kernel_name(node_to_info),
+                                         symbol_table, node_to_info, device_type,
+                                         /*has_shape=*/true);
             }
         };
         const hash_t Gather::optype_hash = std::hash<std::string>()(typeid(Gather).name());

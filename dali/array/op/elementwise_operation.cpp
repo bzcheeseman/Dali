@@ -108,19 +108,10 @@ namespace jit {
         virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                              const node_to_info_t& node_to_info,
                                              memory::DeviceT device_type) const {
-            std::stringstream stream;
-            stream << elementwise_kernel_name(arguments_.size(), node_to_info.at(this).computation_rank) << "<"  << functor_name_ << ", "
-                   << dtype_to_cpp_name(dtype()) << ">(";
-
-            for (int i = 0; i < arguments_.size(); ++i) {
-                stream << op::jit::get_call_code_nd(arguments_[i], symbol_table, node_to_info, device_type)
-                       << (i + 1 == arguments_.size() ? "" : ", ");
-            }
-            if (arguments_.size() > 1) {
-                stream << ", " << symbol_table.get_shape(this);
-            }
-            stream << ")";
-            return stream.str();
+            return generate_call_code_nd(this,
+                                         utils::make_message(elementwise_kernel_name(arguments_.size(), node_to_info.at(this).computation_rank), "<", functor_name_, ", ", dtype_to_cpp_name(dtype()), ">"),
+                                         symbol_table, node_to_info, device_type,
+                                         /*has_shape=*/arguments_.size() > 1);
         }
 
         virtual std::string prefix_code(const node_to_info_t& node_to_info,

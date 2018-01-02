@@ -5,6 +5,6 @@
 
 namespace op {
 Array circular_convolution(Array x, Array weights);
-}  // namespace op2
+}  // namespace op
 
 #endif  // DALI_ARRAY_OP_CIRCULAR_CONVOLUTION_H

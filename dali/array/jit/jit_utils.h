@@ -5,6 +5,7 @@
 #include "dali/array/array.h"
 #include "dali/array/dtype.h"
 #include "dali/array/memory/device.h"
+#include "dali/array/jit/jit_runner.h"
 
 // Create declaration code for wrapping a variable inside a new view
 std::string build_array_definition(const std::string& cpp_type,
@@ -47,4 +48,10 @@ std::string define_kernel(int ndim, bool has_shape,
                           const std::vector<std::string>& arguments,
                           std::string kernel, std::string kernel_name,
                           bool is_assignable);
+std::string generate_call_code_nd(const Expression*,
+                                  const std::string& kernel_name,
+                                  const op::jit::SymbolTable& symbol_table,
+                                  const op::jit::node_to_info_t& node_to_info,
+                                  memory::DeviceT device_type,
+                                  bool has_shape);
 #endif

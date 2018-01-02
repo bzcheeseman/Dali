@@ -41,7 +41,7 @@ void alert_stateless_call(const bool& stateful, const char* fieldname) {
         if (!is_assignment() && !is_control_flow()) {\
             set_expression(op::to_assignment(*this).expression());\
         }\
-        return op::control_dependency(*this, buffer_arg().NAME);\
+        return op::control_dependency(*this, Array(buffer_arg().NAME));\
     }
 
 

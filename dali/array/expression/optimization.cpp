@@ -1,7 +1,6 @@
 #include "optimization.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/control_flow.h"
-#include "dali/array/jit/scalar_view.h"
 #include "dali/utils/make_message.h"
 
 #include <unordered_set>
@@ -101,7 +100,6 @@ namespace {
         return root;
     }
 
-
     void deduplicate_arrays(const Array& root,
                             std::unordered_set<Array::ArrayState*>& visited,
                             std::unordered_set<const Array*>& visited_arrays) {
@@ -138,7 +136,7 @@ namespace {
         }
     }
 
-    void deduplicate_arrays(Array root) {
+    void deduplicate_arrays(const Array& root) {
         std::unordered_set<Array::ArrayState*> visited;
         std::unordered_set<const Array*> visited_arrays;
         deduplicate_arrays(root, visited, visited_arrays);

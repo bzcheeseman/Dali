@@ -431,7 +431,7 @@ expression_ptr Expression::copyless_right_fit_ndim(int target_ndim) const {
 expression_ptr Expression::reshape(const vector<int>& new_shape) const {
     if (can_copyless_reshape(new_shape)) return copyless_reshape(new_shape);
     auto ret = op::identity(Array(copy()));
-    return ret.expression()->copyless_reshape(new_shape);
+    return ret.copyless_reshape(new_shape).expression();
 }
 
 expression_ptr Expression::pluck_axis(const int& axis, const int& pluck_idx) const {

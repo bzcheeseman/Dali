@@ -8,9 +8,7 @@ namespace op {
     namespace jit {
         struct Outer : public JITNode {
             static const hash_t optype_hash;
-            const Array& left_, right_;
-            Outer(Array left, Array right) : JITNode(2, {left.shape()[0], right.shape()[0]}, left.dtype(), {left, right}),
-                left_(arguments_[0]), right_(arguments_[1]) {}
+            Outer(Array left, Array right) : JITNode(2, {left.shape()[0], right.shape()[0]}, left.dtype(), {left, right}) {}
 
             std::string kernel_name(const node_to_info_t& node_to_info) const {
                 return utils::make_message("outer", node_to_info.at(this).computation_rank, "d");
@@ -24,7 +22,7 @@ namespace op {
                                      /*name=*/kernel_name(node_to_info),
                                      /*is_assignable=*/false);
             }
-            expression_ptr copy() const {return std::make_shared<Outer>(left_, right_);}
+            expression_ptr copy() const {return std::make_shared<Outer>(arguments_[0], arguments_[1]);}
 
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
@@ -33,16 +31,16 @@ namespace op {
                 (*node_to_info)[this].computation_rank = desired_computation_rank;
                 (*node_to_info)[this].computation_shape = desired_computation_shape;
                 symbol_table.declare_shape(this);
-                op::jit::compute_node_compilation_info(left_,
+                op::jit::compute_node_compilation_info(arguments_[0],
                     1, {desired_computation_shape[desired_computation_shape.size() - 2]},
                     symbol_table, node_to_info);
-                op::jit::compute_node_compilation_info(right_,
+                op::jit::compute_node_compilation_info(arguments_[1],
                     1, {desired_computation_shape[desired_computation_shape.size() - 1]},
                     symbol_table, node_to_info);
                 (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
-                                                            .add(node_to_info->at(left_.expression().get()).hash)
-                                                            .add(node_to_info->at(right_.expression().get()).hash)
+                                                            .add(node_to_info->at(arguments_[0].expression().get()).hash)
+                                                            .add(node_to_info->at(arguments_[1].expression().get()).hash)
                                                             .value();
             }
 
@@ -50,13 +48,9 @@ namespace op {
                     const SymbolTable& symbol_table,
                     const node_to_info_t& node_to_info,
                     memory::DeviceT device_type) const {
-                return utils::make_message(kernel_name(node_to_info), "(",
-                                           op::jit::get_call_code_nd(left_, symbol_table, node_to_info, device_type),
-                                           ",",
-                                           op::jit::get_call_code_nd(right_, symbol_table, node_to_info, device_type),
-                                           ",",
-                                           symbol_table.get_shape(this),
-                                           ")");
+                return generate_call_code_nd(this, kernel_name(node_to_info),
+                                             symbol_table, node_to_info, device_type,
+                                             /*has_shape=*/true);
             }
         };
         const hash_t Outer::optype_hash = std::hash<std::string>()(typeid(Outer).name());

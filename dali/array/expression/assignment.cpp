@@ -2,7 +2,6 @@
 #include "dali/utils/make_message.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/expression/control_flow.h"
-#include "dali/array/op/binary.h"
 
 Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
         Expression(left.shape(),
@@ -130,25 +129,25 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
             auto left_assign = static_as_assignment(assigned_left);
             auto left_operator_t = left_assign->operator_t_;
             if (left_operator_t == OPERATOR_T_ADD) {
-                assigned_right = op::add(assigned_right, left_assign->right());
+                assigned_right = assigned_right + left_assign->right();
             } else if (left_operator_t == OPERATOR_T_SUB) {
-                assigned_right = op::subtract(assigned_right, left_assign->right());
-            } else if (left_operator_t == OPERATOR_T_SUB) {
-                assigned_right = op::subtract(assigned_right, left_assign->right());
+                assigned_right = assigned_right - left_assign->right();
+            } else if (left_operator_t == OPERATOR_T_MUL) {
+                assigned_right = assigned_right * left_assign->right();
             } else if (left_operator_t == OPERATOR_T_EQL) {
                 // TODO(jonathan): factorize mapping from operator -> binary func
                 // into one place
                 if (operator_t == OPERATOR_T_ADD) {
-                    assigned_right = op::add(left_assign->right(), assigned_right);
+                    assigned_right = left_assign->right() + assigned_right;
                     operator_t = OPERATOR_T_EQL;
                 } else if (operator_t == OPERATOR_T_SUB) {
-                    assigned_right = op::subtract(left_assign->right(), assigned_right);
+                    assigned_right = left_assign->right() - assigned_right;
                     operator_t = OPERATOR_T_EQL;
                 } else if (operator_t == OPERATOR_T_DIV) {
-                    assigned_right = op::eltdiv(left_assign->right(), assigned_right);
+                    assigned_right = left_assign->right() / assigned_right;
                     operator_t = OPERATOR_T_EQL;
                 } else if (operator_t == OPERATOR_T_MUL) {
-                    assigned_right = op::eltmul(left_assign->right(), assigned_right);
+                    assigned_right = left_assign->right() * assigned_right;
                     operator_t = OPERATOR_T_EQL;
                 }
             } else {

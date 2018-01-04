@@ -1,6 +1,6 @@
 #include "im2col.h"
 #include <map>
-#include "dali/array/op/data_format_helper.h"
+#include "dali/array/op/spatial_utils.h"
 #include "dali/array/jit/jit_runner.h"
 #include "dali/array/jit/jit_utils.h"
 #include "dali/array/op/elementwise_operation.h"
@@ -93,24 +93,24 @@ namespace op {
 
                 auto compute_whc = utils::make_message(
                     // obtain offset in the relevant dimension:
-                    "        const int ", letter2name.at(stride_1_letter), " = query[0] % ",
+                    "const int ", letter2name.at(stride_1_letter), " = query[0] % ",
                     letter2stride.at(stride_1_letter), letter2adj.at(stride_1_letter), ";\n"
                     // obtain index post-this offset computation:
-                    "        const int index_without_", letter2name.at(stride_1_letter), " = query[0] / ",
+                    "const int index_without_", letter2name.at(stride_1_letter), " = query[0] / ",
                     letter2stride.at(stride_1_letter), ";\n"
                     // obtain index for next dimension:
-                    "        const int ", letter2name.at(stride_2_letter), " = index_without_",
+                    "const int ", letter2name.at(stride_2_letter), " = index_without_",
                     letter2name.at(stride_1_letter), " % ", letter2stride.at(stride_2_letter), letter2adj.at(stride_2_letter), ";\n"
                     // obtain index post-this offset computation:
-                    "        const int index_without_", letter2name.at(stride_2_letter), " = index_without_",
+                    "const int index_without_", letter2name.at(stride_2_letter), " = index_without_",
                     letter2name.at(stride_1_letter), " / ", letter2stride.at(stride_2_letter), ";\n"
                     // obtain index for last dimension:
-                    "        const int ", letter2name.at(stride_3_letter), " = index_without_",
+                    "const int ", letter2name.at(stride_3_letter), " = index_without_",
                     letter2name.at(stride_2_letter), " % ", letter2stride.at(stride_3_letter), letter2adj.at(stride_3_letter), ";\n"
                     // now use the collected values to compute w and h:
-                    "        const int w = (query[1] % o_width_) * stride_w_[0] + w_offset - prepad_w_[0];\n"
-                    "        const int jdivw = query[1] / o_width_;\n"
-                    "        const int h = (jdivw % o_height_) * stride_h_[0] + h_offset - prepad_h_[0];\n"
+                    "const int w = (query[1] % o_width_) * stride_w_[0] + w_offset - prepad_w_[0];\n"
+                    "const int jdivw = query[1] / o_width_;\n"
+                    "const int h = (jdivw % o_height_) * stride_h_[0] + h_offset - prepad_h_[0];\n"
                 );
 
                 std::string kernel = utils::make_message(
@@ -122,7 +122,7 @@ namespace op {
                     "    return image_", access_image, ";\n"
                     "} else {\n"
                     "//    padding with zeros:\n"
-                    "return T(0.0f);\n"
+                    "    return T(0.0f);\n"
                     "}\n"
                 );
 
@@ -151,13 +151,13 @@ namespace op {
                 (*node_to_info)[this].computation_rank = desired_computation_rank;
                 op::jit::compute_node_compilation_info(arguments_[0], 4, arguments_[0].shape(), symbol_table, node_to_info);
                 for (size_t i = 1; i < arguments_.size(); i++) {
-                    op::jit::compute_node_compilation_info(arguments_[i], 1, {}, symbol_table, node_to_info);
+                    op::jit::compute_node_compilation_info(arguments_[i], 1, {1}, symbol_table, node_to_info);
                 }
                 symbol_table.declare_shape(this);
                 auto hasher = utils::Hasher().add(optype_hash)
                                              .add(desired_computation_rank)
                                              .add(data_format_);
-                for (size_t i = 1; i < arguments_.size(); i++) {
+                for (size_t i = 0; i < arguments_.size(); i++) {
                     hasher.add(node_to_info->at(arguments_[i].expression().get()).hash);
                 }
                 (*node_to_info)[this].hash = hasher.value();
@@ -224,6 +224,8 @@ namespace op {
                  int stride_w,
                  int padding_h,
                  int padding_w,
+                 int postpad_h,
+                 int postpad_w,
                  const std::string& data_format) {
         int image_ndim = image.ndim();
         ASSERT2(image_ndim == 3 || image_ndim == 4, utils::make_message(
@@ -245,40 +247,41 @@ namespace op {
             "image shape of im2col with data_format=", data_format, " should be "
             "smaller than filter size (filter_h=", filter_h, " vs. image_h=",
             image_h, ", filter_w=", filter_w, " vs. w_dim=", image_w, ")."));
-        ASSERT2(padding_h >= 0, utils::make_message("padding_h should be a positive value (got ", padding_h, ")."));
-        ASSERT2(padding_w >= 0, utils::make_message("padding_w should be a positive value (got ", padding_w, ")."));
+        ASSERT2(padding_h >= 0, utils::make_message(
+            "padding_h should be a positive value (got ", padding_h, ")."));
+        ASSERT2(padding_w >= 0, utils::make_message(
+            "padding_w should be a positive value (got ", padding_w, ")."));
+        ASSERT2(postpad_h >= 0, utils::make_message(
+            "postpad_h should be a positive value (got ", postpad_h, ")."));
+        ASSERT2(postpad_w >= 0, utils::make_message(
+            "postpad_w should be a positive value (got ", postpad_w, ")."));
 
-        int dilate_h = 1, dilate_w = 1,
-            prepad_h = padding_h, prepad_w = padding_w,
-            postpad_h = 0, postpad_w = 0;
+        int dilate_h = 1, dilate_w = 1;
 
-        return Array(
-            std::make_shared<jit::Im2Col>(
-                image,
-                filter_h,
-                filter_w,
-                stride_h,
-                stride_w,
-                dilate_h,
-                dilate_w,
-                prepad_h,
-                prepad_w,
-                postpad_h,
-                postpad_w,
-                im2col_shape(image.shape(),
-                             filter_h,
-                             filter_w,
-                             stride_h,
-                             stride_w,
-                             dilate_h,
-                             dilate_w,
-                             prepad_h,
-                             prepad_w,
-                             postpad_h,
-                             postpad_w,
-                             data_format),
-                data_format
-            )
-        );
+        return Array(std::make_shared<jit::Im2Col>(
+            image,
+            filter_h,
+            filter_w,
+            stride_h,
+            stride_w,
+            dilate_h,
+            dilate_w,
+            padding_h,
+            padding_w,
+            postpad_h,
+            postpad_w,
+            im2col_shape(image.shape(),
+                         filter_h,
+                         filter_w,
+                         stride_h,
+                         stride_w,
+                         dilate_h,
+                         dilate_w,
+                         padding_h,
+                         padding_w,
+                         postpad_h,
+                         postpad_w,
+                         data_format),
+            data_format));
     }
 }  // namespace op

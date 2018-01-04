@@ -51,19 +51,19 @@ TEST(JITTests, im2col_without_channels) {
     Array old_res_nhwc = reference_im2col(
         image_nhwc, 3, 3, 1, 1, "NHWC"
     );
-    Array jit_res_nhwc = op::im2col(image_nhwc, 3, 3, 1, 1, 0, 0, "NHWC");
+    Array jit_res_nhwc = op::im2col(image_nhwc, 3, 3, 1, 1, 0, 0, 0, 0,"NHWC");
     EXPECT_TRUE(Array::equals(jit_res_nhwc, old_res_nhwc));
 
     Array old_res_nchw = reference_im2col(
         image_nchw, 3, 3, 1, 1, "NCHW"
     );
-    Array jit_res_nchw = op::im2col(image_nchw, 3, 3, 1, 1, 0, 0, "NCHW");
+    Array jit_res_nchw = op::im2col(image_nchw, 3, 3, 1, 1, 0, 0, 0, 0,"NCHW");
     EXPECT_TRUE(Array::equals(jit_res_nchw, old_res_nchw));
 
     Array image_wnch = image_nchw.transpose({3, 0, 1, 2});
 
     // allow arbitrary data-formats:
-    Array jit_res_wnch = op::im2col(image_wnch, 3, 3, 1, 1, 0, 0, "WNCH");
+    Array jit_res_wnch = op::im2col(image_wnch, 3, 3, 1, 1, 0, 0, 0, 0, "WNCH");
 
     // // break out the patch dimension
     auto jit_res_wnch_patches = jit_res_wnch.reshape({3, 1, 3, -1});

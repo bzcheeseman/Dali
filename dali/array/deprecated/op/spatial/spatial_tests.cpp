@@ -50,7 +50,7 @@ Array reference_conv2d(Array X, Array W,
                        int stride_h, int stride_w,
                        PADDING_T padding,
                        const std::string& data_format) {
-    auto info = internal::compute_conv_info(
+    auto info = op::compute_conv2d_info(
             X.shape(),
             W.shape(),
             stride_h,

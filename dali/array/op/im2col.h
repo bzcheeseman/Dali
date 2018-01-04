@@ -25,6 +25,8 @@ namespace op {
         int stride_w,
         int padding_h,
         int padding_w,
+        int postpad_h,
+        int postpad_w,
         const std::string& data_format
     );
 }  // namespace op

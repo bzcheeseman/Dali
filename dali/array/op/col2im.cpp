@@ -1,6 +1,6 @@
 #include "col2im.h"
 #include <map>
-#include "dali/array/op/data_format_helper.h"
+#include "dali/array/op/spatial_utils.h"
 #include "dali/array/jit/jit_runner.h"
 #include "dali/array/jit/jit_utils.h"
 #include "dali/array/op/elementwise_operation.h"

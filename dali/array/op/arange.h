@@ -1,5 +1,5 @@
-#ifndef DALI_ARRAY_EXPRESSION_ARANGE_H
-#define DALI_ARRAY_EXPRESSION_ARANGE_H
+#ifndef DALI_ARRAY_OP_ARANGE_H
+#define DALI_ARRAY_OP_ARANGE_H
 
 #include "dali/array/array.h"
 
@@ -9,4 +9,4 @@ Array arange(int start, int stop);
 Array arange(int start, int stop, int step);
 }
 
-#endif  // DALI_ARRAY_EXPRESSION_ARANGE_H
+#endif  // DALI_ARRAY_OP_ARANGE_H

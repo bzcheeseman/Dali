@@ -26,13 +26,14 @@
 
 namespace op {
     struct Uniform : public Expression {
-        const Array& low_, high_;
         Uniform(Array low, Array high, const std::vector<int>& shape) :
-            Expression(shape, low.dtype(), {low, high}), low_(arguments_[0]), high_(arguments_[1]) {}
+            Expression(shape, low.dtype(), {low, high}) {}
         using Expression::copy;
         virtual expression_ptr copy() const {return std::make_shared<Uniform>(*this);}
         memory::Device preferred_device() const {return memory::default_preferred_device;}
         virtual bool supports_operator(OPERATOR_T operator_t) const {return operator_t == OPERATOR_T_EQL;}
+        const Array& low() const {return arguments_[0];}
+        const Array& high() const {return arguments_[1];}
     };
 
     namespace {
@@ -60,8 +61,8 @@ namespace op {
         virtual void run() {
             Array dst = left_;
             Uniform* uni = static_cast<Uniform*>(right_.expression().get());
-            Array low = uni->low_;
-            Array high = uni->high_;
+            Array low = uni->low();
+            Array high = uni->high();
             auto op_dtype = dst.dtype();
             auto device = memory::Device::cpu();
             void* dst_ptr = dst.memory()->overwrite_data(device);
@@ -153,14 +154,13 @@ namespace op {
         void run() {
             Array dst = left_;
             Uniform* uni = static_cast<Uniform*>(right_.expression().get());
-            Array low = uni->low_;
-            Array high = uni->high_;
+            Array low = uni->low();
+            Array high = uni->high();
             auto op_dtype = dst.dtype();
             auto device = dst.preferred_device();
             void* dst_ptr = dst.memory()->overwrite_data(device);
             const void* low_ptr = low.memory()->readonly_data(memory::Device::cpu());
             const void* high_ptr = high.memory()->readonly_data(memory::Device::cpu());
-
             if (dst.dtype() == DTYPE_FLOAT) {
                 thrust_uniform(static_cast<float*>(dst_ptr), static_cast<const float*>(low_ptr), static_cast<const float*>(high_ptr), dst.number_of_elements());
             } else if (dst.dtype() == DTYPE_DOUBLE) {

@@ -569,9 +569,9 @@ TEST(ArrayTests, double_striding) {
         for (auto& slice0: generate_interesting_slices(2)) {
             for (auto& slice1: generate_interesting_slices(3)) {
                 for (auto& slice2: generate_interesting_slices(4)) {
-                    SCOPED_TRACE(std::string(utils::make_message("x[", slice0, "][", slice1, "][", slice2, "]")));
+                    SCOPED_TRACE(utils::make_message("x[", slice0, "][", slice1, "][", slice2, "]"));
                     Array sliced = x[slice0][slice1][slice2];
-                    int actual_sum = (Array)sliced.sum();
+                    int actual_sum = sliced.sum();
                     int expected_sum = 0;
                     for (int i=0; i < 2; ++i) {
                         for (int j=0; j<3; ++j) {
@@ -985,7 +985,7 @@ namespace {
         auto out_shape = indices.shape();
         out_shape.emplace_back(depth);
         auto res = Array::zeros(out_shape, DTYPE_DOUBLE);
-        res = res.copyless_reshape({-1, depth});
+        res = res.reshape({-1, depth});
         indices = indices.ravel();
         res = off_value;
         for (int i = 0; i < indices.number_of_elements(); i++) {

@@ -34,17 +34,6 @@ void alert_stateless_call(const bool& stateful, const char* fieldname) {
 //                                 ARRAY                                      //
 ////////////////////////////////////////////////////////////////////////////////
 
-#define GUARD_OPERATION(NAME)\
-    if (is_buffer()) {\
-        return Array(NAME);\
-    } else {\
-        if (!is_assignment() && !is_control_flow()) {\
-            set_expression(op::to_assignment(*this).expression());\
-        }\
-        return op::control_dependency(*this, Array(buffer_arg().NAME));\
-    }
-
-
 Array::ArrayState::ArrayState(std::shared_ptr<Expression> expression):
     expression_(expression) {}
 
@@ -570,7 +559,7 @@ SlicingInProgress<Array> Array::operator[](const Broadcast& b) const {
 
 Array Array::operator()(int idx) const {
     alert_stateless_call(!is_stateless(), "operator()");
-    GUARD_OPERATION(expression()->operator() (idx))
+    return Array(expression()->operator() (idx, this));
 }
 
 bool Array::is_transpose() const {
@@ -580,48 +569,42 @@ bool Array::is_transpose() const {
 
 Array Array::transpose() const {
     alert_stateless_call(!is_stateless(), "transpose");
-    GUARD_OPERATION(expression()->transpose());
+    return Array(expression()->transpose(this));
 }
 
 Array Array::transpose(const std::vector<int>& axes) const {
     alert_stateless_call(!is_stateless(), "transpose");
-    GUARD_OPERATION(expression()->transpose(axes));
+    return Array(expression()->transpose(axes, this));
 }
 
 Array Array::swapaxes(int axis1, int axis2) const {
     alert_stateless_call(!is_stateless(), "swapaxes");
-    GUARD_OPERATION(expression()->swapaxes(axis1, axis2));
-    return Array(expression()->swapaxes(axis1, axis2));
+    return Array(expression()->swapaxes(axis1, axis2, this));
 }
 
 Array Array::dimshuffle(const std::vector<int>& pattern) const {
     alert_stateless_call(!is_stateless(), "dimshuffle");
-    GUARD_OPERATION(expression()->dimshuffle(pattern));
+    return Array(expression()->dimshuffle(pattern, this));
 }
 
 Array Array::ravel() const {
     alert_stateless_call(!is_stateless(), "ravel");
-    GUARD_OPERATION(expression()->ravel());
-}
-
-Array Array::copyless_ravel() const {
-    alert_stateless_call(!is_stateless(), "copyless_ravel");
-    GUARD_OPERATION(expression()->copyless_ravel());
+    return Array(expression()->ravel(this));
 }
 
 Array Array::reshape(const std::vector<int>& shape) const {
     alert_stateless_call(!is_stateless(), "reshape");
-    GUARD_OPERATION(expression()->reshape(shape));
+    return Array(expression()->reshape(shape, this));
 }
 
 Array Array::broadcast_to_shape(const std::vector<int>& shape) const {
     alert_stateless_call(!is_stateless(), "broadcast_to_shape");
-    GUARD_OPERATION(expression()->broadcast_to_shape(shape))
+    return Array(expression()->broadcast_to_shape(shape, this));
 }
 
 Array Array::collapse_axis_with_axis_minus_one(int axis) const {
     alert_stateless_call(!is_stateless(), "collapse_axis_with_axis_minus_one");
-    return Array(expression()->collapse_axis_with_axis_minus_one(axis));
+    return Array(expression()->collapse_axis_with_axis_minus_one(axis, this));
 }
 
 bool Array::is_axis_collapsible_with_axis_minus_one(int axis) const {
@@ -629,57 +612,45 @@ bool Array::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return expression()->is_axis_collapsible_with_axis_minus_one(axis);
 }
 
-Array Array::copyless_reshape(const std::vector<int>& shape) const {
-    alert_stateless_call(!is_stateless(), "copyless_reshape");
-    GUARD_OPERATION(expression()->copyless_reshape(shape));
-}
-
-
 Array Array::right_fit_ndim(int dimensionality) const {
     alert_stateless_call(!is_stateless(), "right_fit_ndim");
-    return Array(expression()->right_fit_ndim(dimensionality));
-}
-
-Array Array::copyless_right_fit_ndim(int dimensionality) const {
-    alert_stateless_call(!is_stateless(), "copyless_right_fit_ndim");
-    return Array(expression()->copyless_right_fit_ndim(dimensionality));
+    return Array(expression()->right_fit_ndim(dimensionality, this));
 }
 
 Array Array::pluck_axis(int axis, const Slice& slice) const {
     alert_stateless_call(!is_stateless(), "pluck_axis");
-    GUARD_OPERATION(expression()->pluck_axis(axis, slice))
+    return Array(expression()->pluck_axis(axis, slice, this));
 }
 
 Array Array::pluck_axis(const int& axis, const int& idx) const {
     alert_stateless_call(!is_stateless(), "pluck_axis");
-    GUARD_OPERATION(expression()->pluck_axis(axis, idx))
+    return Array(expression()->pluck_axis(axis, idx, this));
 }
 
 Array Array::squeeze(int axis) const {
     alert_stateless_call(!is_stateless(), "squeeze");
-    GUARD_OPERATION(expression()->squeeze(axis))
+    return Array(expression()->squeeze(axis, this));
 }
 
 Array Array::expand_dims(int new_axis) const {
     alert_stateless_call(!is_stateless(), "expand_dims");
-    GUARD_OPERATION(expression()->expand_dims(new_axis))
+    return Array(expression()->expand_dims(new_axis, this));
 }
 
 Array Array::broadcast_axis(int axis) const {
     alert_stateless_call(!is_stateless(), "broadcast_axis");
-    GUARD_OPERATION(expression()->broadcast_axis(axis))
+    return Array(expression()->broadcast_axis(axis, this));
 }
 
 Array Array::insert_broadcast_axis(int axis) const {
     alert_stateless_call(!is_stateless(), "insert_broadcast_axis");
-    GUARD_OPERATION(expression()->insert_broadcast_axis(axis))
+    return Array(expression()->insert_broadcast_axis(axis, this));
 }
 
 Array Array::broadcast_scalar_to_ndim(const int& ndim) const {
     alert_stateless_call(!is_stateless(), "broadcast_scalar_to_ndim");
-    GUARD_OPERATION(expression()->broadcast_scalar_to_ndim(ndim))
+    return Array(expression()->broadcast_scalar_to_ndim(ndim, this));
 }
-
 
 #define DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME)\
     Array Array::FUNCTION_NAME() const {\

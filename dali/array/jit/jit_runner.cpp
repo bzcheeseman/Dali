@@ -163,14 +163,14 @@ std::vector<Array> SymbolTable::collect_buffers(const node_to_info_t& node_to_in
                        const auto& rank  = node_to_info.at(op).computation_rank;
                        const auto& shape = node_to_info.at(op).computation_shape;
                        if (op->ndim() == 0) {
-                          return op->broadcast_scalar_to_ndim(rank);
+                          return op->broadcast_scalar_to_ndim(rank, nullptr);
                        }
                        if (rank == op->ndim()) {
-                           return op->broadcast_to_shape(shape);
+                           return op->broadcast_to_shape(shape, nullptr);
                        } else if (rank == 1) {
-                           return op->broadcast_to_shape(shape)->copyless_ravel();
+                           return op->broadcast_to_shape(shape, nullptr)->ravel(nullptr);
                        } else {
-                           return op->broadcast_to_shape(shape)->copyless_right_fit_ndim(rank);
+                           return op->broadcast_to_shape(shape, nullptr)->right_fit_ndim(rank, nullptr);
                        }
                    });
     return arrays;
@@ -202,10 +202,10 @@ std::vector<std::vector<int>> SymbolTable::collect_shapes(const node_to_info_t& 
                             return shape;
                         } else if (rank == 1) {
                             // flatten
-                            return op->copyless_ravel()->shape_;
+                            return op->ravel(nullptr)->shape_;
                         } else {
                             // flatten rightmost portion
-                            return op->copyless_right_fit_ndim(rank)->shape_;
+                            return op->right_fit_ndim(rank, nullptr)->shape_;
                         }
                    });
     return shapes;
@@ -591,7 +591,7 @@ std::tuple<Array, Array> replace_assign_with_inplace(const Array& node) {
             rightside = op::astype(rightside, node.dtype());
         }
         if (rightside.is_scalar() && !node.is_scalar()) {
-          rightside = op::jit::tile_scalar(rightside, node.shape());
+            rightside = op::jit::tile_scalar(rightside, node.shape());
         }
         return std::tuple<Array, Array>(rightside, Array());
     } else if (operator_t == OPERATOR_T_ADD) {

@@ -18,6 +18,15 @@ struct ControlFlow : public Expression {
     virtual expression_ptr buffer_arg() const;
     virtual bool all_conditions_are_met() const;
     virtual std::vector<Array> conditions() const;
+
+    virtual expression_ptr dimshuffle(const std::vector<int>& pattern, const Array* owner) const override;
+    virtual expression_ptr pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const override;
+    virtual expression_ptr squeeze(int axis, const Array* owner) const override;
+    virtual expression_ptr expand_dims(int new_axis, const Array* owner) const override;
+    virtual expression_ptr broadcast_axis(int axis, const Array* owner) const override;
+    virtual expression_ptr broadcast_to_shape(const std::vector<int>& new_shape, const Array* owner) const override;
+    virtual expression_ptr reshape(const std::vector<int>& shape, const Array* owner) const override;
+    virtual expression_ptr operator()(int idx, const Array* owner) const override;
 };
 namespace op {
     ControlFlow* static_as_control_flow(const Array& arr);

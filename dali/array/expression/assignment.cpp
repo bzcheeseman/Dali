@@ -53,7 +53,7 @@ bool Assignment::is_assignable() const {
     return true;
 }
 
-expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
+expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis, const Array* owner) const {
     if (right().is_axis_collapsible_with_axis_minus_one(axis)) {
         return std::make_shared<Assignment>(
             left().collapse_axis_with_axis_minus_one(axis),
@@ -64,6 +64,49 @@ expression_ptr Assignment::collapse_axis_with_axis_minus_one(int axis) const {
         auto collapsed_self = left().collapse_axis_with_axis_minus_one(axis);
         return op::control_dependency(Array(copy()), collapsed_self).expression();
     }
+}
+
+
+#define CONNECT_AUTO_ASSIGN(NAME)\
+    if (owner != nullptr) {\
+        return op::control_dependency(\
+            *owner, (*owner).buffer_arg().NAME).expression();\
+    } else {\
+        Array assignment(copy());\
+        return op::control_dependency(\
+            assignment, assignment.buffer_arg().NAME).expression();\
+    }\
+
+expression_ptr Assignment::broadcast_to_shape(const std::vector<int>& new_shape, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(broadcast_to_shape(new_shape))
+}
+
+expression_ptr Assignment::operator()(int idx, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(operator() (idx))
+}
+
+expression_ptr Assignment::dimshuffle(const std::vector<int>& pattern, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(dimshuffle(pattern))
+}
+
+expression_ptr Assignment::reshape(const std::vector<int>& new_shape, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(reshape(new_shape))
+}
+
+expression_ptr Assignment::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(pluck_axis(axis, slice_unnormalized))
+}
+
+expression_ptr Assignment::squeeze(int axis, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(squeeze(axis))
+}
+
+expression_ptr Assignment::expand_dims(int new_axis, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(expand_dims(new_axis))
+}
+
+expression_ptr Assignment::broadcast_axis(int axis, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(broadcast_axis(axis))
 }
 
 namespace op {

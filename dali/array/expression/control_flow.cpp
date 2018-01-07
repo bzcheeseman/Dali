@@ -1,5 +1,7 @@
 #include "control_flow.h"
 
+#include "dali/array/expression/assignment.h"
+
 std::vector<Array> join_array(std::vector<Array> left, const std::vector<Array>& right) {
     left.insert(left.end(), right.begin(), right.end());
     return left;
@@ -59,6 +61,57 @@ std::vector<Array> ControlFlow::conditions() const {
 expression_ptr ControlFlow::buffer_arg() const {
     return left().expression()->buffer_arg();
 }
+
+#define CONNECT_AUTO_ASSIGN(NAME)\
+    if (owner != nullptr) {\
+        return op::control_dependency(*owner, (*owner).buffer_arg().NAME).expression();\
+    } else {\
+        Array cflow(copy());\
+        return op::control_dependency(cflow, cflow.buffer_arg().NAME).expression();\
+    }\
+
+// #define CONNECT_AUTO_ASSIGN(NAME)\
+//     Array assignment = op::to_assignment(copy());\
+//     if (owner != nullptr) {\
+//         owner->set_expression(assignment.expression());\
+//         return op::control_dependency(\
+//             *owner, (*owner).buffer_arg().NAME).expression();\
+//     }\
+//     return op::control_dependency(\
+//         assignment, assignment.buffer_arg().NAME).expression();\
+
+expression_ptr ControlFlow::broadcast_to_shape(const std::vector<int>& new_shape, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(broadcast_to_shape(new_shape))
+}
+
+expression_ptr ControlFlow::operator()(int idx, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(operator() (idx))
+}
+
+expression_ptr ControlFlow::dimshuffle(const std::vector<int>& pattern, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(dimshuffle(pattern))
+}
+
+expression_ptr ControlFlow::reshape(const std::vector<int>& new_shape, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(reshape(new_shape))
+}
+
+expression_ptr ControlFlow::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(pluck_axis(axis, slice_unnormalized))
+}
+
+expression_ptr ControlFlow::squeeze(int axis, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(squeeze(axis))
+}
+
+expression_ptr ControlFlow::expand_dims(int new_axis, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(expand_dims(new_axis))
+}
+
+expression_ptr ControlFlow::broadcast_axis(int axis, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(broadcast_axis(axis))
+}
+
 
 namespace op {
 ControlFlow* static_as_control_flow(const Array& arr) {

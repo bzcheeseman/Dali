@@ -148,23 +148,16 @@ class Array  {
     // broadcasts in dimshuffle (aka [1, 'x', 0], where 'x' is broadcasted)
     Array dimshuffle(const std::vector<int>& pattern) const;
     Array ravel() const;
-    // only ravel if underlying memory is contiguous
-    // ensures that no unexpected memory aliasing occurs
-    Array copyless_ravel() const;
     Array reshape(const std::vector<int>& shape) const;
     // ensure dimensions are properly broadcasted to be compatible
     // with some other shape. If no changes are needed, operation keeps
     // the Array as is:
     Array broadcast_to_shape(const std::vector<int>& shape) const;
-    // only reshapes if underlying memory is contiguous
-    // ensures that no unexpected memory aliasing occurs
-    Array copyless_reshape(const std::vector<int>& shape) const;
 
     Array collapse_axis_with_axis_minus_one(int axis) const;
     bool is_axis_collapsible_with_axis_minus_one(int axis) const;
 
     Array right_fit_ndim(int dimensionality) const;
-    Array copyless_right_fit_ndim(int dimensionality) const;
 
     // TODO(szymon): look up what it's called in tensorflow/numpy and rename.
     Array pluck_axis(int axis, const Slice& slice) const;

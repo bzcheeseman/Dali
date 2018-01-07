@@ -10,6 +10,7 @@
 #include "dali/array/expression/computation.h"
 #include "dali/array/expression/control_flow.h"
 #include "dali/array/jit/jit_utils.h"
+#include "dali/array/jit/reshape.h"
 #include "dali/utils/compiler.h"
 #include "dali/utils/scope.h"
 #include "dali/array/op/binary.h"
@@ -232,6 +233,12 @@ std::string JITNode::prefix_code(const node_to_info_t& node_to_info, memory::Dev
 
 bool JITNode::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return false;
+}
+
+expression_ptr JITNode::_reshape(const std::vector<int>& new_shape, const Array*) const {
+    // customize the way reshapes get run on JIT-nodes:
+    // run them in place without a copy.
+    return op::jit::jit_reshape(copy(), new_shape).expression();
 }
 
 memory::Device JITNode::preferred_device() const {

@@ -89,7 +89,7 @@ expression_ptr Assignment::dimshuffle(const std::vector<int>& pattern, const Arr
     CONNECT_AUTO_ASSIGN(dimshuffle(pattern))
 }
 
-expression_ptr Assignment::reshape(const std::vector<int>& new_shape, const Array* owner) const {
+expression_ptr Assignment::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
     CONNECT_AUTO_ASSIGN(reshape(new_shape))
 }
 

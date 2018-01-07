@@ -8,6 +8,7 @@
 #include "dali/array/shape.h"
 #include "dali/array/array.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/expression/assignment.h"
 
 namespace {
     // shape makes sense
@@ -15,32 +16,6 @@ namespace {
         return std::all_of(shape.begin(), shape.end(), [](int x) {
             return x > 0;
         });
-    }
-
-    std::vector<int> normalize_shape(const std::vector<int>& current_shape, std::vector<int> new_shape) {
-        int undefined_dim = -1;
-        int known_shape_volume = 1;
-        for (int i = 0; i < new_shape.size(); i++) {
-            if (new_shape[i] < 0) {
-                ASSERT2(undefined_dim == -1, utils::make_message("new shape can "
-                    "only specify one unknown dimension (got ", new_shape, ")."));
-                undefined_dim = i;
-            } else {
-                known_shape_volume *= new_shape[i];
-            }
-        }
-        if (undefined_dim != -1) {
-            if (known_shape_volume == 0) {
-                return new_shape;
-            } else {
-                int current_volume = hypercube_volume(current_shape);
-                ASSERT2(current_volume % known_shape_volume == 0, utils::make_message(
-                    "cannot deduce unknown dimension (", new_shape, ") with current "
-                    "shape (", current_shape, ")."));
-                new_shape[undefined_dim] = current_volume / known_shape_volume;
-            }
-        }
-        return new_shape;
     }
 }
 
@@ -156,7 +131,7 @@ expression_ptr BufferView::dimshuffle(const std::vector<int>& pattern, const Arr
         int pick_from = pattern[i];
         if (pick_from < 0) {
             // allow negative transpose values
-            // (e.g. to swap first and last dimensions use {0, -1})
+            // (e.g. to swap first and last dimensions use {-1, 0})
             pick_from = pick_from + current_shape.size();
         }
         ASSERT2(0 <= pick_from && pick_from < current_shape.size(), utils::make_message(
@@ -173,53 +148,21 @@ expression_ptr BufferView::dimshuffle(const std::vector<int>& pattern, const Arr
     return copy(newshape, offset_, newstrides);
 }
 
-bool BufferView::can_copyless_reshape(const std::vector<int>& new_shape) const {
-    auto norm_shape = normalize_shape(shape_, new_shape);
-    if (norm_shape == shape_ || contiguous_memory()) return true;
-    if (hypercube_volume(norm_shape) != number_of_elements()) return false;
-    if (norm_shape.size() > ndim()) {
-        // check if the lowest dimensions will be identical
-        bool matching_lowest = true;
-        for (int i = 0; i < ndim(); i++) {
-            if (norm_shape[norm_shape.size() - i - 1] != shape_[ndim() - i - 1]) {
-                matching_lowest = false;
-            }
-        }
-        bool is_ones_elsewhere = true;
-        for (int i = 0; i < new_shape.size() - ndim(); i++) {
-            if (norm_shape[i] != 1) {
-                is_ones_elsewhere = false;
-                break;
-            }
-        }
-        if (matching_lowest && is_ones_elsewhere) {
-            return true;
-        }
-    }
-    return false;
-}
-
-expression_ptr BufferView::copyless_reshape(const std::vector<int>& new_shape, const Array* owner) const {
-    auto norm_shape = normalize_shape(shape_, new_shape);
-    if (norm_shape == shape_) return copy();
-    ASSERT2(hypercube_volume(norm_shape) == number_of_elements(), utils::make_message(
-        "New shape (", new_shape, ") must have the same number of elements as previous "
-        "shape (", shape_, ")"));
-
+expression_ptr BufferView::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
     if (contiguous_memory()) {
-        return copy(norm_shape, offset_, {});
+        return copy(new_shape, offset_, {});
     }
-    if (norm_shape.size() > ndim()) {
+    if (new_shape.size() > ndim()) {
         // check if the lowest dimensions will be identical
         bool matching_lowest = true;
         for (int i = 0; i < ndim(); i++) {
-            if (norm_shape[norm_shape.size() - i - 1] != shape_[ndim() - i - 1]) {
+            if (new_shape[new_shape.size() - i - 1] != shape_[ndim() - i - 1]) {
                 matching_lowest = false;
             }
         }
         bool is_ones_elsewhere = true;
         for (int i = 0; i < new_shape.size() - ndim(); i++) {
-            if (norm_shape[i] != 1) {
+            if (new_shape[i] != 1) {
                 is_ones_elsewhere = false;
                 break;
             }
@@ -230,20 +173,10 @@ expression_ptr BufferView::copyless_reshape(const std::vector<int>& new_shape, c
             for (int i = 0; i < new_shape.size() - ndim(); i++) {
                 new_strides.insert(new_strides.begin(), top_most_stride);
             }
-            return copy(norm_shape, offset_, new_strides);
+            return copy(new_shape, offset_, new_strides);
         }
     }
-    ASSERT2(false, utils::make_message("Cannot perform reshape without a copy on "
-        "non-contiguous memory (contiguous = ", contiguous_memory(),
-        ", strides = ", strides_, ", shape=", shape_, ","
-        " new shape = ", new_shape, ")."));
-    return nullptr;
-}
-
-
-expression_ptr BufferView::reshape(const std::vector<int>& new_shape, const Array* owner) const {
-    if (can_copyless_reshape(new_shape)) return copyless_reshape(new_shape, owner);
-    return op::identity(copy()).reshape(new_shape).expression();
+    return op::to_assignment(copy()).reshape(new_shape).expression();
 }
 
 expression_ptr BufferView::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {

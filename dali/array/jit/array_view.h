@@ -103,7 +103,7 @@ template<int ndim>
 XINLINE Shape<ndim> index_to_dim(int index, const Shape<ndim>& shape) {
     Shape<ndim> multi_dimensional_index;
     #pragma unroll
-    for (int i = 0; i < ndim; i++) {
+    for (int i = ndim - 1; i >= 0; i--) {
         multi_dimensional_index[i] = index % shape[i];
         index /= shape[i];
     }

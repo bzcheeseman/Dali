@@ -88,6 +88,8 @@ namespace op {
                     const std::vector<int>& strides={});
             JITNode(const JITNode& other);
             virtual bool supports_operator(OPERATOR_T operator_t) const;
+
+            virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const override;
         };
 
         // return a shared pointer to the underlying jit node, checks for dynamic_cast

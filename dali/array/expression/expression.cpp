@@ -17,6 +17,34 @@
 //                           EXPRESSION                                       //
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace {
+    std::vector<int> normalize_shape(const std::vector<int>& current_shape, std::vector<int> new_shape) {
+        int undefined_dim = -1;
+        int known_shape_volume = 1;
+        for (int i = 0; i < new_shape.size(); i++) {
+            if (new_shape[i] < 0) {
+                ASSERT2(undefined_dim == -1, utils::make_message("new shape can "
+                    "only specify one unknown dimension (got ", new_shape, ")."));
+                undefined_dim = i;
+            } else {
+                known_shape_volume *= new_shape[i];
+            }
+        }
+        if (undefined_dim != -1) {
+            if (known_shape_volume == 0) {
+                return new_shape;
+            } else {
+                int current_volume = hypercube_volume(current_shape);
+                ASSERT2(current_volume % known_shape_volume == 0, utils::make_message(
+                    "cannot deduce unknown dimension (", new_shape, ") with current "
+                    "shape (", current_shape, ")."));
+                new_shape[undefined_dim] = current_volume / known_shape_volume;
+            }
+        }
+        return new_shape;
+    }
+}
+
 #define CONNECT_AUTO_ASSIGN(NAME)\
     Array assignment = op::to_assignment(copy());\
     if (owner != nullptr) {\
@@ -87,6 +115,7 @@ bool Expression::is_matrix() const {
 bool Expression::is_assignable() const {
     return false;
 }
+
 
 bool Expression::contiguous_memory() const {
     if (strides_.empty()) {
@@ -340,8 +369,17 @@ expression_ptr Expression::dimshuffle(const std::vector<int>& pattern, const Arr
     CONNECT_AUTO_ASSIGN(dimshuffle(pattern))
 }
 
-expression_ptr Expression::reshape(const std::vector<int>& new_shape, const Array* owner) const {
+expression_ptr Expression::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
     CONNECT_AUTO_ASSIGN(reshape(new_shape))
+}
+
+expression_ptr Expression::reshape(const std::vector<int>& new_shape, const Array* owner) const {
+    auto norm_shape = normalize_shape(shape_, new_shape);
+    if (norm_shape == shape_) return copy();
+    ASSERT2(hypercube_volume(norm_shape) == number_of_elements(), utils::make_message(
+        "New shape (", new_shape, ") must have the same number of elements as previous "
+        "shape (", shape_, ")"));
+    return _reshape(norm_shape, owner);
 }
 
 expression_ptr Expression::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {

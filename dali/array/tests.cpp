@@ -1360,6 +1360,17 @@ TEST(ArrayTests, destination_is_control_flow) {
     EXPECT_TRUE(Array::equals(op::jit::tile_scalar(6, {2, 3}), res));
 }
 
+TEST(JITTests, reshape_op) {
+    Array a = Array::zeros({2, 3, 4}, DTYPE_INT32);
+    a += op::arange(2 * 3 * 4).reshape({2, 3, 4});
+    a.eval();
+    Array b = Array::zeros({2 * 3 * 4}, DTYPE_INT32);
+    b += op::arange(2 * 3 * 4);
+    b.eval();
+    ASSERT_TRUE(b.reshape({2,3,4}).is_buffer());
+    ASSERT_TRUE(Array::equals(b.reshape({2,3,4}), a));
+}
+
 TEST(JITTests, repeated_op) {
     // reused Arrays can cause the graph simplification
     // process to get confused:

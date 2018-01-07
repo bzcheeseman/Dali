@@ -64,7 +64,6 @@ TEST(JITTests, im2col_without_channels) {
 
     // allow arbitrary data-formats:
     Array jit_res_wnch = op::im2col(image_wnch, 3, 3, 1, 1, 0, 0, 0, 0, "WNCH");
-
     // // break out the patch dimension
     auto jit_res_wnch_patches = jit_res_wnch.reshape({3, 1, 3, -1});
 

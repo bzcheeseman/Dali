@@ -92,7 +92,7 @@ expression_ptr ControlFlow::dimshuffle(const std::vector<int>& pattern, const Ar
     CONNECT_AUTO_ASSIGN(dimshuffle(pattern))
 }
 
-expression_ptr ControlFlow::reshape(const std::vector<int>& new_shape, const Array* owner) const {
+expression_ptr ControlFlow::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
     CONNECT_AUTO_ASSIGN(reshape(new_shape))
 }
 

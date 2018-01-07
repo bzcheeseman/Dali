@@ -26,7 +26,7 @@ struct Assignment : public Expression {
     virtual expression_ptr expand_dims(int new_axis, const Array* owner) const override;
     virtual expression_ptr broadcast_axis(int axis, const Array* owner) const override;
     virtual expression_ptr broadcast_to_shape(const std::vector<int>& new_shape, const Array* owner) const override;
-    virtual expression_ptr reshape(const std::vector<int>& shape, const Array* owner) const override;
+    virtual expression_ptr _reshape(const std::vector<int>& shape, const Array* owner) const override;
     virtual expression_ptr operator()(int idx, const Array* owner) const override;
 };
 

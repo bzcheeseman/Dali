@@ -43,7 +43,7 @@ namespace op {
     // type-promote arguments if necessary and check whether their
     // ranks are compatible (equal or one is a scalar)
     std::tuple<Array, Array> ensure_arguments_compatible(
-        const Array& a, const Array& b, const std::string&
+        Array a, Array b, const std::string&, bool update_shape
     );
 } // namespace op
 

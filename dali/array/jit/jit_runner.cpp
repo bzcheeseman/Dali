@@ -238,7 +238,7 @@ bool JITNode::is_axis_collapsible_with_axis_minus_one(int axis) const {
 expression_ptr JITNode::_reshape(const std::vector<int>& new_shape, const Array*) const {
     // customize the way reshapes get run on JIT-nodes:
     // run them in place without a copy.
-    return op::jit::jit_reshape(copy(), new_shape).expression();
+    return op::jit::jit_view(copy(), new_shape, 0, {}).expression();
 }
 
 memory::Device JITNode::preferred_device() const {

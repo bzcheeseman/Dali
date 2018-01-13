@@ -82,7 +82,7 @@ namespace op {
             "off_value must be a scalar (got off_value.ndim=", off_value.ndim(), ")."));
         ASSERT2(depth > 0, utils::make_message(
             "depth must be strictly positive (got depth=", depth, ")."));
-        std::tie(on_value, off_value) = ensure_arguments_compatible(on_value, off_value, "one_hot");
+        std::tie(on_value, off_value) = ensure_arguments_compatible(on_value, off_value, "one_hot", false);
         return Array(std::make_shared<jit::OneHot>(on_value, off_value, indices, depth));
     }
 }  // namespace op

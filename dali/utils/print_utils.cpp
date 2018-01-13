@@ -141,9 +141,24 @@ std::ostream& operator<<(std::ostream& os, const vector<int>& v) {
     return os << "]";
 }
 
+template<>
+std::ostream& operator<<(std::ostream& os, const vector<bool>& v) {
+    if (v.size() == 0) return os << "[]";
+    os << "[";
+    size_t i = 0;
+    for (auto f : v) {
+            os << (f ? "True" : "False");
+      if (i++ + 1 < v.size()) {
+        os << ", ";
+      }
+    }
+    return os << "]";
+}
+
 template std::ostream& operator<< <double>(std::ostream& strm, const vector<double>& a);
 template std::ostream& operator<< <float>(std::ostream& strm, const vector<float>& a);
 template std::ostream& operator<< <uint>(std::ostream& strm, const vector<uint>& a);
 template std::ostream& operator<< <int>(std::ostream& strm, const vector<int>& a);
 template std::ostream& operator<< <long>(std::ostream& strm, const vector<long>& a);
+template std::ostream& operator<< <bool>(std::ostream& strm, const vector<bool>& a);
 template std::ostream& operator<< <size_t>(std::ostream& strm, const vector<size_t>& a);

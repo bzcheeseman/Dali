@@ -57,7 +57,8 @@ namespace op {
     }  // namespace jit
 
     Array outer(Array a, Array b) {
-        std::tie(a, b) = ensure_arguments_compatible(a.ravel(), b.ravel(), "outer");
+        std::tie(a, b) = ensure_arguments_compatible(a.ravel(), b.ravel(), "outer",
+            /*update_shape=*/false);
         return Array(std::make_shared<jit::Outer>(a, b));
     }
 }  // namespace op

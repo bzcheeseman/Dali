@@ -1594,3 +1594,17 @@ TEST(BinaryTests, cast_binary) {
         EXPECT_TRUE(Array::allclose(op::arange(10).astype(dtype) * 2, res, 1e-8));
     }
 }
+
+
+TEST(BinaryTests, broadcasted_addition) {
+    auto a = op::tanh(Array::ones({3, 1}, DTYPE_DOUBLE));
+    auto b = op::tanh(Array::ones({3, 5}, DTYPE_DOUBLE));
+    auto c = a + b;
+    auto a_regular = op::tanh(Array::ones({3, 5}, DTYPE_DOUBLE));
+    auto c_regular = a_regular + b;
+    ASSERT_TRUE(Array::equals(c, c_regular));
+
+    auto a_scalar = op::tanh(Array::ones({}, DTYPE_DOUBLE));
+    auto c_scalar = a_scalar + b;
+    ASSERT_TRUE(Array::equals(c_scalar, c_regular));
+}

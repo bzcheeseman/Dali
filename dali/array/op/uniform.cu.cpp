@@ -191,7 +191,7 @@ namespace op {
             "low must be a scalar (got low.shape = ", low.shape(), ")."));
         ASSERT2(high.is_scalar(), utils::make_message(
             "high must be a scalar (got high.shape = ", high.shape(), ")."));
-        std::tie(low, high) = ensure_arguments_compatible(low, high, "uniform");
+        std::tie(low, high) = ensure_arguments_compatible(low, high, "uniform", false);
         return Array(std::make_shared<Uniform>(low, high, shape));
     }
 

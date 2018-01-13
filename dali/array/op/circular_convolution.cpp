@@ -92,7 +92,7 @@ namespace op {
         const hash_t CircularConvolution::optype_hash = std::hash<std::string>()(typeid(CircularConvolution).name());
     } // namespace jit
     Array circular_convolution(Array x, Array weights) {
-        std::tie(x, weights) = ensure_arguments_compatible(x, weights, "circular_convolution");
+        std::tie(x, weights) = ensure_arguments_compatible(x, weights, "circular_convolution", true);
         return Array(std::make_shared<jit::CircularConvolution>(x, weights));
     }
 }  // namespace op

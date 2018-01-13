@@ -50,7 +50,7 @@ namespace {
         return template_data_stream;
     }
 
-    std::string generate_elementwise_kernel_constructor_arguments(int num_args, int ndim, bool has_shape) {
+    std::string generate_elementwise_kernel_constructor_arguments(int num_args, int ndim) {
         utils::MS template_data_stream;
         for (int i = 0; i < num_args; i++) {
             template_data_stream << "        const C" << (i+1) << "& "
@@ -58,12 +58,6 @@ namespace {
             if (i + 1 != num_args) {
                 template_data_stream << ",\n";
             } else {
-                if (has_shape) {
-                    if (num_args > 0) {
-                        template_data_stream << ",\n";
-                    }
-                    template_data_stream << "        const Shape<" << ndim << ">& shape";
-                }
                 template_data_stream << ")";
             }
         }
@@ -76,17 +70,13 @@ namespace {
             template_data_stream << "    C" << (i+1) << " "
                                  << generate_elementwise_kernel_argument(i) << "_;\n";
         }
-        std::string shape_var = num_args == 1 ? "arg_1_view_.shape()" : "shape_";
-        std::string shape_storage = num_args == 1 ? "" : "    const Shape<ndim> shape_;\n";
-
         template_data_stream << "    static const int ndim = " << ndim << ";\n"
                              << "    typedef Type T;\n"
-                             << shape_storage
                              << "    XINLINE const Shape<ndim>& shape() const {\n"
-                             << "        return " << shape_var << ";\n"
+                             << "        return arg_1_view_.shape();\n"
                              << "    }\n"
                              << "    XINLINE " << kernel_struct_name(num_args, ndim) << "(\n"
-                             << generate_elementwise_kernel_constructor_arguments(num_args, ndim, num_args > 1) << "\n"
+                             << generate_elementwise_kernel_constructor_arguments(num_args, ndim) << "\n"
                              << "        : ";
         for (int i = 0; i < num_args; i++) {
             template_data_stream << generate_elementwise_kernel_argument(i)
@@ -95,26 +85,17 @@ namespace {
                 template_data_stream << ", ";
             }
         }
-        if (num_args > 1) {
-            template_data_stream << ", shape_(shape)";
-        }
         template_data_stream << " {}\n";
         return template_data_stream;
     }
 
     std::string generate_elementwise_kernel_caller_code(int num_args, int ndim) {
-
-        std::string shape_arg;
-        if (num_args > 1) {
-            shape_arg = ", shape";
-        }
-
         return utils::make_message(
             generate_elementwise_kernel_template_code(num_args),
             "XINLINE ", generate_elementwise_kernel_class_signature(num_args, ndim), " ", elementwise_kernel_name(num_args, ndim), "(\n",
-            generate_elementwise_kernel_constructor_arguments(num_args, ndim, num_args > 1), " {\n",
+            generate_elementwise_kernel_constructor_arguments(num_args, ndim), " {\n",
             "    return ", generate_elementwise_kernel_class_signature(num_args, ndim), "(",
-            generate_elementwise_kernel_arguments(num_args, ""), shape_arg, ");\n",
+            generate_elementwise_kernel_arguments(num_args, ""), ");\n",
             "}\n"
         );
     }

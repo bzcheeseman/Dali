@@ -8,7 +8,21 @@
 #include "dali/array/jit/jit_utils.h"
 #include "dali/array/jit/elementwise_kernel_utils.h"
 #include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/reshape.h"
+#include "dali/array/jit/scalar_view.h"
 #include "dali/array/expression/buffer_view.h"
+
+namespace {
+    int compute_min_computation_rank(const std::vector<Array>& arguments) {
+        return std::accumulate(arguments.begin(),
+           arguments.end(),
+           0,
+           [](int so_far, const Array& op) {
+               return std::max(so_far, op::jit::min_computation_rank(op));
+           }
+        );
+    }
+}
 
 namespace op {
 namespace jit {
@@ -22,21 +36,13 @@ namespace jit {
         static const hash_t optype_hash;
         const std::string functor_name_;
 
-        static int compute_min_computation_rank(const std::vector<Array>& arguments) {
-            return std::accumulate(arguments.begin(),
-               arguments.end(),
-               0,
-               [](int so_far, const Array& op) {
-                   return std::max(so_far, min_computation_rank(op));
-               }
-            );
-        }
+
 
         ElementwiseExpression(const std::string& functor_name,
                               const std::vector<Array>& arguments,
                               DType dtype) :
                 JITNode(compute_min_computation_rank(arguments),
-                        get_common_shape(arguments),
+                        arguments[0].shape(),
                         dtype, arguments),
                 functor_name_(functor_name) {
             ASSERT2(arguments.size() > 0,
@@ -63,9 +69,6 @@ namespace jit {
                                                    SymbolTable& symbol_table,
                                                    node_to_info_t* node_to_info) const {
             (*node_to_info)[this].computation_rank = desired_computation_rank;
-            if (arguments_.size() > 1) {
-                symbol_table.declare_shape(this);
-            }
             for (auto& arg: arguments_) {
                 op::jit::compute_node_compilation_info(arg,
                                                        desired_computation_rank,
@@ -111,7 +114,7 @@ namespace jit {
             return generate_call_code_nd(this,
                                          utils::make_message(elementwise_kernel_name(arguments_.size(), node_to_info.at(this).computation_rank), "<", functor_name_, ", ", dtype_to_cpp_name(dtype()), ">"),
                                          symbol_table, node_to_info, device_type,
-                                         /*has_shape=*/arguments_.size() > 1);
+                                         /*has_shape=*/false);
         }
 
         virtual std::string prefix_code(const node_to_info_t& node_to_info,
@@ -181,7 +184,7 @@ namespace jit {
     }
 
     Array elementwise(Array a, Array b, const std::string& functor_name) {
-        std::tie(a, b) = ensure_arguments_compatible(a, b, functor_name);
+        std::tie(a, b) = ensure_arguments_compatible(a, b, functor_name, true);
         return Array(std::make_shared<jit::ElementwiseExpression>(
             functor_name, std::vector<Array>({a, b}), a.dtype()
         ));
@@ -206,18 +209,28 @@ namespace jit {
     }
 
     std::tuple<Array, Array> ensure_arguments_compatible(
-            const Array& a, const Array& b, const std::string& functor_name) {
-        ASSERT2(jit::ndim_compatible(a, b), utils::make_message(
-                "Arguments to binary operation '",
-                functor_name, "' must have the same rank (got left.ndim = ",
-                a.ndim(), ", left.shape = ", a.shape(), ", and right.ndim = ",
-                b.ndim(), ", right.shape = ", b.shape(), ")."));
+            Array a, Array b, const std::string& functor_name,
+            bool update_shape) {
+
+        if (update_shape) {
+            ASSERT2(jit::ndim_compatible(a, b), utils::make_message(
+                    "Arguments to binary operation '",
+                    functor_name, "' must have the same rank (got left.ndim = ",
+                    a.ndim(), ", left.shape = ", a.shape(), ", and right.ndim = ",
+                    b.ndim(), ", right.shape = ", b.shape(), ")."));
+        }
+
         // perform type promotion:
         if (a.dtype() != b.dtype()) {
             auto new_type = type_promotion(a, b);
-            return std::tuple<Array,Array>(astype(a, new_type), astype(b, new_type));
-        } else {
-            return std::tuple<Array,Array>(a, b);
+            a = astype(a, new_type);
+            b = astype(b, new_type);
         }
+        if (update_shape && a.shape() != b.shape()) {
+            auto common_shape = get_common_shape({a, b});
+            a = a.is_scalar() ? jit::tile_scalar(a, common_shape) : jit::broadcasted_reshape(a, common_shape);
+            b = b.is_scalar() ? jit::tile_scalar(b, common_shape) : jit::broadcasted_reshape(b, common_shape);
+        }
+        return std::tuple<Array,Array>(a, b);
     }
 }  // namespace op

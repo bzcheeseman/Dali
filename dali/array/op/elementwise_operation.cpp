@@ -182,7 +182,7 @@ namespace jit {
             a = astype(a, new_type);
             b = astype(b, new_type);
         }
-        if (update_shape && a.shape() != b.shape()) {
+        if (update_shape && a.shape() != b.shape()) {
             auto common_shape = get_common_shape({a, b});
             a = a.is_scalar() ? jit::tile_scalar(a, common_shape) : jit::broadcasted_reshape(a, common_shape);
             b = b.is_scalar() ? jit::tile_scalar(b, common_shape) : jit::broadcasted_reshape(b, common_shape);

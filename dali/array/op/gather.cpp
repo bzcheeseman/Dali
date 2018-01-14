@@ -65,7 +65,7 @@ namespace op {
                 return copy();
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
                 return prefix_code(node_to_info, device_type, false);
             }
 

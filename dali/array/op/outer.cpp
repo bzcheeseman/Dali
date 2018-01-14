@@ -61,4 +61,4 @@ namespace op {
             /*update_shape=*/false);
         return Array(std::make_shared<jit::Outer>(a, b));
     }
-}  // namespace op
+}  // namespace op

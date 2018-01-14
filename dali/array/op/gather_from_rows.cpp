@@ -5,7 +5,7 @@
 #include "dali/utils/make_message.h"
 
 namespace {
-    std::vector<int> op_shape(const std::vector<int>& indices_shape, const std::vector<int>& source_shape) {
+    std::vector<int> op_shape(const std::vector<int>& indices_shape, const std::vector<int>& source_shape) {
         std::vector<int> res(source_shape.begin() + 2, source_shape.end());
         if (indices_shape.size() > 0) {
             res.insert(res.begin(), indices_shape.begin(), indices_shape.end());

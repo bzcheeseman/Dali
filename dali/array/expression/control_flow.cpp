@@ -1,5 +1,7 @@
 #include "control_flow.h"
 
+#include <algorithm>
+
 #include "dali/array/expression/assignment.h"
 
 std::vector<Array> join_array(std::vector<Array> left, const std::vector<Array>& right) {

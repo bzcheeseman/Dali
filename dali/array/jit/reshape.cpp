@@ -26,6 +26,10 @@ struct ReshapeRestride : public JITNode {
                                      /*has_shape=*/true);
     }
 
+    virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const {
+        return std::make_shared<ReshapeRestride>(arguments_[0], new_shape, offset_, strides_);
+    }
+
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,

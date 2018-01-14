@@ -369,7 +369,7 @@ expression_ptr Expression::dimshuffle(const std::vector<int>& pattern, const Arr
     CONNECT_AUTO_ASSIGN(dimshuffle(pattern))
 }
 
-expression_ptr Expression::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
+expression_ptr Expression::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
     CONNECT_AUTO_ASSIGN(reshape(new_shape))
 }
 

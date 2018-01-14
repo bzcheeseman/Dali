@@ -46,7 +46,7 @@ namespace {
             if (!node.is_assignment() && !node.is_assignable()) {
                 node.set_expression(op::to_assignment(node).expression());
             }
-            if (node.is_assignment()) {
+            if (node.is_assignment()) {
                 Assignment* node_assign = op::static_as_assignment(node);
                 if (node_assign->right().is_assignment()) {
                     Assignment* node_right_assign = op::static_as_assignment(node_assign->right());
@@ -119,7 +119,7 @@ namespace {
         // deep copied & should thus be copied
         bool found_duplicates = false;
         for (auto& child : root.expression()->arguments()) {
-            if (visited_arrays.find(&child) != visited_arrays.end()) {
+            if (visited_arrays.find(&child) != visited_arrays.end()) {
                 found_duplicates = true;
                 break;
             } else {

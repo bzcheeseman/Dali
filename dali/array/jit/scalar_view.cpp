@@ -140,6 +140,10 @@ struct TileScalar : public JITNode {
                              /*is_assignable=*/false);
     }
 
+    virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const {
+        return std::make_shared<TileScalar>(arguments_[0], new_shape);
+    }
+
     virtual expression_ptr copy() const {
         return std::make_shared<TileScalar>(arguments_[0], shape_);
     }

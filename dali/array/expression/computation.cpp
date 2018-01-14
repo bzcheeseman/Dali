@@ -72,7 +72,7 @@ void convert_array_to_ops(const Array& element,
             cflow->left(), OPERATOR_T_EQL, element, element));
         elements.insert(elements.end(), conditions.begin(), conditions.end());
         elements.emplace_back(cflow->left());
-    } else if (!element.is_assignable()) {
+    } else if (!element.is_assignable()) {
         throw std::runtime_error(utils::make_message(
             "Can only convert Assignments and Buffers "
             "to ops (got ", element.expression_name(), ")."));

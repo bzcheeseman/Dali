@@ -36,8 +36,6 @@ namespace jit {
         static const hash_t optype_hash;
         const std::string functor_name_;
 
-
-
         ElementwiseExpression(const std::string& functor_name,
                               const std::vector<Array>& arguments,
                               DType dtype) :
@@ -64,6 +62,18 @@ namespace jit {
             return std::make_shared<ElementwiseExpression>(*this);
         }
 
+        virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const {
+
+            std::vector<Array> reshaped_arguments;
+            for (const auto& arg : arguments_) {
+                reshaped_arguments.emplace_back(arg.reshape(new_shape));
+            }
+            return std::make_shared<ElementwiseExpression>(
+                functor_name_,
+                reshaped_arguments,
+                dtype_);
+        }
+
         virtual void compute_node_compilation_info(int desired_computation_rank,
                                                    const std::vector<int>& desired_computation_shape,
                                                    SymbolTable& symbol_table,
@@ -81,6 +91,7 @@ namespace jit {
             for (auto& arg : arguments_) {
                 hasher.add(node_to_info->at(arg.expression().get()).hash);
             }
+            hasher.add(dtype_);
             (*node_to_info)[this].hash = hasher.value();
         }
 
@@ -123,61 +134,6 @@ namespace jit {
         }
     };
     const hash_t ElementwiseExpression::optype_hash = std::hash<std::string>()(typeid(ElementwiseExpression).name());
-
-    struct CastExpression : public ElementwiseExpression {
-        static const hash_t optype_hash;
-
-        CastExpression(DType dtype, Array argument) :
-            ElementwiseExpression("functor::cast", {argument}, dtype) {
-        }
-
-        virtual void compute_node_compilation_info(
-            int desired_computation_rank,
-            const std::vector<int>& desired_computation_shape,
-            SymbolTable& symbol_table,
-            node_to_info_t* node_to_info) const {
-            (*node_to_info)[this].computation_rank = desired_computation_rank;
-            op::jit::compute_node_compilation_info(arguments_[0],
-                desired_computation_rank, desired_computation_shape, symbol_table, node_to_info);
-
-            (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
-                                                        .add(desired_computation_rank)
-                                                        .add(functor_name_)
-                                                        .add(node_hash(*node_to_info, arguments_[0]))
-                                                        .add(dtype_)
-                                                        .value();
-        }
-    };
-    const hash_t CastExpression::optype_hash = std::hash<std::string>()(typeid(CastExpression).name());
-
-    struct RoundExpression : public ElementwiseExpression {
-        static const hash_t optype_hash;
-
-        RoundExpression(Array argument) :
-            ElementwiseExpression("functor::round", {argument}, DTYPE_INT32) {
-        }
-
-        virtual void compute_node_compilation_info(
-            int desired_computation_rank,
-            const std::vector<int>& desired_computation_shape,
-            SymbolTable& symbol_table,
-            node_to_info_t* node_to_info) const {
-            (*node_to_info)[this].computation_rank = desired_computation_rank;
-            op::jit::compute_node_compilation_info(arguments_[0],
-                                                   desired_computation_rank,
-                                                   desired_computation_shape,
-                                                   symbol_table,
-                                                   node_to_info);
-
-            (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
-                                                        .add(desired_computation_rank)
-                                                        .add(functor_name_)
-                                                        .add(node_hash(*node_to_info, arguments_[0]))
-                                                        .value();
-        }
-    };
-    const hash_t RoundExpression::optype_hash = std::hash<std::string>()(typeid(RoundExpression).name());
-
     }  // namespace jit
     Array elementwise(Array a, const std::string& functor_name) {
         return Array(std::make_shared<jit::ElementwiseExpression>(functor_name, std::vector<Array>({a}), a.dtype()));
@@ -198,14 +154,14 @@ namespace jit {
         if (a.dtype() == type) {
             return a;
         }
-        return Array(std::make_shared<jit::CastExpression>(type, a));
+        return Array(std::make_shared<jit::ElementwiseExpression>("functor::cast", std::vector<Array>({a}), type));
     }
 
     Array round(Array a) {
         if (a.dtype() == DTYPE_INT32) {
             return a;
         }
-        return Array(std::make_shared<jit::RoundExpression>(a));
+        return Array(std::make_shared<jit::ElementwiseExpression>("functor::round", std::vector<Array>({a}), DTYPE_INT32));
     }
 
     std::tuple<Array, Array> ensure_arguments_compatible(

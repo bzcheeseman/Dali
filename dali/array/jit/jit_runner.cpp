@@ -540,7 +540,7 @@ std::string JITRunner::get_code_template(memory::Device device,
     if (!dest_.is_buffer()) {
         result << as_jit_node(dest_)->assignment_code(dest_, root_, operator_t_, symbol_table, node_to_info, device.type(),
                                                       computation_rank);
-    } else {
+    } else {
         result << assignment_code(dest_, root_, operator_t_, symbol_table, node_to_info, device.type(),
                                   computation_rank);
     }
@@ -657,7 +657,7 @@ Array jit_merge(const Array& root) {
             leaf_arg.set_expression(arg.expression());
             arg.set_expression(arg.expression()->buffer_arg());
             leaves.emplace_back(leaf_arg);
-        } else if (arg.is_assignable() && is_jit_node(arg)) {
+        } else if (arg.is_assignable() && is_jit_node(arg)) {
             // detach the assignment subgraph and only keep the left node(bufferview)
             auto leaf_arg = Array();
             leaf_arg.set_expression(arg.expression());

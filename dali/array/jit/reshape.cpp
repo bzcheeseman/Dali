@@ -144,7 +144,7 @@ struct BroadcastedReshape : public JITNode {
         for (int i = 0; i < ndim; i++) {
             if (i >= prefix && broadcasted_[i - prefix]) {
                 ss << "0";
-            } else {
+            } else {
                 ss << "query[" << i << "]";
             }
             if (i + 1 < ndim) {
@@ -178,7 +178,7 @@ Array broadcasted_reshape(const Array& array,
         "as the current shape (current_shape = ", current_shape,
         ", new_shape = ", shape, ")."));
     std::vector<bool> broadcasted(current_shape.size(), 0);
-    for (int i = 0; i < current_shape.size(); i++) {
+    for (int i = 0; i < current_shape.size(); i++) {
         if (current_shape[i] != shape[i]) {
             ASSERT2(current_shape[i] == 1, utils::make_message(
                 "broadcasted dimension must have size 1, but on axis ", i,

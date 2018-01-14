@@ -244,7 +244,7 @@ std::string define_kernel(int ndim, bool has_shape,
     if (!utils::endswith(kernel, ";\n") && !utils::endswith(kernel, ";")) {
         kernel = utils::make_message(kernel, ";");
     }
-    if (kernel.find("return") == std::string::npos) {
+    if (kernel.find("return") == std::string::npos) {
         kernel = utils::make_message("return ", kernel);
     }
     std::stringstream ss_kernel;

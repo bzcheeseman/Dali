@@ -1378,7 +1378,7 @@ TEST(JITTests, repeated_op) {
     EXPECT_FALSE(Array::equals(a + a, a));
 }
 
-TEST(JITTests, nested_repeated_op) {
+TEST(JITTests, nested_repeated_op) {
     auto a = op::arange(5);
     EXPECT_FALSE(Array::equals(a, a + a));
 }

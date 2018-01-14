@@ -10,14 +10,6 @@
 #include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
 
-void wait_until_module_appears(const std::string& filename) {
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        if (utils::file_exists(filename)) {
-            break;
-        }
-    }
-}
 
 std::string get_call_args(std::size_t num_args) {
     std::string call_args;
@@ -41,11 +33,18 @@ std::string get_class_name(const char* name) {
     return std::string(demangled);
 }
 
-ModulePointer::ModulePointer(const std::string& libname) : module_(NULL), libname_(libname) {
+ModulePointer::ModulePointer(const std::string& libname, bool retry) : module_(NULL), libname_(libname) {
     module_ = dlopen(libname_.c_str(), RTLD_LAZY);
-    if(!module_) {
-        std::cerr << "error loading library:\n" << dlerror() << std::endl;
-        exit(EXIT_FAILURE);
+    if (!module_) {
+        if (!retry) {
+            std::cerr << "error loading library:\n" << dlerror() << std::endl;
+            exit(EXIT_FAILURE);
+        } else {
+            while (!module_) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                module_ = dlopen(libname_.c_str(), RTLD_LAZY);
+            }
+        }
     }
 }
 
@@ -56,8 +55,8 @@ ModulePointer::~ModulePointer() {
 }
 
 Module::Module() : module_ptr_(NULL) {}
-Module::Module(const std::string& libname) :
-        module_ptr_(std::make_shared<ModulePointer>(libname)) {
+Module::Module(const std::string& libname, bool retry) :
+        module_ptr_(std::make_shared<ModulePointer>(libname, retry)) {
 }
 
 void* Module::module() {
@@ -95,7 +94,7 @@ bool Compiler::load(hash_t hash) {
         return false;
     }
 
-    modules_.emplace_back(module_path);
+    modules_.emplace_back(module_path, false);
 
     auto ptr = modules_.back().get_symbol<void*>("maker");
     hash_to_f_ptr_[hash] = ptr;

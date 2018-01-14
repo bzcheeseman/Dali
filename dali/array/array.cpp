@@ -637,16 +637,6 @@ Array Array::expand_dims(int new_axis) const {
     return Array(expression()->expand_dims(new_axis, this));
 }
 
-Array Array::broadcast_axis(int axis) const {
-    alert_stateless_call(!is_stateless(), "broadcast_axis");
-    return Array(expression()->broadcast_axis(axis, this));
-}
-
-Array Array::insert_broadcast_axis(int axis) const {
-    alert_stateless_call(!is_stateless(), "insert_broadcast_axis");
-    return Array(expression()->insert_broadcast_axis(axis, this));
-}
-
 Array Array::broadcast_scalar_to_ndim(const int& ndim) const {
     alert_stateless_call(!is_stateless(), "broadcast_scalar_to_ndim");
     return Array(expression()->broadcast_scalar_to_ndim(ndim, this));

@@ -790,7 +790,7 @@ TEST(ArrayConstructorTests, shape_preservation) {
         EXPECT_EQ(x.dtype(), y.dtype());
         EXPECT_EQ(x.shape(), y.shape());
 
-        Array x2 = x.insert_broadcast_axis(0).insert_broadcast_axis(3);
+        Array x2 = x.expand_dims(0).expand_dims(3);
         auto y2 = constructor(x2);
 
         EXPECT_EQ(x2.dtype(), y2.dtype());
@@ -1230,7 +1230,7 @@ TEST(ReducerTests, axis_reduce_sum_middle_dim) {
 }
 
 TEST(ReducerTests, lse_reduce) {
-    auto a = Array::zeros({2}, DTYPE_INT32).insert_broadcast_axis(1);
+    auto a = Array::zeros({2}, DTYPE_INT32).expand_dims(1);
     a <<= Array::ones({2, 5}, DTYPE_INT32);
     EXPECT_EQ(5, int(a[0][0]));
     EXPECT_EQ(5, int(a[1][0]));
@@ -1608,3 +1608,25 @@ TEST(BinaryTests, broadcasted_addition) {
     auto c_scalar = a_scalar + b;
     ASSERT_TRUE(Array::equals(c_scalar, c_regular));
 }
+
+
+TEST(JITCachedReduction, fused_softmax) {
+    auto a = op::uniform(-20.0, 20.0, {2, 4});
+    // freeze uniform samples across test
+    // (or else they get resampled each time!)
+    a.eval();
+    auto exped = op::exp(a - op::max(a, {-1}, true));
+    auto fused_softmax = exped / op::sum(exped, {-1}, true);
+    fused_softmax.eval();
+    // reference impl
+    auto maxed = op::max(a, {-1}, true);
+    maxed.eval();
+    auto exped2 = op::exp(a - maxed);
+    exped2.eval();
+    auto denom = op::sum(exped2, {-1}, true);
+    denom.eval();
+    auto reference_softmax = exped2 / denom;
+    reference_softmax.eval();
+    EXPECT_TRUE(Array::equals(fused_softmax, reference_softmax));
+}
+

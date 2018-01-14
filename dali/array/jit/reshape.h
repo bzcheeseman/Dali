@@ -12,6 +12,8 @@ namespace op {
 
         Array broadcasted_reshape(const Array& array,
                                   const std::vector<int>& shape);
+        Array expand_dims(const Array& array, int axis);
+        Array squeeze(const Array& array, int axis);
     }
 }
 

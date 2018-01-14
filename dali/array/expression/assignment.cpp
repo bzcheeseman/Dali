@@ -89,25 +89,22 @@ expression_ptr Assignment::dimshuffle(const std::vector<int>& pattern, const Arr
     CONNECT_AUTO_ASSIGN(dimshuffle(pattern))
 }
 
-expression_ptr Assignment::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
-    CONNECT_AUTO_ASSIGN(reshape(new_shape))
-}
-
 expression_ptr Assignment::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {
     CONNECT_AUTO_ASSIGN(pluck_axis(axis, slice_unnormalized))
 }
 
-expression_ptr Assignment::squeeze(int axis, const Array* owner) const {
+expression_ptr Assignment::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(reshape(new_shape))
+}
+
+expression_ptr Assignment::_squeeze(int axis, const Array* owner) const {
     CONNECT_AUTO_ASSIGN(squeeze(axis))
 }
 
-expression_ptr Assignment::expand_dims(int new_axis, const Array* owner) const {
+expression_ptr Assignment::_expand_dims(int new_axis, const Array* owner) const {
     CONNECT_AUTO_ASSIGN(expand_dims(new_axis))
 }
 
-expression_ptr Assignment::broadcast_axis(int axis, const Array* owner) const {
-    CONNECT_AUTO_ASSIGN(broadcast_axis(axis))
-}
 
 namespace op {
 

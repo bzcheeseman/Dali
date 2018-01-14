@@ -164,8 +164,6 @@ class Array  {
     Array pluck_axis(const int& axis, const int& idx) const;
     Array squeeze(int axis) const;
     Array expand_dims(int new_axis) const;
-    Array broadcast_axis(int axis) const;
-    Array insert_broadcast_axis(int new_axis) const;
     Array broadcast_scalar_to_ndim(const int& ndim) const;
 
     // reduce over all axes

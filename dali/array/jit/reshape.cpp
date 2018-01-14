@@ -77,8 +77,6 @@ Array jit_view(const Array& array,
     return Array(std::make_shared<ReshapeRestride>(array, shape, offset, strides));
 }
 
-
-
 struct BroadcastedReshape : public JITNode {
     static const hash_t optype_hash;
     std::vector<bool> broadcasted_;
@@ -164,8 +162,192 @@ struct BroadcastedReshape : public JITNode {
         return std::make_shared<BroadcastedReshape>(arguments_[0], shape_, broadcasted_);
     }
 };
-
 const hash_t BroadcastedReshape::optype_hash = std::hash<std::string>()(typeid(BroadcastedReshape).name());
+
+namespace {
+    std::vector<int> expand_shape(std::vector<int> old_shape, int axis) {
+        old_shape.insert(old_shape.begin() + axis, 1);
+        return old_shape;
+    }
+
+    std::vector<int> squeeze_shape(std::vector<int> old_shape, int axis) {
+        old_shape.erase(old_shape.begin() + axis, old_shape.begin() + axis + 1);
+        return old_shape;
+    }
+}
+
+struct ExpandDims : public JITNode {
+    static const hash_t optype_hash;
+    int axis_;
+    ExpandDims(Array array, int axis) :
+        JITNode(array.ndim() + 1, expand_shape(array.shape(), axis), array.dtype(), {array}),
+        axis_(axis) {}
+
+    virtual memory::Device preferred_device() const {
+        return arguments_[0].preferred_device();
+    }
+
+    virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
+                                         const node_to_info_t& node_to_info,
+                                         memory::DeviceT device_type) const {
+        return generate_call_code_nd(this,
+                                     kernel_name(node_to_info),
+                                     symbol_table, node_to_info, device_type,
+                                     /*has_shape=*/true);
+    }
+
+    virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
+        return utils::make_message("expand_dims_", axis_, "_", node_to_info.at(this).computation_rank, "d");
+    }
+
+
+
+    virtual void compute_node_compilation_info(int desired_computation_rank,
+                                               const std::vector<int>& desired_computation_shape,
+                                               SymbolTable& symbol_table,
+                                               node_to_info_t* node_to_info) const {
+        (*node_to_info)[this].computation_rank = desired_computation_rank;
+        (*node_to_info)[this].computation_shape = desired_computation_shape;
+        symbol_table.declare_shape(this);
+        op::jit::compute_node_compilation_info(arguments_[0],
+                                               std::max(1, desired_computation_rank - 1),
+                                               arguments_[0].ndim() > 0 ? arguments_[0].shape() : std::vector<int>({1}),
+                                               symbol_table,
+                                               node_to_info);
+        utils::Hasher hasher;
+        hasher.add(optype_hash)
+              .add(axis_)
+              .add(desired_computation_rank)
+              .add(node_to_info->at(arguments_[0].expression().get()).hash);
+        (*node_to_info)[this].hash = hasher.value();
+    }
+
+    virtual std::string prefix_code(const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type) const {
+        int ndim = node_to_info.at(this).computation_rank;
+        std::stringstream ss;
+        int prefix = ndim - node_to_info.at(arguments_[0].expression().get()).computation_rank;
+        int query_index = 0;
+        for (int i = 0; i < ndim; i++) {
+            if (i >= prefix) {
+                if (i - prefix == axis_) {
+                    ss << "0";
+                } else {
+                    ss << "query[" << query_index << "]";
+                    query_index += 1;
+                }
+                if (i + 1 < ndim) {
+                    ss << ", ";
+                }
+            }
+        }
+        auto squeezed_access = ss.str();
+        return define_kernel(/*ndim=*/ndim,
+                             /*has_shape=*/true,
+                             /*arguments=*/{"array",},
+                             /*kernel=*/utils::make_message("array_[{", squeezed_access, "}]"),
+                             /*name=*/kernel_name(node_to_info),
+                             /*is_assignable=*/false);
+    }
+
+    virtual expression_ptr _squeeze(int axis, const Array* owner) const;
+
+    virtual expression_ptr copy() const {
+        return std::make_shared<ExpandDims>(arguments_[0], axis_);
+    }
+};
+const hash_t ExpandDims::optype_hash = std::hash<std::string>()(typeid(ExpandDims).name());
+
+struct Squeeze : public JITNode {
+    static const hash_t optype_hash;
+    int axis_;
+    Squeeze(Array array, int axis) :
+        JITNode(std::max(1, array.ndim() - 1), squeeze_shape(array.shape(), axis), array.dtype(), {array}),
+        axis_(axis) {}
+
+    virtual memory::Device preferred_device() const {
+        return arguments_[0].preferred_device();
+    }
+
+    virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
+                                         const node_to_info_t& node_to_info,
+                                         memory::DeviceT device_type) const {
+        return generate_call_code_nd(this,
+                                     kernel_name(node_to_info),
+                                     symbol_table, node_to_info, device_type,
+                                     /*has_shape=*/true);
+    }
+
+    virtual expression_ptr _expand_dims(int new_axis, const Array* owner) const;
+
+
+    virtual void compute_node_compilation_info(int desired_computation_rank,
+                                               const std::vector<int>& desired_computation_shape,
+                                               SymbolTable& symbol_table,
+                                               node_to_info_t* node_to_info) const {
+        (*node_to_info)[this].computation_rank = desired_computation_rank;
+        (*node_to_info)[this].computation_shape = desired_computation_shape;
+        symbol_table.declare_shape(this);
+        op::jit::compute_node_compilation_info(arguments_[0],
+                                               desired_computation_rank + 1,
+                                               arguments_[0].ndim() > 0 ? arguments_[0].shape() : std::vector<int>({1}),
+                                               symbol_table,
+                                               node_to_info);
+        utils::Hasher hasher;
+        hasher.add(optype_hash)
+              .add(axis_)
+              .add(desired_computation_rank)
+              .add(node_to_info->at(arguments_[0].expression().get()).hash);
+        (*node_to_info)[this].hash = hasher.value();
+    }
+
+    virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
+        return utils::make_message("squeeze_", axis_, "_", node_to_info.at(this).computation_rank, "d");
+    }
+
+    virtual std::string prefix_code(const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type) const {
+        int ndim = node_to_info.at(this).computation_rank;
+        std::stringstream ss;
+        int prefix = ndim - node_to_info.at(arguments_[0].expression().get()).computation_rank;
+        for (int i = 0; i < ndim; i++) {
+            if (i >= prefix && i - prefix != axis_) {
+                ss << "query[" << i << "]";
+                if (i + 1 < ndim) {
+                    ss << ", ";
+                }
+            }
+        }
+        auto squeezed_access = ss.str();
+        return define_kernel(/*ndim=*/ndim,
+                             /*has_shape=*/true,
+                             /*arguments=*/{"array",},
+                             /*kernel=*/utils::make_message("array_[{", squeezed_access, "}]"),
+                             /*name=*/kernel_name(node_to_info),
+                             /*is_assignable=*/false);
+    }
+
+    virtual expression_ptr copy() const {
+        return std::make_shared<Squeeze>(arguments_[0], axis_);
+    }
+};
+const hash_t Squeeze::optype_hash = std::hash<std::string>()(typeid(Squeeze).name());
+
+expression_ptr Squeeze::_expand_dims(int new_axis, const Array* owner) const {
+    if (new_axis == axis_) {
+        return arguments_[0].expression();
+    } else {
+        return std::make_shared<ExpandDims>(copy(), new_axis);
+    }
+}
+
+expression_ptr ExpandDims::_squeeze(int new_axis, const Array* owner) const {
+    if (new_axis == axis_) {
+        return arguments_[0].expression();
+    } else {
+        return std::make_shared<Squeeze>(copy(), new_axis);
+    }
+}
 
 Array broadcasted_reshape(const Array& array,
                           const std::vector<int>& shape) {
@@ -191,5 +373,14 @@ Array broadcasted_reshape(const Array& array,
     }
     return Array(std::make_shared<BroadcastedReshape>(array, shape, broadcasted));
 }
+
+Array expand_dims(const Array& array, int axis) {
+    return Array(std::make_shared<ExpandDims>(array, axis));
+}
+
+Array squeeze(const Array& array, int axis) {
+    return Array(std::make_shared<Squeeze>(array, axis));
+}
+
 }  // namespace jit
 }  // namespace op

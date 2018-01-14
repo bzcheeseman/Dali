@@ -67,7 +67,7 @@ SlicingInProgress<Container>::operator Container() {
                 out = out.squeeze(output_depth);
                 break;
             case BROADCAST:
-                out = out.insert_broadcast_axis(output_depth);
+                out = out.expand_dims(output_depth);
                 output_depth += 1;
                 break;
             default:

@@ -43,7 +43,6 @@ BufferView::BufferView(std::shared_ptr<memory::SynchronizedMemory> memory,
         "elements must be strictly positive (got ", shape, ")."));
 }
 
-
 void BufferView::broadcast_axis_internal(const int& axis) {
     ASSERT2(0 <= axis && axis < ndim(), utils::make_message("broadcast dimension (",
         axis, ") must be lower than the dimensionality of the broadcasted tensor (",
@@ -213,18 +212,9 @@ expression_ptr BufferView::pluck_axis(int axis, const Slice& slice_unnormalized,
 }
 
 
-expression_ptr BufferView::squeeze(int axis, const Array* owner) const {
-    axis = normalize_axis(axis);
-    ASSERT2(0 <= axis && axis < shape_.size(), utils::make_message("squeeze "
-        "dimension (", axis, ") must be less the dimensionality of compacted "
-        "tensor (", ndim(), ")."));
-    ASSERT2(shape_[axis] == 1, utils::make_message(
-        "squeeze axis must be equal to one (got axis = ", axis, ", shape[",
-        axis, "] = ", shape_[axis], ")."));
-
+expression_ptr BufferView::_squeeze(int axis, const Array* owner) const {
     const std::vector<int>& old_shape = shape_;
     auto old_strides             = normalized_strides();
-
     std::vector<int> new_shape;
     std::vector<int> new_strides;
     for (int i = 0; i < old_shape.size(); ++i) {
@@ -237,12 +227,7 @@ expression_ptr BufferView::squeeze(int axis, const Array* owner) const {
     return copy(new_shape, offset_, new_strides);
 }
 
-
-expression_ptr BufferView::expand_dims(int new_axis, const Array* owner) const {
-    new_axis = normalize_axis(new_axis);
-    ASSERT2(new_axis >= 0 && new_axis <= ndim(), utils::make_message("expand_dims "
-        "new_axis argument must be strictly positive and at most the dimensionality"
-        " of the array (got new_axis = ", new_axis, ", ndim = ", ndim(), ")."));
+expression_ptr BufferView::_expand_dims(int new_axis, const Array* owner) const {
     std::vector<int> new_shape   = shape_;
     std::vector<int> new_strides = normalized_strides();
 
@@ -257,18 +242,6 @@ expression_ptr BufferView::expand_dims(int new_axis, const Array* owner) const {
         shape_to_trivial_strides(new_shape)[new_axis]
     );
     return copy(new_shape, offset_, new_strides);
-}
-
-expression_ptr BufferView::broadcast_axis(int axis, const Array* owner) const {
-    auto out = copy();
-    axis = normalize_axis(axis);
-    ASSERT2(axis >= 0 && axis < ndim(), utils::make_message("broadcast_axis "
-        "axis must be positive and less than the dimensionality of the array "
-        "(got axis = ", axis, ", ndim = ", ndim(), ")."));
-    ASSERT2(shape_[axis] == 1, utils::make_message("axis to be broadcasted "
-        "must have dimension 1 (got shape[", axis, "] = ", shape_[axis], ")."));
-    static_cast<BufferView*>(out.get())->broadcast_axis_internal(axis);
-    return out;
 }
 
 expression_ptr BufferView::broadcast_to_shape(const std::vector<int>& new_shape, const Array* owner) const {

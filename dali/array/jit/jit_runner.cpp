@@ -241,6 +241,18 @@ expression_ptr JITNode::_reshape(const std::vector<int>& new_shape, const Array*
     return op::jit::jit_view(copy(), new_shape, 0, {}).expression();
 }
 
+expression_ptr JITNode::_expand_dims(int axis, const Array*) const {
+    // customize the way reshapes get run on JIT-nodes:
+    // run them in place without a copy.
+    return op::jit::expand_dims(copy(), axis).expression();
+}
+
+expression_ptr JITNode::_squeeze(int axis, const Array*) const {
+    // customize the way reshapes get run on JIT-nodes:
+    // run them in place without a copy.
+    return op::jit::squeeze(copy(), axis).expression();
+}
+
 memory::Device JITNode::preferred_device() const {
     memory::Device best_device = memory::Device::device_of_doom();
     // TODO(jonathan): ensure this logic actually picks the right device

@@ -325,11 +325,6 @@ expression_ptr Expression::right_fit_ndim(int target_ndim, const Array* owner) c
     }
 }
 
-expression_ptr Expression::insert_broadcast_axis(int new_axis, const Array* owner) const {
-    new_axis = normalize_axis(new_axis);
-    return expand_dims(new_axis, owner)->broadcast_axis(new_axis, nullptr);
-}
-
 expression_ptr Expression::collapse_axis_with_axis_minus_one(int axis, const Array* owner) const {
     axis = normalize_axis(axis);
     ASSERT2(axis >= 1 && axis < ndim(), utils::make_message("collapse_axis_with_axis_minus_one "
@@ -348,13 +343,17 @@ expression_ptr Expression::broadcast_scalar_to_ndim(const int& target_ndim, cons
         "only be called on scalars, current shape = ", shape_, "."));
     auto res = copy();
     for (int i = 0; i < target_ndim; ++i) {
-        res = res->insert_broadcast_axis(0, nullptr);
+        res = res->expand_dims(0, nullptr);
     }
     return res;
 }
 
 expression_ptr Expression::pluck_axis(const int& axis, const int& pluck_idx, const Array* owner) const {
     return pluck_axis(axis, Slice(pluck_idx, pluck_idx + 1), owner)->squeeze(axis, nullptr);
+}
+
+expression_ptr Expression::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(pluck_axis(axis, slice_unnormalized))
 }
 
 expression_ptr Expression::broadcast_to_shape(const std::vector<int>& new_shape, const Array* owner) const {
@@ -369,10 +368,6 @@ expression_ptr Expression::dimshuffle(const std::vector<int>& pattern, const Arr
     CONNECT_AUTO_ASSIGN(dimshuffle(pattern))
 }
 
-expression_ptr Expression::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
-    CONNECT_AUTO_ASSIGN(reshape(new_shape))
-}
-
 expression_ptr Expression::reshape(const std::vector<int>& new_shape, const Array* owner) const {
     auto norm_shape = normalize_shape(shape_, new_shape);
     if (norm_shape == shape_) return copy();
@@ -382,18 +377,33 @@ expression_ptr Expression::reshape(const std::vector<int>& new_shape, const Arra
     return _reshape(norm_shape, owner);
 }
 
-expression_ptr Expression::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {
-    CONNECT_AUTO_ASSIGN(pluck_axis(axis, slice_unnormalized))
+expression_ptr Expression::expand_dims(int new_axis, const Array* owner) const {
+    new_axis = normalize_axis(new_axis);
+    ASSERT2(new_axis >= 0 && new_axis <= ndim(), utils::make_message("expand_dims "
+        "new_axis argument must be strictly positive and at most the dimensionality"
+        " of the array (got new_axis = ", new_axis, ", ndim = ", ndim(), ")."));
+    return _expand_dims(new_axis, owner);
 }
 
 expression_ptr Expression::squeeze(int axis, const Array* owner) const {
+    axis = normalize_axis(axis);
+    ASSERT2(0 <= axis && axis < shape_.size(), utils::make_message("squeeze "
+        "dimension (", axis, ") must be less the dimensionality of compacted "
+        "tensor (", ndim(), ")."));
+    ASSERT2(shape_[axis] == 1, utils::make_message(
+        "squeeze axis must be equal to one (got axis = ", axis, ", shape[",
+        axis, "] = ", shape_[axis], ")."));
+    return _squeeze(axis, owner);
+}
+
+expression_ptr Expression::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(reshape(new_shape))
+}
+
+expression_ptr Expression::_expand_dims(int new_axis, const Array* owner) const {
+    CONNECT_AUTO_ASSIGN(expand_dims(new_axis));
+}
+
+expression_ptr Expression::_squeeze(int axis, const Array* owner) const {
     CONNECT_AUTO_ASSIGN(squeeze(axis))
-}
-
-expression_ptr Expression::expand_dims(int new_axis, const Array* owner) const {
-    CONNECT_AUTO_ASSIGN(expand_dims(new_axis))
-}
-
-expression_ptr Expression::broadcast_axis(int axis, const Array* owner) const {
-    CONNECT_AUTO_ASSIGN(broadcast_axis(axis))
 }

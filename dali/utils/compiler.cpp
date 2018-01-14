@@ -13,7 +13,7 @@
 void wait_until_module_appears(const std::string& filename) {
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        if (utils::file_exists(filename)) {
+        if (utils::file_exists(filename)) {
             break;
         }
     }

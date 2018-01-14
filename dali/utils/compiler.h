@@ -18,7 +18,7 @@
 
 typedef std::unordered_map<std::string, std::string> macro_args_t;
 
-
+void wait_until_module_appears(const std::string& filename);
 std::string get_call_args(std::size_t num_args);
 std::string get_class_name(const char* name);
 
@@ -149,9 +149,8 @@ class Compiler {
             std::cout << "See details in " << logfile << std::endl;
             exit(EXIT_FAILURE);
         }
-
+        wait_until_module_appears(module_path);
         modules_.emplace_back(module_path);
-
         auto ptr = modules_.back().get_symbol<void*>("maker");
         hash_to_f_ptr_[hash] = ptr;
     }

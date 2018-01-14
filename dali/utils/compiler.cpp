@@ -3,11 +3,21 @@
 
 #include <sys/stat.h>
 #include <cxxabi.h>
+#include <thread>
 
 #include "dali/utils/assert2.h"
 #include "dali/utils/core_utils.h"
 #include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
+
+void wait_until_module_appears(const std::string& filename) {
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (utils::file_exists(filename)) {
+            break;
+        }
+    }
+}
 
 std::string get_call_args(std::size_t num_args) {
     std::string call_args;

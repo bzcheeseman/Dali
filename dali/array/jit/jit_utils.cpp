@@ -1,4 +1,7 @@
 #include "jit_utils.h"
+
+#include <algorithm>
+
 #include "dali/utils/assert2.h"
 #include "dali/utils/make_message.h"
 #include "dali/utils/core_utils.h"

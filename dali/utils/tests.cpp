@@ -11,7 +11,6 @@
 #include "dali/utils/performance_report.h"
 #include "dali/utils/scope.h"
 #include "dali/utils/ThreadPool.h"
-#include "dali/utils/tsv_utils.h"
 #include "dali/utils/xml_cleaner.h"
 #include "dali/utils/vocab.h"
 

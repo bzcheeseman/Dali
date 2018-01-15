@@ -40,7 +40,8 @@ namespace op {
                 return utils::make_message("gather_kernel", node_to_info.at(this).computation_rank, "d");
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type,
+            std::string prefix_code(const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type,
                                     bool assignment_code) const {
                 std::string kernel;
                 bool is_2d = node_to_info.at(this).computation_rank == 2 &&
@@ -61,24 +62,24 @@ namespace op {
                     /*is_assignable=*/assignment_code);
             }
 
-            expression_ptr buffer_arg() const {
+            virtual expression_ptr buffer_arg() const override {
                 return copy();
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+            virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const override {
                 return prefix_code(node_to_info, device_type, false);
             }
 
-            std::string assignment_prefix_code(OPERATOR_T operator_t,
-                                               const node_to_info_t& node_to_info,
-                                               memory::DeviceT device_type,
-                                               int computation_rank) const {
-                return (JITNode::assignment_prefix_code(operator_t, node_to_info, device_type, computation_rank) +
+            virtual std::string assignment_prefix_code(const std::vector<OPERATOR_T>& operators,
+                                                       const node_to_info_t& node_to_info,
+                                                       memory::DeviceT device_type,
+                                                       const std::vector<int>& computation_ranks) const override {
+                return (JITNode::assignment_prefix_code(operators, node_to_info, device_type, computation_ranks) +
                         prefix_code(node_to_info, device_type, true));
             }
 
-            std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
-                                           std::string dst, std::string src) const {
+            virtual std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
+                                                   std::string dst, std::string src) const override  {
 #ifdef DALI_USE_CUDA
                 if (device_type == memory::DEVICE_T_GPU) {
                     return operator_to_atomic(operator_t, dst, src);
@@ -87,7 +88,7 @@ namespace op {
                 return utils::make_message(dst, " ", operator_to_name(operator_t), " ", src);
             }
 
-            bool is_axis_collapsible_with_axis_minus_one(int axis) const {
+            virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override {
                 int indices_ndim = arguments_[1].ndim();
                 if (axis < indices_ndim) {
                     return arguments_[1].is_axis_collapsible_with_axis_minus_one(axis);
@@ -109,11 +110,11 @@ namespace op {
                 return false;
             }
 
-            bool is_assignable() const {
+            virtual bool is_assignable() const override {
                 return arguments_[0].is_assignable();
             }
 
-            expression_ptr collapse_axis_with_axis_minus_one(int axis) const {
+            virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const override {
                 int indices_ndim = arguments_[1].ndim();
                 if (axis < indices_ndim) {
                     return std::make_shared<Gather>(
@@ -126,11 +127,11 @@ namespace op {
                 }
             }
 
-            void compute_node_compilation_info(
+            virtual void compute_node_compilation_info(
                     int desired_computation_rank,
                     const std::vector<int>& desired_computation_shape,
                     SymbolTable& symbol_table,
-                    node_to_info_t* node_to_info) const {
+                    node_to_info_t* node_to_info) const override {
                 (*node_to_info)[this].computation_rank = desired_computation_rank;
                 int source_ndim = arguments_[0].ndim();
                 // indices dim 1, dim2, etc... source dim 2, dim 3, etc...
@@ -162,9 +163,9 @@ namespace op {
                 return std::make_shared<Gather>(arguments_[0], arguments_[1]);
             }
 
-            std::string get_call_code_nd(const SymbolTable& symbol_table,
+            virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const {
+                                         memory::DeviceT device_type) const override {
                 return generate_call_code_nd(this,
                                          kernel_name(node_to_info),
                                          symbol_table, node_to_info, device_type,

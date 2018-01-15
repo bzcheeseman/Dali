@@ -1627,6 +1627,6 @@ TEST(JITCachedReduction, fused_softmax) {
     denom.eval();
     auto reference_softmax = exped2 / denom;
     reference_softmax.eval();
-    EXPECT_TRUE(Array::equals(fused_softmax, reference_softmax));
+    EXPECT_TRUE(Array::allclose(fused_softmax, reference_softmax, 1e-9));
 }
 

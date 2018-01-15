@@ -90,6 +90,29 @@ void SymbolTable::declare_shape(const Expression* ptr) {
     shapes_.emplace_back(ptr);
 }
 
+void SymbolTable::store_into_temporary(const Expression* ptr, node_to_info_t* node_to_info) {
+    if (!ptr->is_buffer()) {
+        temporary_assigns_expressions_.emplace_back(ptr);
+        Array temp(ptr->shape_, ptr->dtype_, ptr->preferred_device());
+        temporaries_.emplace_back(temp);
+        temporary_status_.push_back(false);
+        auto pos = (*node_to_info).find(ptr);
+        ASSERT2(pos != node_to_info->end(), utils::make_message(
+            "store_into_temporary called before compute_node_compilation_info was run on Expression ",
+            ptr->full_name(), ".\nCall store_into_temporary after compute_node_compilation_info."));
+        (*node_to_info)[temp.expression().get()].computation_rank = pos->second.computation_rank;
+    }
+}
+
+std::string SymbolTable::get_temporary(const Expression* ptr, std::string callcode) const {
+    auto pos = std::find(temporary_assigns_expressions_.begin(), temporary_assigns_expressions_.end(), ptr);
+    if (pos != temporary_assigns_expressions_.end() && temporary_status_[pos - temporary_assigns_expressions_.begin()]) {
+        return get_name(temporaries_[pos - temporary_assigns_expressions_.begin()].expression().get());
+    } else {
+        return callcode;
+    }
+}
+
 std::string SymbolTable::get_name(const Expression* ptr) const {
     auto name_pos = declaration_table_.find(ptr);
     ASSERT2(name_pos != declaration_table_.end(), utils::make_message(
@@ -97,6 +120,11 @@ std::string SymbolTable::get_name(const Expression* ptr) const {
         ".\nDon't forget to call `symbol_table.declare_array(this)/declare_scalar(this)`"
         "inside compute_node_compilation_info."));
     return name_pos->second;
+}
+
+void SymbolTable::mark_temporary_as_ready(const Expression* ptr) const {
+    auto pos = std::find(temporary_assigns_expressions_.begin(), temporary_assigns_expressions_.end(), ptr);
+    temporary_status_[pos - temporary_assigns_expressions_.begin()] = true;
 }
 
 std::string SymbolTable::get_shape(const Expression* ptr) const {
@@ -152,6 +180,22 @@ std::string SymbolTable::variable_declarations(const node_to_info_t& node_to_inf
         );
     }
 
+    for (int i = 0; i < temporaries_.size(); ++i) {
+        auto ptr = temporaries_[i].expression().get();
+        auto name = utils::make_message("temp_", i);
+        declaration_table_[ptr] = name;
+        result << build_array_definition(
+            dtype_to_cpp_name(ptr->dtype_),
+            name,
+            true,
+            node_to_info.at(ptr).computation_rank,
+            utils::make_message(
+                "array_data[", arrays_.size() + i, "], "
+                "offsets[", arrays_.size() + i, "], "
+                "sizes[", arrays_.size() + i, "]"
+            )
+        );
+    }
     return result.str();
 }
 
@@ -174,6 +218,7 @@ std::vector<Array> SymbolTable::collect_buffers(const node_to_info_t& node_to_in
                            return op->broadcast_to_shape(shape, nullptr)->right_fit_ndim(rank, nullptr);
                        }
                    });
+    arrays.insert(arrays.end(), temporaries_.begin(), temporaries_.end());
     return arrays;
 }
 
@@ -282,38 +327,65 @@ std::string JITNode::assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT d
     return utils::make_message(dst, " ", operator_to_name(operator_t), " ", src);
 }
 
-std::string JITNode::assignment_prefix_code(OPERATOR_T operator_t,
+std::string JITNode::assignment_prefix_code(const std::vector<OPERATOR_T>& operators,
                                             const node_to_info_t& node_to_info,
                                             memory::DeviceT device_type,
-                                            int computation_rank) const {
+                                            const std::vector<int>& computation_ranks) const {
 #ifdef DALI_USE_CUDA
     if (device_type == memory::DEVICE_T_GPU) {
-        if (computation_rank == 1) {
-            return utils::make_message(
-                "template<typename Destination, typename Source>\n"
-                "void __global__\n",
-                "assign_kernel(Destination dst, Source src, int num_el) {\n"
-                "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
-                "    int stride = blockDim.x * gridDim.x;\n"
-                "    for (int i = idx; i < num_el; i += stride) {\n"
-                "        ", assignment_code_nd(operator_t, device_type, "dst[i]", "src[i]"), ";\n"
-                "    }\n"
-                "}\n"
-            );
-        } else {
-            return utils::make_message(
-                "template<typename Destination, typename Source>\n"
-                "void __global__\n",
-                "assign_kernel(Destination dst, Source src, int num_el, Shape<", computation_rank, "> shape) {\n"
-                "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
-                "    int stride = blockDim.x * gridDim.x;\n"
-                "    for (int i = idx; i < num_el; i += stride) {\n"
-                "        auto nd_idx = index_to_dim(idx, shape);\n"
-                "        ", assignment_code_nd(operator_t, device_type, "dst[nd_idx]", "src[nd_idx]"), ";\n"
-                "    }\n"
-                "}\n"
-            );
+        std::stringstream ss;
+        ss << "template <";
+        for (int i = 0; i < computation_ranks.size(); i++) {
+            ss << "typename Destination" << i << ", typename Source" << i;
+            if (i + 1 != computation_ranks.size()) {
+                ss << ", ";
+            }
         }
+        ss << ">\n"
+              "void __global__\n"
+              "assign_kernel(";
+        for (int i = 0; i < computation_ranks.size(); i++) {
+            ss << "Destination" << i << " dst" << i
+               << ", Source" << i << " src" << i
+               << ", int num_el" << i;
+            if (computation_ranks[i] > 1) {
+                ss << ", Shape<" << computation_ranks[i] << "> shape" << i;
+            }
+            if (i + 1 != computation_ranks.size()) {
+                ss << ", ";
+            } else {
+                ss << ") {\n";
+            }
+        }
+        ss << "    int idx = blockDim.x * blockIdx.x + threadIdx.x;\n"
+              "    int stride = blockDim.x * gridDim.x;\n";
+        for (int i = 0; i < computation_ranks.size(); i++) {
+            if (computation_ranks[i] == 1) {
+                ss << utils::make_message(
+                    "    for (int i = idx; i < num_el", i, "; i += stride) {\n"
+                    "        ", assignment_code_nd(operators[i], device_type,
+                                    utils::make_message("dst", i, "[i]"),
+                                    utils::make_message("src", i, "[i]")
+                                ), ";\n"
+                    "    }\n"
+                );
+            } else {
+                ss << utils::make_message(
+                    "    for (int i = idx; i < num_el", i, "; i += stride) {\n"
+                    "        auto nd_idx = index_to_dim(idx, shape", i, ");\n"
+                    "        ", assignment_code_nd(operators[i], device_type,
+                                    utils::make_message("dst", i, "[nd_idx]"),
+                                    utils::make_message("src", i, "[nd_idx]")
+                                ), ";\n"
+                    "    }\n"
+                );
+            }
+            if (i + 1 != computation_ranks.size()) {
+                ss << "    __syncthreads();\n";
+            }
+        }
+        ss << "}\n";
+        return ss.str();
     }
 #endif
     return "";
@@ -451,65 +523,81 @@ std::string JITRunner::get_call_code_nd(const SymbolTable& symbol_table,
     return "";
 }
 
-std::string JITNode::assignment_code(const Array& dest,
-                                     const Array& root,
-                                     OPERATOR_T operator_t,
+std::string JITNode::assignment_code(const std::vector<Array>& dests,
+                                     const std::vector<std::string>& roots,
+                                     const std::vector<OPERATOR_T>& operators,
                                      const SymbolTable& symbol_table,
                                      const node_to_info_t& node_to_info,
                                      memory::DeviceT device_type,
-                                     int computation_rank) const {
-    auto jit_root = static_as_jit_node(root);
-    std::string root_call = jit_root->get_call_code_nd(symbol_table, node_to_info, device_type);
-    std::string dest_call_code = op::jit::get_call_code_nd(dest, symbol_table, node_to_info, device_type);
+                                     const std::vector<int>& computation_ranks) const {
+
+
+    std::vector<std::string> dest_call_codes;
+    for (const auto& dest : dests) {
+        dest_call_codes.emplace_back(
+            op::jit::get_call_code_nd(dest, symbol_table, node_to_info, device_type)
+        );
+    }
     if (device_type == memory::DEVICE_T_CPU) {
-        std::string indexing_nd = computation_rank == 1 ? "[i]" : "[" + generate_accessor_string(computation_rank) + "]";
-        std::string assign_line = assignment_code_nd(
-            operator_t, device_type, utils::make_message(dest_call_code, indexing_nd),
-            utils::make_message(root_call, indexing_nd));
-        if (computation_rank == 1) {
-            return utils::make_message(
-                "    int num_el = ", dest_call_code, ".shape().numel();\n",
-                "    #pragma clang loop vectorize(enable)\n",
-                "    #pragma clang loop interleave(enable)\n",
-                "    for (int i = 0; i < num_el; ++i) {\n",
-                "        ", assign_line, ";\n"
-                "    }\n"
-            );
-        } else {
-            return construct_for_loop(
-                computation_rank, assign_line, dest_call_code, 4);
+        std::stringstream ss;
+        ss << "    int num_el;\n";
+        for (int i = 0; i < computation_ranks.size(); i++) {
+            int computation_rank = computation_ranks[i];
+            std::string indexing_nd = computation_rank == 1 ? "[i]" : "[" + generate_accessor_string(computation_rank) + "]";
+            std::string assign_line = assignment_code_nd(
+                operators[i], device_type, utils::make_message(dest_call_codes[i], indexing_nd),
+                utils::make_message(roots[i], indexing_nd));
+            if (computation_rank == 1) {
+                ss << utils::make_message(
+                    "    num_el = ", dest_call_codes[i], ".shape().numel();\n",
+                    "    #pragma clang loop vectorize(enable)\n",
+                    "    #pragma clang loop interleave(enable)\n",
+                    "    for (int i = 0; i < num_el; ++i) {\n",
+                    "        ", assign_line, ";\n"
+                    "    }\n"
+                );
+            } else {
+                ss << construct_for_loop(
+                    computation_rank, assign_line, dest_call_codes[i], 4);
+            }
         }
+        return ss.str();
     }
 #ifdef DALI_USE_CUDA
     else if (device_type == memory::DEVICE_T_GPU) {
-        if (computation_rank == 1) {
-            return utils::make_message(
-                "    int num_el = ", dest_call_code, ".shape().numel();\n"
-                "    const int NT = 128;\n"
-                "    // const int MAX_BLOCKS = 40960;\n"
-                "    int grid_size = div_ceil(num_el, NT);\n"
-                "    // assert(grid_size <= MAX_BLOCKS);\n"
-                "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n"
-                "        ", dest_call_code, ",\n"
-                "        ", root_call, ",\n"
-                "        num_el\n"
-                "    );\n"
-            );
-        } else {
-            return utils::make_message(
-                "    auto shape = ", dest_call_code, ".shape();\n"
-                "    int num_el = shape.numel();\n"
-                "    const int NT = 128;\n"
-                "    // const int MAX_BLOCKS = 40960;\n"
-                "    int grid_size = div_ceil(num_el, NT);\n"
-                "    // assert(grid_size <= MAX_BLOCKS);\n"
-                "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n"
-                "        ", dest_call_code, ",\n"
-                "        ", root_call, ",\n"
-                "        num_el, shape\n"
-                "    );\n"
-            );
+        std::stringstream ss;
+        ss << "    const int NT = 128;\n"
+              "    // const int MAX_BLOCKS = 40960;\n";
+        for (int i = 0; i < computation_ranks.size(); i++) {
+            ss << "    auto dest_shape_" << i << " = " << dest_call_codes[i] << ".shape();\n";
+            ss << "    int num_el" << i << " = dest_shape_" << i << ".numel();\n";
+            if (computation_ranks.size() > 1) {
+                if (i == 0) {
+                    ss << "    int max_num_el = num_el0;\n";
+                } else {
+                    ss << "    max_num_el = max(num_el" << i << ", max_num_el);\n";
+                }
+            }
         }
+        ss << "    int grid_size = div_ceil(" << (computation_ranks.size() == 1 ? "num_el0" : "max_num_el") << ", NT);\n"
+              "    // assert(grid_size <= MAX_BLOCKS);\n"
+              "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n";
+        for (int i = 0; i < computation_ranks.size(); i++) {
+            int computation_rank = computation_ranks[i];
+            ss << "        " << dest_call_codes[i] << ",\n"
+               << "        " << roots[i] << ",\n"
+               << "        " << "num_el" << i;
+            if (computation_rank > 1) {
+                ss << ",\n";
+                ss << "        dest_shape_" << i;
+            }
+            if (i + 1 < computation_ranks.size()) {
+                ss << ",";
+            }
+            ss << "\n";
+        }
+        ss << "    );\n";
+        return ss.str();
     }
 #endif
     else {
@@ -530,10 +618,21 @@ std::string JITRunner::get_code_template(memory::Device device,
         }
     };
     int computation_rank = node_to_info.at(this).computation_rank;
+
+    std::vector<int> computation_ranks;
+    std::vector<OPERATOR_T> operators;
+    for (int i = 0; i < symbol_table.temporary_assigns_expressions_.size(); i++) {
+        computation_ranks.emplace_back(
+            node_to_info.at(symbol_table.temporaries_[i].expression().get()).computation_rank
+        );
+        operators.emplace_back(OPERATOR_T_EQL);
+    }
+    computation_ranks.emplace_back(computation_rank);
+    operators.emplace_back(operator_t_);
     if (!dest_.is_buffer()) {
-        insert_once(as_jit_node(dest_)->assignment_prefix_code(operator_t_, node_to_info, device.type(), computation_rank));
+        insert_once(as_jit_node(dest_)->assignment_prefix_code(operators, node_to_info, device.type(), computation_ranks));
     } else {
-        insert_once(assignment_prefix_code(operator_t_, node_to_info, device.type(), computation_rank));
+        insert_once(assignment_prefix_code(operators, node_to_info, device.type(), computation_ranks));
     }
     auto add_prefix_code = [&](const Array& arr) {
         if (is_jit_node(arr)) {
@@ -549,12 +648,28 @@ std::string JITRunner::get_code_template(memory::Device device,
               "const void** scalar_arguments, const int** shapes) {\n";
     // DECLARE SYMBOLS
     result << symbol_table.variable_declarations(node_to_info) << "\n";
+
+    std::vector<std::string> roots;
+    std::vector<Array> dests;
+    for (int i = 0; i < symbol_table.temporary_assigns_expressions_.size(); i++) {
+        roots.emplace_back(
+            static_cast<const JITNode*>(symbol_table.temporary_assigns_expressions_[i])->get_call_code_nd(
+                symbol_table, node_to_info, device.type()
+            )
+        );
+        // notify future template generation steps that a particular node
+        // no longer needs to be computed
+        symbol_table.mark_temporary_as_ready(symbol_table.temporary_assigns_expressions_[i]);
+        dests.emplace_back(symbol_table.temporaries_[i]);
+    }
+    roots.emplace_back(static_as_jit_node(root_)->get_call_code_nd(symbol_table, node_to_info, device.type()));
+    dests.emplace_back(dest_);
     if (!dest_.is_buffer()) {
-        result << as_jit_node(dest_)->assignment_code(dest_, root_, operator_t_, symbol_table, node_to_info, device.type(),
-                                                      computation_rank);
+        result << as_jit_node(dest_)->assignment_code(dests, roots, operators, symbol_table, node_to_info, device.type(),
+                                                      computation_ranks);
     } else {
-        result << assignment_code(dest_, root_, operator_t_, symbol_table, node_to_info, device.type(),
-                                  computation_rank);
+        result << assignment_code(dests, roots, operators, symbol_table, node_to_info, device.type(),
+                                  computation_ranks);
     }
     result << "}\n";
     return result.str();
@@ -791,7 +906,10 @@ std::string get_call_code_nd(const Array& a,
     if (a.is_buffer()) {
         return buffer_get_call_code_nd(a, symbol_table, node_to_info, device_type);
     } else if (is_jit_node(a)) {
-        return static_as_jit_node(a)->get_call_code_nd(symbol_table, node_to_info, device_type);
+        return symbol_table.get_temporary(
+            a.expression().get(),
+            static_as_jit_node(a)->get_call_code_nd(symbol_table, node_to_info, device_type)
+        );
     } else {
         throw std::runtime_error(utils::make_message(
             "Can only create call code for JITNode "

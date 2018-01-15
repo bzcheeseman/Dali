@@ -55,6 +55,7 @@ struct Expression {
     virtual bool supports_operator(OPERATOR_T operator_t) const;
     virtual bool spans_entire_memory() const;
     virtual bool is_assignable() const;
+    virtual bool is_buffer() const;
 
 
     expression_ptr reshape(const std::vector<int>& shape, const Array* owner) const;

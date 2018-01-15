@@ -26,17 +26,34 @@ namespace op {
             std::vector<const BufferView*> arrays_;
             std::vector<const ScalarView*> scalars_;
             std::vector<const Expression*> shapes_;
+
+            // temporary storage:
+            std::vector<Array> temporaries_;
+            mutable std::vector<bool> temporary_status_;
+            std::vector<const Expression*> temporary_assigns_expressions_;
+
             mutable std::unordered_map<const Expression*, std::string> declaration_table_;
             mutable std::unordered_map<const Expression*, std::string> shape_declaration_table_;
             std::string get_name(const Expression*) const;
             std::string get_shape(const Expression*) const;
+            // retrieve the value of a computation (callcode). If the value is
+            // stored in a temporary, return it, else return the original call code.
+            std::string get_temporary(const Expression*, std::string callcode) const;
+
             void declare_array(const BufferView*);
             void declare_scalar(const ScalarView*);
             void declare_shape(const Expression*);
+
             std::string variable_declarations(const node_to_info_t& node_to_info) const;
             std::vector<Array> collect_buffers(const node_to_info_t& node_to_info) const;
             std::vector<const void*> collect_scalars(const node_to_info_t& node_to_info) const;
             std::vector<std::vector<int>> collect_shapes(const node_to_info_t& node_to_info) const;
+            // mark that a value will be re-used multiple times and should be stored into
+            // a temporary storage (if the value is a Buffer, then this is ignored)
+            void store_into_temporary(const Expression* stored, node_to_info_t* node_to_info);
+            // During template generation, keep track of which temporaries are ready for use
+            // and which still need to be computed
+            void mark_temporary_as_ready(const Expression* expr) const;
         };
 
         struct JITNode : public Expression {
@@ -65,19 +82,19 @@ namespace op {
             // REIMPLEMENT IF YOU WANT TO MAKE A NODE ASSIGNABLE //
             ///////////////////////////////////////////////////////
 
-            virtual std::string assignment_code(const Array& dest,
-                                                const Array& root,
-                                                OPERATOR_T operator_t,
+            virtual std::string assignment_code(const std::vector<Array>& dest,
+                                                const std::vector<std::string>& root,
+                                                const std::vector<OPERATOR_T>& operators,
                                                 const SymbolTable& symbol_table,
                                                 const node_to_info_t& node_to_info,
                                                 memory::DeviceT device_type,
-                                                int computation_rank) const;
+                                                const std::vector<int>& computation_ranks) const;
             virtual std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
                                                    std::string dst, std::string src) const;
-            virtual std::string assignment_prefix_code(OPERATOR_T operator_t,
+            virtual std::string assignment_prefix_code(const std::vector<OPERATOR_T>& operators,
                                                        const node_to_info_t& node_to_info,
                                                        memory::DeviceT device_type,
-                                                       int computation_rank) const;
+                                                       const std::vector<int>& computation_ranks) const;
             // internals:
             const int min_computation_rank_;
             JITNode(int min_computation_rank,

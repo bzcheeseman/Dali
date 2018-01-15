@@ -31,15 +31,16 @@ namespace op {
                 return std::make_shared<GatherFromRows>(arguments_[0], arguments_[1]);
             }
 
-            expression_ptr buffer_arg() const {
+            virtual expression_ptr buffer_arg() const override {
                 return copy();
             }
 
-            bool is_assignable() const {
+            bool is_assignable() const override {
                 return arguments_[0].is_assignable();
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type,
+            std::string prefix_code(const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type,
                                     bool assignment_code) const {
                 int source_rank = node_to_info.at(arguments_[0].expression().get()).computation_rank;
                 int indices_rank = node_to_info.at(arguments_[1].expression().get()).computation_rank;
@@ -67,23 +68,24 @@ namespace op {
                                      /*is_assignable=*/assignment_code);
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+            virtual std::string prefix_code(const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type) const override {
                 return prefix_code(node_to_info, device_type, false);
             }
 
-            std::string assignment_prefix_code(OPERATOR_T operator_t,
-                                               const node_to_info_t& node_to_info,
-                                               memory::DeviceT device_type,
-                                               int computation_rank) const {
-                return (JITNode::assignment_prefix_code(operator_t, node_to_info, device_type, computation_rank) +
+            virtual std::string assignment_prefix_code(const std::vector<OPERATOR_T>& operators,
+                                                       const node_to_info_t& node_to_info,
+                                                       memory::DeviceT device_type,
+                                                       const std::vector<int>& computation_ranks) const override {
+                return (JITNode::assignment_prefix_code(operators, node_to_info, device_type, computation_ranks) +
                         prefix_code(node_to_info, device_type, true));
             }
 
-            void compute_node_compilation_info(
+            virtual void compute_node_compilation_info(
                     int desired_computation_rank,
                     const std::vector<int>& desired_computation_shape,
                     SymbolTable& symbol_table,
-                    node_to_info_t* node_to_info) const {
+                    node_to_info_t* node_to_info) const override {
                 (*node_to_info)[this].computation_rank = desired_computation_rank;
 
                 auto source_original_bshape = arguments_[0].shape();
@@ -116,10 +118,10 @@ namespace op {
                                                             .value();
             }
 
-            std::string get_call_code_nd(
+            virtual std::string get_call_code_nd(
                     const SymbolTable& symbol_table,
                     const node_to_info_t& node_to_info,
-                    memory::DeviceT device_type) const {
+                    memory::DeviceT device_type) const override {
                 return generate_call_code_nd(this, kernel_name(node_to_info),
                                              symbol_table, node_to_info, device_type,
                                              /*has_shape=*/true);

@@ -444,8 +444,8 @@ const std::vector<int>& Array::shape() const {
 }
 
 bool Array::is_buffer() const {
-    auto buffer = std::dynamic_pointer_cast<BufferView>(expression());
-    return buffer != nullptr;
+    alert_stateless_call(!is_stateless(), "is_buffer");
+    return expression()->is_buffer();
 }
 
 bool Array::is_control_flow() const {

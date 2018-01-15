@@ -116,6 +116,9 @@ bool Expression::is_assignable() const {
     return false;
 }
 
+bool Expression::is_buffer() const {
+    return false;
+}
 
 bool Expression::contiguous_memory() const {
     if (strides_.empty()) {

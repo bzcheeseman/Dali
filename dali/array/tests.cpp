@@ -1609,7 +1609,9 @@ TEST(BinaryTests, broadcasted_addition) {
     ASSERT_TRUE(Array::equals(c_scalar, c_regular));
 }
 
-
+// todo:
+// - prevent repeated comp of max (and test for this)
+// - fast assignment of reductions (warp shuffledown)
 TEST(JITCachedReduction, fused_softmax) {
     auto a = op::uniform(-20.0, 20.0, {2, 4});
     // freeze uniform samples across test

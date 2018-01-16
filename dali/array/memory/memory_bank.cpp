@@ -34,7 +34,7 @@ namespace memory {
                 return gpu_bank[device.number()];
             }
     #endif
-            ASSERT2(device.is_cpu(), "Wrong device passed to Device enum");
+            ASSERT2(device.is_cpu(), "Wrong device passed to Device enum.");
             return cpu_bank;
         }
 

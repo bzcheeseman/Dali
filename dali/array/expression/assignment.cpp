@@ -11,7 +11,6 @@ Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
                    left.strides()), operator_t_(operator_t) {
 }
 
-
 const Array& Assignment::left() const {
     return arguments_[0];
 }

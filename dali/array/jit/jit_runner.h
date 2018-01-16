@@ -26,6 +26,8 @@ namespace op {
             std::vector<const BufferView*> arrays_;
             std::vector<const ScalarView*> scalars_;
             std::vector<const Expression*> shapes_;
+            std::unordered_map<const BufferView*, int> arrays_visited_;
+            utils::Hasher array_order_;
 
             // temporary storage:
             std::vector<Array> temporaries_;
@@ -82,7 +84,8 @@ namespace op {
             // REIMPLEMENT IF YOU WANT TO MAKE A NODE ASSIGNABLE //
             ///////////////////////////////////////////////////////
 
-            virtual std::string assignment_code(const std::vector<Array>& dest,
+            virtual std::string assignment_code(hash_t hash,
+                                                const std::vector<Array>& dest,
                                                 const std::vector<std::string>& root,
                                                 const std::vector<OPERATOR_T>& operators,
                                                 const SymbolTable& symbol_table,
@@ -91,7 +94,8 @@ namespace op {
                                                 const std::vector<int>& computation_ranks) const;
             virtual std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
                                                    std::string dst, std::string src) const;
-            virtual std::string assignment_prefix_code(const std::vector<OPERATOR_T>& operators,
+            virtual std::string assignment_prefix_code(hash_t hash,
+                                                       const std::vector<OPERATOR_T>& operators,
                                                        const node_to_info_t& node_to_info,
                                                        memory::DeviceT device_type,
                                                        const std::vector<int>& computation_ranks) const;

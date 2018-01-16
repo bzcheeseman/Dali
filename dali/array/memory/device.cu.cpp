@@ -2,7 +2,7 @@
 
 #include "dali/config.h"
 #include "dali/utils/assert2.h"
-#include "dali/utils/print_utils.h"
+#include "dali/utils/make_message.h"
 
 namespace memory {
 #ifdef DALI_USE_CUDA
@@ -39,14 +39,13 @@ namespace memory {
         else if(is_gpu()) {
             std::string real_name;
             if (real_gpu_name) {
-
-                real_name = utils::MS() << " (" << gpu_name() << ")";
+                real_name = utils::make_message(" (", gpu_name(), ")");
             }
-            return utils::MS() << "gpu" << mNumber << real_name;
+            return utils::make_message("gpu", mNumber, real_name);
         }
 #endif
         else if(is_fake()) {
-            return utils::MS() << "fake_device" << mNumber;
+            return utils::make_message("fake_device", mNumber);
         } else if(mType == DEVICE_T_ERROR) {
             return "device_of_doom";
         } else {
@@ -74,7 +73,8 @@ namespace memory {
 
     Device Device::fake(int number) {
         ASSERT2(debug::enable_fake_devices,
-                "To create a fake device, you must first set memory::debug::enable_fake_devices to true.");
+                "To create a fake device, you must first set "
+                "memory::debug::enable_fake_devices to true.");
         return Device(DEVICE_T_FAKE, number);
     }
 
@@ -106,8 +106,8 @@ namespace memory {
     }
 
     Device Device::gpu(int number) {
-        ASSERT2(0 <= number && number < DALI_MAX_GPU_DEVICES,
-                utils::MS() << "GPU number must be between 0 and " << DALI_MAX_GPU_DEVICES - 1 << ".");
+        ASSERT2(0 <= number && number < DALI_MAX_GPU_DEVICES, utils::make_message(
+            "GPU number must be between 0 and ", DALI_MAX_GPU_DEVICES - 1, "."));
         return Device(DEVICE_T_GPU, number);
     }
 

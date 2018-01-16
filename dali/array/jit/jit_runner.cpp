@@ -79,7 +79,15 @@ hash_t node_hash(const node_to_info_t& node_to_info, const Array& array) {
 }
 
 void SymbolTable::declare_array(const BufferView* ptr) {
-    arrays_.emplace_back(ptr);
+    auto pos = arrays_visited_.find(ptr);
+    if (pos == arrays_visited_.end()) {
+        arrays_.emplace_back(ptr);
+        int index = arrays_visited_.size();
+        arrays_visited_.emplace(ptr, index);
+        array_order_.add(index);
+    } else {
+        array_order_.add(pos->second);
+    }
 }
 
 void SymbolTable::declare_scalar(const ScalarView* ptr) {
@@ -92,15 +100,20 @@ void SymbolTable::declare_shape(const Expression* ptr) {
 
 void SymbolTable::store_into_temporary(const Expression* ptr, node_to_info_t* node_to_info) {
     if (!ptr->is_buffer()) {
-        temporary_assigns_expressions_.emplace_back(ptr);
-        Array temp(ptr->shape_, ptr->dtype_, ptr->preferred_device());
-        temporaries_.emplace_back(temp);
-        temporary_status_.push_back(false);
         auto pos = (*node_to_info).find(ptr);
         ASSERT2(pos != node_to_info->end(), utils::make_message(
             "store_into_temporary called before compute_node_compilation_info was run on Expression ",
             ptr->full_name(), ".\nCall store_into_temporary after compute_node_compilation_info."));
-        (*node_to_info)[temp.expression().get()].computation_rank = pos->second.computation_rank;
+        auto ptr_pos = std::find(temporary_assigns_expressions_.begin(),
+                                 temporary_assigns_expressions_.end(),
+                                 ptr);
+        if (ptr_pos == temporary_assigns_expressions_.end()) {
+            temporary_assigns_expressions_.emplace_back(ptr);
+            Array temp(ptr->shape_, ptr->dtype_, ptr->preferred_device());
+            temporaries_.emplace_back(temp);
+            temporary_status_.push_back(false);
+            (*node_to_info)[temp.expression().get()].computation_rank = pos->second.computation_rank;
+        }
     }
 }
 
@@ -327,7 +340,8 @@ std::string JITNode::assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT d
     return utils::make_message(dst, " ", operator_to_name(operator_t), " ", src);
 }
 
-std::string JITNode::assignment_prefix_code(const std::vector<OPERATOR_T>& operators,
+std::string JITNode::assignment_prefix_code(hash_t hash,
+                                            const std::vector<OPERATOR_T>& operators,
                                             const node_to_info_t& node_to_info,
                                             memory::DeviceT device_type,
                                             const std::vector<int>& computation_ranks) const {
@@ -343,7 +357,7 @@ std::string JITNode::assignment_prefix_code(const std::vector<OPERATOR_T>& opera
         }
         ss << ">\n"
               "void __global__\n"
-              "assign_kernel(";
+              "assign_kernel_" << hash << "(";
         for (int i = 0; i < computation_ranks.size(); i++) {
             ss << "Destination" << i << " dst" << i
                << ", Source" << i << " src" << i
@@ -419,7 +433,8 @@ struct JITRunner : public JITNode {
                                          const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const;
 
-    std::string get_code_template(memory::Device device,
+    std::string get_code_template(hash_t hash,
+                                  memory::Device device,
                                   const SymbolTable& symbol_table,
                                   const node_to_info_t& node_to_info) const;
 
@@ -523,7 +538,8 @@ std::string JITRunner::get_call_code_nd(const SymbolTable& symbol_table,
     return "";
 }
 
-std::string JITNode::assignment_code(const std::vector<Array>& dests,
+std::string JITNode::assignment_code(hash_t hash,
+                                     const std::vector<Array>& dests,
                                      const std::vector<std::string>& roots,
                                      const std::vector<OPERATOR_T>& operators,
                                      const SymbolTable& symbol_table,
@@ -581,7 +597,7 @@ std::string JITNode::assignment_code(const std::vector<Array>& dests,
         }
         ss << "    int grid_size = div_ceil(" << (computation_ranks.size() == 1 ? "num_el0" : "max_num_el") << ", NT);\n"
               "    // assert(grid_size <= MAX_BLOCKS);\n"
-              "    assign_kernel<<<grid_size, NT, 0, NULL>>>(\n";
+              "    assign_kernel_" << hash << "<<<grid_size, NT, 0, NULL>>>(\n";
         for (int i = 0; i < computation_ranks.size(); i++) {
             int computation_rank = computation_ranks[i];
             ss << "        " << dest_call_codes[i] << ",\n"
@@ -605,7 +621,8 @@ std::string JITNode::assignment_code(const std::vector<Array>& dests,
     }
 }
 
-std::string JITRunner::get_code_template(memory::Device device,
+std::string JITRunner::get_code_template(hash_t hash,
+                                         memory::Device device,
                                          const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info) const {
     std::unordered_set<hash_t> prefix_code_visited;
@@ -630,9 +647,9 @@ std::string JITRunner::get_code_template(memory::Device device,
     computation_ranks.emplace_back(computation_rank);
     operators.emplace_back(operator_t_);
     if (!dest_.is_buffer()) {
-        insert_once(as_jit_node(dest_)->assignment_prefix_code(operators, node_to_info, device.type(), computation_ranks));
+        insert_once(as_jit_node(dest_)->assignment_prefix_code(hash, operators, node_to_info, device.type(), computation_ranks));
     } else {
-        insert_once(assignment_prefix_code(operators, node_to_info, device.type(), computation_ranks));
+        insert_once(assignment_prefix_code(hash, operators, node_to_info, device.type(), computation_ranks));
     }
     auto add_prefix_code = [&](const Array& arr) {
         if (is_jit_node(arr)) {
@@ -665,10 +682,10 @@ std::string JITRunner::get_code_template(memory::Device device,
     roots.emplace_back(static_as_jit_node(root_)->get_call_code_nd(symbol_table, node_to_info, device.type()));
     dests.emplace_back(dest_);
     if (!dest_.is_buffer()) {
-        result << as_jit_node(dest_)->assignment_code(dests, roots, operators, symbol_table, node_to_info, device.type(),
+        result << as_jit_node(dest_)->assignment_code(hash, dests, roots, operators, symbol_table, node_to_info, device.type(),
                                                       computation_ranks);
     } else {
-        result << assignment_code(dests, roots, operators, symbol_table, node_to_info, device.type(),
+        result << assignment_code(hash, dests, roots, operators, symbol_table, node_to_info, device.type(),
                                   computation_ranks);
     }
     result << "}\n";
@@ -683,12 +700,14 @@ std::function<void(void**, const int*, const int**, const int**, const void**, c
     // compute a quasi-unique hash for the fused operation
     hash_t hash = utils::Hasher().add((int)device.type())
                                  .add(node_to_info.at(this).hash)
+                                 .add(symbol_table.array_order_.value())
                                  .value();
     // check if the operation needs to be runtime compiled
     if ((should_always_recompile() && !array_op_compiler.is_loaded(hash)) ||
         !array_op_compiler.load(hash)) {
         DALI_SCOPE("compilation");
         auto code_template = get_code_template(
+            hash,
             device,
             symbol_table,
             node_to_info

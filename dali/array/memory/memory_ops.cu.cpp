@@ -20,15 +20,10 @@ namespace memory {
         }
 #endif
 
-
-
     mshadow::Tensor<mshadow::cpu, 2, alloc_type> dummy_cpu(void* ptr, int total_memory, int inner_dimension) {
          return mshadow::Tensor<mshadow::cpu, 2, alloc_type>((alloc_type*)ptr, mshadow::Shape2(
                 total_memory / inner_dimension, inner_dimension));
     }
-
-
-
 
     DevicePtr allocate(Device device, int amount, int inner_dimension) {
         if (device.is_cpu()) {
@@ -115,7 +110,6 @@ namespace memory {
         else {
             ASSERT2(false, "Wrong device passed to Device enum");
         }
-
     }
 
 #ifdef DALI_USE_CUDA

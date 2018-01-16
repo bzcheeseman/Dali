@@ -86,8 +86,8 @@ namespace op {
                     int desired_computation_rank,
                     const std::vector<int>& desired_computation_shape,
                     SymbolTable& symbol_table,
-                    node_to_info_t* node_to_info) const override {
-                (*node_to_info)[this].computation_rank = desired_computation_rank;
+                    node_to_info_t& node_to_info) const override {
+                node_to_info[this].computation_rank = desired_computation_rank;
 
                 auto source_original_bshape = arguments_[0].shape();
                 int source_ndim = source_original_bshape.size();
@@ -112,11 +112,12 @@ namespace op {
                 op::jit::compute_node_compilation_info(arguments_[0], source_ndim, source_shape, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[1], 1, indices_shape, symbol_table, node_to_info);
                 symbol_table.declare_shape(this);
-                (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
+                node_to_info[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
-                                                            .add(node_to_info->at(arguments_[0].expression().get()).hash)
-                                                            .add(node_to_info->at(arguments_[1].expression().get()).hash)
+                                                            .add(node_to_info.at(arguments_[0].expression().get()).hash)
+                                                            .add(node_to_info.at(arguments_[1].expression().get()).hash)
                                                             .value();
+                node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
 
             virtual std::string get_call_code_nd(

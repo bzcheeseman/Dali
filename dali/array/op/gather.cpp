@@ -132,8 +132,8 @@ namespace op {
                     int desired_computation_rank,
                     const std::vector<int>& desired_computation_shape,
                     SymbolTable& symbol_table,
-                    node_to_info_t* node_to_info) const override {
-                (*node_to_info)[this].computation_rank = desired_computation_rank;
+                    node_to_info_t& node_to_info) const override {
+                node_to_info[this].computation_rank = desired_computation_rank;
                 int source_ndim = arguments_[0].ndim();
                 // indices dim 1, dim2, etc... source dim 2, dim 3, etc...
                 std::vector<int> source_shape(
@@ -151,12 +151,13 @@ namespace op {
                 op::jit::compute_node_compilation_info(arguments_[1], desired_computation_rank - (source_ndim - 1), indices_shape, symbol_table, node_to_info);
                 symbol_table.declare_shape(this);
                 bool is_2d = desired_computation_rank == 2 && source_ndim == 2;
-                (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
+                node_to_info[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
                                                             .add(is_2d)
-                                                            .add(node_to_info->at(arguments_[0].expression().get()).hash)
-                                                            .add(node_to_info->at(arguments_[1].expression().get()).hash)
+                                                            .add(node_to_info.at(arguments_[0].expression().get()).hash)
+                                                            .add(node_to_info.at(arguments_[1].expression().get()).hash)
                                                             .value();
+                node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
 
 

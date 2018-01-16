@@ -29,12 +29,12 @@ std::string ScalarView::get_call_code_nd(const SymbolTable& symbol_table,
 void ScalarView::compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t* node_to_info) const {
+                                               node_to_info_t& node_to_info) const {
     symbol_table.declare_scalar(this);
-    (*node_to_info)[this].computation_rank = desired_computation_rank;
-    (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
-    									        .add((int)dtype_)
-    									        .add(desired_computation_rank).value();
+    node_to_info[this].computation_rank = desired_computation_rank;
+    node_to_info[this].hash = utils::Hasher().add(optype_hash)
+    									     .add((int)dtype_)
+    									     .add(desired_computation_rank).value();
 }
 
 struct ScalarInt32View : public ScalarView {
@@ -110,9 +110,9 @@ struct TileScalar : public JITNode {
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t* node_to_info) const {
-        (*node_to_info)[this].computation_rank = desired_computation_rank;
-        (*node_to_info)[this].computation_shape = desired_computation_shape;
+                                               node_to_info_t& node_to_info) const {
+        node_to_info[this].computation_rank = desired_computation_rank;
+        node_to_info[this].computation_shape = desired_computation_shape;
         symbol_table.declare_shape(this);
         op::jit::compute_node_compilation_info(arguments_[0],
                                                1,
@@ -122,8 +122,9 @@ struct TileScalar : public JITNode {
         utils::Hasher hasher;
         hasher.add(optype_hash)
               .add(desired_computation_rank)
-              .add(node_to_info->at(arguments_[0].expression().get()).hash);
-        (*node_to_info)[this].hash = hasher.value();
+              .add(node_to_info.at(arguments_[0].expression().get()).hash);
+        node_to_info[this].hash = hasher.value();
+        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
 
     std::string kernel_name(const node_to_info_t& node_to_info) const {

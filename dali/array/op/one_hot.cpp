@@ -47,19 +47,20 @@ namespace op {
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
                                                        SymbolTable& symbol_table,
-                                                       node_to_info_t* node_to_info) const {
-                (*node_to_info)[this].computation_rank = desired_computation_rank;
-                (*node_to_info)[this].computation_shape = desired_computation_shape;
+                                                       node_to_info_t& node_to_info) const {
+                node_to_info[this].computation_rank = desired_computation_rank;
+                node_to_info[this].computation_shape = desired_computation_shape;
                 symbol_table.declare_shape(this);
                 op::jit::compute_node_compilation_info(arguments_[0], 1, {1}, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[1], 1, {1}, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[2], desired_computation_rank - 1, drop_last(desired_computation_shape), symbol_table, node_to_info);
-                (*node_to_info)[this].hash = utils::Hasher().add(optype_hash)
+                node_to_info[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
-                                                            .add(node_to_info->at(arguments_[0].expression().get()).hash)
-                                                            .add(node_to_info->at(arguments_[1].expression().get()).hash)
-                                                            .add(node_to_info->at(arguments_[2].expression().get()).hash)
+                                                            .add(node_to_info.at(arguments_[0].expression().get()).hash)
+                                                            .add(node_to_info.at(arguments_[1].expression().get()).hash)
+                                                            .add(node_to_info.at(arguments_[2].expression().get()).hash)
                                                             .value();
+                node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
 
             std::string get_call_code_nd(

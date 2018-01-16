@@ -147,8 +147,8 @@ namespace op {
                     int desired_computation_rank,
                     const std::vector<int>& desired_computation_shape,
                     SymbolTable& symbol_table,
-                    node_to_info_t* node_to_info) const {
-                (*node_to_info)[this].computation_rank = desired_computation_rank;
+                    node_to_info_t& node_to_info) const {
+                node_to_info[this].computation_rank = desired_computation_rank;
                 op::jit::compute_node_compilation_info(arguments_[0], 4, arguments_[0].shape(), symbol_table, node_to_info);
                 for (size_t i = 1; i < arguments_.size(); i++) {
                     op::jit::compute_node_compilation_info(arguments_[i], 1, {1}, symbol_table, node_to_info);
@@ -158,9 +158,10 @@ namespace op {
                                              .add(desired_computation_rank)
                                              .add(data_format_);
                 for (size_t i = 0; i < arguments_.size(); i++) {
-                    hasher.add(node_to_info->at(arguments_[i].expression().get()).hash);
+                    hasher.add(node_to_info.at(arguments_[i].expression().get()).hash);
                 }
-                (*node_to_info)[this].hash = hasher.value();
+                node_to_info[this].hash = hasher.value();
+                node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
 
             std::string get_call_code_nd(

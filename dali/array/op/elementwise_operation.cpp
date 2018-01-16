@@ -77,8 +77,8 @@ namespace jit {
         virtual void compute_node_compilation_info(int desired_computation_rank,
                                                    const std::vector<int>& desired_computation_shape,
                                                    SymbolTable& symbol_table,
-                                                   node_to_info_t* node_to_info) const {
-            (*node_to_info)[this].computation_rank = desired_computation_rank;
+                                                   node_to_info_t& node_to_info) const {
+            node_to_info[this].computation_rank = desired_computation_rank;
             for (auto& arg: arguments_) {
                 op::jit::compute_node_compilation_info(arg,
                                                        desired_computation_rank,
@@ -89,10 +89,11 @@ namespace jit {
             utils::Hasher hasher;
             hasher.add(optype_hash).add(desired_computation_rank).add(functor_name_);
             for (auto& arg : arguments_) {
-                hasher.add(node_to_info->at(arg.expression().get()).hash);
+                hasher.add(node_to_info.at(arg.expression().get()).hash);
             }
             hasher.add(dtype_);
-            (*node_to_info)[this].hash = hasher.value();
+            node_to_info[this].hash = hasher.value();
+            node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
         }
 
         virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const {

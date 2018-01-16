@@ -21,7 +21,7 @@ struct ScalarView : public JITNode {
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t* node_to_info) const;
+                                               node_to_info_t& node_to_info) const;
     virtual expression_ptr copy() const = 0;
     virtual const void* value_ptr() const = 0;
 };

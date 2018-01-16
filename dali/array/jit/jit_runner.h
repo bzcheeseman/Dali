@@ -16,6 +16,7 @@ namespace op {
             std::string name;
             std::vector<int> computation_shape;
             hash_t hash;
+            hash_t data_hash;
         };
 
         typedef std::unordered_map<const Expression*, CompilationInfo> node_to_info_t;
@@ -33,6 +34,7 @@ namespace op {
             std::vector<Array> temporaries_;
             mutable std::vector<bool> temporary_status_;
             std::vector<const Expression*> temporary_assigns_expressions_;
+            std::vector<hash_t> temporary_assigns_expression_hashes_;
 
             mutable std::unordered_map<const Expression*, std::string> declaration_table_;
             mutable std::unordered_map<const Expression*, std::string> shape_declaration_table_;
@@ -40,9 +42,11 @@ namespace op {
             std::string get_shape(const Expression*) const;
             // retrieve the value of a computation (callcode). If the value is
             // stored in a temporary, return it, else return the original call code.
-            std::string get_temporary(const Expression*, std::string callcode) const;
+            std::string get_temporary(const Expression*, std::string callcode, const node_to_info_t&) const;
 
             void declare_array(const BufferView*);
+            // each unique array gets an index for its insertion time
+            int get_array_index(const BufferView*) const;
             void declare_scalar(const ScalarView*);
             void declare_shape(const Expression*);
 
@@ -52,7 +56,7 @@ namespace op {
             std::vector<std::vector<int>> collect_shapes(const node_to_info_t& node_to_info) const;
             // mark that a value will be re-used multiple times and should be stored into
             // a temporary storage (if the value is a Buffer, then this is ignored)
-            void store_into_temporary(const Expression* stored, node_to_info_t* node_to_info);
+            void store_into_temporary(const Expression* stored, node_to_info_t& node_to_info);
             // During template generation, keep track of which temporaries are ready for use
             // and which still need to be computed
             void mark_temporary_as_ready(const Expression* expr) const;
@@ -66,7 +70,7 @@ namespace op {
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
                                                        SymbolTable& symbol_table,
-                                                       node_to_info_t* node_to_info) const = 0;
+                                                       node_to_info_t& node_to_info) const = 0;
             virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                                  const node_to_info_t& node_to_info,
                                                  memory::DeviceT device_type) const = 0;
@@ -109,6 +113,7 @@ namespace op {
                     const std::vector<int>& strides={});
             JITNode(const JITNode& other);
             virtual bool supports_operator(OPERATOR_T operator_t) const;
+            hash_t compute_node_data_hash(const node_to_info_t& node_to_info) const;
 
             virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const override;
             virtual expression_ptr _expand_dims(int new_axis, const Array* owner) const override;
@@ -127,7 +132,7 @@ namespace op {
                                            int desired_computation_rank,
                                            const std::vector<int>& desired_computation_shape,
                                            SymbolTable& symbol_table,
-                                           node_to_info_t* node_to_info);
+                                           node_to_info_t& node_to_info);
 
         std::string get_call_code_nd(const Array& a,
                                      const SymbolTable& symbol_table,

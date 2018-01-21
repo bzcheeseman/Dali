@@ -10,7 +10,6 @@ const std::vector<Array>& right_args(Array node) {
 }
 
 namespace {
-
     struct Optimization {
         std::function<bool(const Array&)> condition_;
         std::function<Array(const Array&)> transformation_;

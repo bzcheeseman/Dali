@@ -1232,6 +1232,7 @@ TEST(ReducerTests, axis_reduce_sum_middle_dim) {
 TEST(ReducerTests, lse_reduce) {
     auto a = Array::zeros({2}, DTYPE_INT32).expand_dims(1);
     a <<= Array::ones({2, 5}, DTYPE_INT32);
+
     EXPECT_EQ(5, int(a[0][0]));
     EXPECT_EQ(5, int(a[1][0]));
 }
@@ -1609,8 +1610,6 @@ TEST(BinaryTests, broadcasted_addition) {
     ASSERT_TRUE(Array::equals(c_scalar, c_regular));
 }
 
-// todo:
-// - fast assignment of reductions (warp shuffledown)
 TEST(JITCachedReduction, fused_softmax) {
     auto a = op::uniform(-20.0, 20.0, {2, 4});
     // freeze uniform samples across test

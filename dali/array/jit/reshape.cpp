@@ -111,7 +111,7 @@ struct BroadcastedReshape : public JITNode {
                                                arguments_[0].shape(),
                                                symbol_table,
                                                node_to_info);
-        symbol_table.store_into_temporary(arguments_[0].expression().get(), node_to_info);
+        symbol_table.store_into_temporary(arguments_[0].expression(), node_to_info);
         utils::Hasher hasher;
         hasher.add(optype_hash)
               .add(desired_computation_rank);

@@ -9,6 +9,11 @@
 namespace op {
     namespace jit {
 
+        enum PARALLELISM_T {
+            INDEPENDENT_BLOCK_WARP  = 0,
+            INDEPENDENT_BLOCK = 1
+        };
+
         struct ScalarView;
 
         struct CompilationInfo {
@@ -32,17 +37,13 @@ namespace op {
 
             // temporary storage:
             std::vector<Array> temporaries_;
-            mutable std::vector<bool> temporary_status_;
-            std::vector<const Expression*> temporary_assigns_expressions_;
+            std::vector<expression_ptr> temporary_assigns_expressions_;
             std::vector<hash_t> temporary_assigns_expression_hashes_;
 
             mutable std::unordered_map<const Expression*, std::string> declaration_table_;
             mutable std::unordered_map<const Expression*, std::string> shape_declaration_table_;
             std::string get_name(const Expression*) const;
             std::string get_shape(const Expression*) const;
-            // retrieve the value of a computation (callcode). If the value is
-            // stored in a temporary, return it, else return the original call code.
-            std::string get_temporary(const Expression*, std::string callcode, const node_to_info_t&) const;
 
             void declare_array(const BufferView*);
             // each unique array gets an index for its insertion time
@@ -56,10 +57,7 @@ namespace op {
             std::vector<std::vector<int>> collect_shapes(const node_to_info_t& node_to_info) const;
             // mark that a value will be re-used multiple times and should be stored into
             // a temporary storage (if the value is a Buffer, then this is ignored)
-            void store_into_temporary(const Expression* stored, node_to_info_t& node_to_info);
-            // During template generation, keep track of which temporaries are ready for use
-            // and which still need to be computed
-            void mark_temporary_as_ready(const Expression* expr) const;
+            void store_into_temporary(expression_ptr stored, node_to_info_t& node_to_info);
         };
 
         struct JITNode : public Expression {
@@ -83,6 +81,7 @@ namespace op {
             virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
             virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
             virtual memory::Device preferred_device() const;
+            virtual PARALLELISM_T parallelism_type() const;
 
             ///////////////////////////////////////////////////////
             // REIMPLEMENT IF YOU WANT TO MAKE A NODE ASSIGNABLE //
@@ -95,14 +94,16 @@ namespace op {
                                                 const SymbolTable& symbol_table,
                                                 const node_to_info_t& node_to_info,
                                                 memory::DeviceT device_type,
-                                                const std::vector<int>& computation_ranks) const;
+                                                const std::vector<int>& computation_ranks,
+                                                const std::vector<PARALLELISM_T>& parallelism_types) const;
             virtual std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
                                                    std::string dst, std::string src) const;
             virtual std::string assignment_prefix_code(hash_t hash,
                                                        const std::vector<OPERATOR_T>& operators,
                                                        const node_to_info_t& node_to_info,
                                                        memory::DeviceT device_type,
-                                                       const std::vector<int>& computation_ranks) const;
+                                                       const std::vector<int>& computation_ranks,
+                                                       const std::vector<PARALLELISM_T>& parallelism_types) const;
             // internals:
             const int min_computation_rank_;
             JITNode(int min_computation_rank,
@@ -140,6 +141,15 @@ namespace op {
                                      memory::DeviceT device_type);
 
         int min_computation_rank(const Array& array);
+        // describe whether a jit node is using the full warp internally
+        // or if it is intra-warp (gpu kernel generation)
+        PARALLELISM_T parallelism_type(const Array& array);
+
+        // create a condition under which one jit node can be replaced by another
+        // during code generation (e.g. to promote computation to be over warps)
+        int register_jit_optimization(std::function<bool(const Array&, memory::DeviceT, const node_to_info_t&)> condition,
+                                      std::function<Array(const Array&)> transformation,
+                                      const std::string& name);
     }
 }
 

@@ -10,20 +10,12 @@
 #include "dali/config.h"
 
 namespace memory {
-#ifdef DALI_USE_CUDA
     enum DeviceT {
         DEVICE_T_ERROR=0,
         DEVICE_T_FAKE=1,
         DEVICE_T_CPU=2,
         DEVICE_T_GPU=3,
     };
-#else
-    enum DeviceT {
-        DEVICE_T_ERROR=0,
-        DEVICE_T_FAKE=1,
-        DEVICE_T_CPU=2,
-    };
-#endif
 
     // allows conversion between a device enum
     // and its printable name (e.g. cpu, gpu)

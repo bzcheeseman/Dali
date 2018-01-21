@@ -140,14 +140,46 @@ namespace {
     }
 
     std::string construct_axis_reduce_for_loop(int ndim) {
+        std::string num_cols = utils::make_message(
+                generate_all_reduce_kernel_argument(1), "_.shape()[", ndim - 1, "]");
         return utils::make_message(
             "        T res;\n"
             "        Reducer::SetInitValue(res);\n",
             "        int& i1 = query[", ndim - 1, "];\n"
-            "        for (i1 = 0; i1 < ", generate_all_reduce_kernel_argument(1), "_.shape()[", ndim - 1, "]; ++i1) {\n"
+            "        for (i1 = 0; i1 < ", num_cols, "; ++i1) {\n"
             "            Reducer::Reduce(res, ", generate_all_reduce_kernel_argument(1), "_[query]);\n"
             "        }\n"
             "        return res;\n"
+        );
+    }
+
+    std::string construct_warp_axis_reduce_for_loop(int ndim) {
+        std::string num_cols = utils::make_message(
+                generate_all_reduce_kernel_argument(1), "_.shape()[", ndim - 1, "]");
+        int x_bits = 8;
+        const unsigned buffer_size = 1 << x_bits;
+        return utils::make_message(
+            "        __shared__ T buffer[", buffer_size, "];\n"
+            "        query[", ndim - 1, "] = threadIdx.x;\n"
+            "        if (threadIdx.x < ", num_cols, ") {\n"
+            "            buffer[threadIdx.x] = ", generate_all_reduce_kernel_argument(1), "_[query];\n"
+            "        }\n"
+            "        for (unsigned x = ", buffer_size, "; x < ", num_cols, "; x += ", buffer_size, ") {\n"
+            "            const int col = x + threadIdx.x;\n"
+            "            if (col < ", num_cols, ") {\n"
+            "                query[", ndim - 1, "] = col;\n"
+            "                Reducer::Reduce(buffer[threadIdx.x], ", generate_all_reduce_kernel_argument(1), "_[query]);\n"
+            "            }\n"
+            "        }\n"
+            "        __syncthreads();\n"
+            "        // if number of rows is smaller than buffer,\n"
+            "        // fill buffer with neutral value\n"
+            "        if (threadIdx.x >= ", num_cols, ") {\n"
+            "            Reducer::SetInitValue(buffer[threadIdx.x]);\n"
+            "        }\n"
+            "        __syncthreads();\n"
+            "        ReduceX", ndim, "<Reducer, ", x_bits, ">(buffer, threadIdx.x);\n"
+            "        return buffer[0];\n"
         );
     }
 
@@ -164,6 +196,54 @@ namespace {
             "        }\n"
             "        return idx;\n"
         );
+    }
+
+    std::string warp_axis_reduce_prefix_code(int ndim) {
+        return utils::make_message(
+            "template<typename Reducer, int x_bits, typename DType>\n"
+            "inline __device__ void ReduceX", ndim, "(volatile DType buf[], int tid) {\n"
+            "  if (x_bits >= 10) {\n"
+            "    if (tid < 512) Reducer::Reduce(buf[tid] , buf[tid + 512]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  if (x_bits >= 9) {\n"
+            "    if (tid < 256) Reducer::Reduce(buf[tid] , buf[tid + 256]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  if (x_bits >= 8) {\n"
+            "    if (tid < 128) Reducer::Reduce(buf[tid] , buf[tid + 128]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  if (x_bits >= 7) {\n"
+            "    if (tid < 64) Reducer::Reduce(buf[tid] , buf[tid + 64]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  if (x_bits >= 6) {\n"
+            "    if (tid < 32) Reducer::Reduce(buf[tid] , buf[tid + 32]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  // in warp optimization\n"
+            "  if (x_bits >= 5) {\n"
+            "    if (tid < 16) Reducer::Reduce(buf[tid] , buf[tid + 16]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  if (x_bits >= 4) {\n"
+            "    if (tid < 8) Reducer::Reduce(buf[tid] , buf[tid + 8]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  if (x_bits >= 3) {\n"
+            "    if (tid < 4) Reducer::Reduce(buf[tid] , buf[tid + 4]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  if (x_bits >= 2) {\n"
+            "    if (tid < 2) Reducer::Reduce(buf[tid] , buf[tid + 2]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "  if (x_bits >= 1) {\n"
+            "    if (tid < 1) Reducer::Reduce(buf[tid] , buf[tid + 1]);\n"
+            "    __syncthreads();\n"
+            "  }\n"
+            "}\n");
     }
 }
 
@@ -191,6 +271,21 @@ std::string create_argument_all_reduce_kernel_caller(int ndim, int result_ndim) 
         "    }\n"
         "};\n",
         generate_reduce_kernel_caller_code("ArgumentAllReduceKernel", "argument_all_reduce_kernel", ndim, 1)
+    );
+}
+
+std::string create_warp_axis_reduce_kernel_caller(int ndim) {
+    return utils::make_message(
+        warp_axis_reduce_prefix_code(ndim),
+        generate_reduce_kernel_template_code(1),
+        "struct WarpAxisReduceKernel", ndim, " {\n",
+        generate_axis_reduce_kernel_constructor("WarpAxisReduceKernel", ndim, ndim - 1),
+        "    inline __device__ T operator[](const Shape<", ndim - 1, ">& input_query) const {\n"
+        "        Shape<", ndim, "> query = input_query.expand_dims(", ndim, ");\n",
+        construct_warp_axis_reduce_for_loop(ndim),
+        "    }\n"
+        "};\n",
+        generate_reduce_kernel_caller_code("WarpAxisReduceKernel", "warp_axis_reduce_kernel", ndim, 1)
     );
 }
 

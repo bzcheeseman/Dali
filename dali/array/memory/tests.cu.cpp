@@ -5,7 +5,6 @@
 #include <gtest/gtest.h>
 
 #include "dali/config.h"
-#include <mshadow/tensor.h>
 
 #include "dali/array/memory/device.h"
 #include "dali/array/memory/memory_ops.h"
@@ -165,6 +164,15 @@ TEST(MemoryTests, test_memory_bank_cpu) {
             ASSERT_EQ(data_gpu_as_cpu_ptr[i], i);
         }
     }
+    namespace {
+        void __global__ add_value(int* data, int value, int n) {
+            int stride = blockDim.x * gridDim.x;
+            int idx = blockDim.x * blockIdx.x + threadIdx.x;
+            for (int i = idx; i < n; i += stride) {
+                data[i] += value;
+            }
+        }
+    }
 
     TEST(MemoryTests, synchronized_memory_gpu_cpu_sync) {
         // In this test we make modifications to GPU
@@ -172,29 +180,23 @@ TEST(MemoryTests, test_memory_bank_cpu) {
         // line-up with what was done there.
 
         // create GPU memory
+        int n = 12;
+        int value = 13;
         SynchronizedMemory s(
-            12 * sizeof(int),
+            n * sizeof(int),
             1,
             Device::gpu(0),
             /*clear_on_allocation=*/true
         );
-
-        // we will use mshadow to copy memory over from the device to host
-        auto shadow_tensor = mshadow::Tensor<mshadow::gpu, 1, int>(
-            (int *) s.mutable_data(Device::gpu(0)),
-            mshadow::Shape1(12)
-        );
-
-        // make some modifications to mshadow copy of tensor
-        // (we assume correctness in their implementation)
-        shadow_tensor += 13;
+        int nthreads = 256;
+        int grid_size = (n + nthreads - 1) / nthreads;
+        // make some modifications to the data
+        add_value<<<grid_size, nthreads>>>(static_cast<int*>(s.mutable_data(Device::gpu(0))), value, n);
         // memory on device should now all be equal to 13
         auto cpu_data = (int*)s.data(Device::cpu());
-
-
         // check that it is equal
-        for (int i=0; i < 12; ++i) {
-            ASSERT_EQ(cpu_data[i], 13);
+        for (int i=0; i < n; ++i) {
+            ASSERT_EQ(cpu_data[i], value);
         }
     }
 

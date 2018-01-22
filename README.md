@@ -1,15 +1,14 @@
-*If you are new to Dali, you are most likely to enjoy the [Python version](https://github.com/dali-ml/dali-cython).*
-
 # Dali
 
 [![Build Status](https://travis-ci.org/dali-ml/Dali.svg?branch=master)](https://travis-ci.org/dali-ml/Dali)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-An automatic differentiation library that uses reverse-mode differentation (backpropagation) to differentiate recurrent neural networks, or most mathematical expressions through control flow, while loops, recursion.
+Dali is a numerical computation library that supports imperative execution of computation graphs. Code can be compiled on the fly to adapt to general program specific accelerated code using vector instructions and CUDA kernels.
+Dali's automatic differentiation library allows it to differentiate arbitrary computation including RNNs, Convnets, and most mathematical expressions through control flow, while loops, recursion.
+
+The API mimics Numpy's naming and documentation conventions.
 
 <img src="https://raw.github.com/dali-ml/Dali/master/misc/salvador.jpg" width="25%" />
-
-This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karpathy/)'s [recurrentJS](http://cs.stanford.edu/people/karpathy/recurrentjs/) ([Github](https://github.com/karpathy/recurrentjs)) in C++. It has similar API names but the backbones are using **MShadow** and C++11's standard library.
 
 @authors **Jonathan Raiman** and **Szymon Sidor**
 
@@ -22,6 +21,14 @@ This is an reimagination of [Andrej Kaparthy](http://cs.stanford.edu/people/karp
 brew install https://github.com/dali-ml/Dali/releases/download/v1.0.0/dali-gpu.rb
 # without cuda
 brew install https://github.com/dali-ml/Dali/releases/download/v1.0.0/dali-cpu.rb
+```
+
+#### Troubleshooting NVCC compatibility with Clang
+
+On mac the presence of an nvcc compatible clang can sometimes pose problems. You can fix these issues by [downloading Apple's Command Line Tools from Xcode 7.3](https://download.developer.apple.com/Developer_Tools/Command_Line_Tools_OS_X_10.11_for_Xcode_7.3.1/Command_Line_Tools_OS_X_10.11_for_Xcode_7.3.1.dmg), installing them, and then running:
+
+```bash
+sudo xcode-select --switch /Library/Developer/CommandLineTools
 ```
 
 ### Fedora Linux

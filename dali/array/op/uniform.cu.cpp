@@ -128,6 +128,7 @@ namespace op {
         };
 
         template<>
+        __host__ __device__
         int uniform_operator<int>::operator()(unsigned int thread_id) {
             unsigned int local_seed = seed + this->hash_operator(thread_id);
             thrust::default_random_engine rng(local_seed);

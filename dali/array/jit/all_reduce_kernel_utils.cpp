@@ -289,6 +289,21 @@ std::string create_warp_axis_reduce_kernel_caller(int ndim) {
     );
 }
 
+std::string create_shfl_down_warp_axis_sum_kernel_caller(int ndim) {
+    return utils::make_message(
+        "#include <cooperative_groups.h>\n",
+        generate_reduce_kernel_template_code(1),
+        "struct ShflDownAxisSumKernel", ndim, " {\n",
+        generate_axis_reduce_kernel_constructor("ShflDownAxisSumKernel", ndim, ndim - 1),
+        "    inline __device__ T operator[](const Shape<", ndim - 1, ">& input_query) const {\n"
+        "        Shape<", ndim, "> query = input_query.expand_dims(", ndim, ");\n",
+        construct_warp_axis_reduce_for_loop(ndim),
+        "    }\n"
+        "};\n",
+        generate_reduce_kernel_caller_code("ShflDownAxisSumKernel", "shfl_down_warp_axis_sum", ndim, 1)
+    );
+}
+
 std::string create_axis_reduce_kernel_caller(int ndim) {
     return utils::make_message(
         generate_reduce_kernel_template_code(1),

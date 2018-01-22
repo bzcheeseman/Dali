@@ -116,7 +116,7 @@ class Compiler {
                     const std::string& call_args);
 
     template<typename... Args>
-    void compile(hash_t hash, std::string code_template, memory::DeviceT device_type) {
+    void compile(hash_t hash, std::string code_template, memory::DeviceT device_type, std::string extra_args) {
         std::string module_path = utils::make_message(outpath_, hash, ".so");
 
         std::string cppfile = utils::make_message(
@@ -137,7 +137,7 @@ class Compiler {
             cppfile,
             module_path,
             logfile,
-            "",
+            extra_args,
             device_type
         );
 

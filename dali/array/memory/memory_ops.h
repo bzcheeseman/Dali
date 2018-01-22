@@ -1,10 +1,5 @@
 #ifndef DALI_ARRAY_MEMORY_MEMORY_OPS_H
 #define DALI_ARRAY_MEMORY_MEMORY_OPS_H
-
-#include <cstdlib>
-#include <map>
-#include <string>
-
 #include "dali/config.h"
 
 namespace memory {

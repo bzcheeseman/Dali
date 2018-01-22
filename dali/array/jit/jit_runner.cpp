@@ -723,6 +723,7 @@ namespace {
     struct JITOptimization {
         typedef std::function<bool(const Array&, memory::DeviceT, const node_to_info_t&)> condition_t;
         condition_t condition_;
+        int priority_;
         std::function<Array(const Array&)> transformation_;
         std::string name_;
         bool matches(const Array& array, memory::DeviceT device_type, const node_to_info_t& node_to_info) const {
@@ -731,10 +732,12 @@ namespace {
         Array transform(const Array& array) const {
             return transformation_(array);
         }
-        JITOptimization(condition_t condition,
+        JITOptimization(int priority,
+                        condition_t condition,
                         std::function<Array(const Array&)> transformation,
                         const std::string& name) :
-            condition_(condition), transformation_(transformation), name_(name) {}
+            priority_(priority), condition_(condition),
+            transformation_(transformation), name_(name) {}
     };
 
     std::vector<JITOptimization> JIT_OPTIMIZATIONS;
@@ -765,10 +768,13 @@ namespace {
     }
 }
 
-int register_jit_optimization(JITOptimization::condition_t condition,
+int register_jit_optimization(int priority,
+                              JITOptimization::condition_t condition,
                               std::function<Array(const Array&)> transformation,
                               const std::string& name) {
-    JIT_OPTIMIZATIONS.emplace_back(condition, transformation, name);
+    JIT_OPTIMIZATIONS.emplace_back(priority, condition, transformation, name);
+    std::sort(JIT_OPTIMIZATIONS.begin(), JIT_OPTIMIZATIONS.end(),
+              [](const JITOptimization& left, const JITOptimization& right) {return left.priority_ < right.priority_;});
     return 0;
 }
 
@@ -880,7 +886,8 @@ std::function<void(void**, const int*, const int**, const int**, const void**, c
         array_op_compiler.compile<void**, const int*, const int**, const int**, const void**, const int**>(
             hash,
             code_template,
-            device.type()
+            device.type(),
+            ""
         );
     }
     // return the operation that was loaded or compiled:

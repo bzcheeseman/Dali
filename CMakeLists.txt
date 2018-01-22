@@ -112,14 +112,6 @@ IF ((NOT OpenBLAS_FOUND) AND (NOT MKL_FOUND) AND APPLE AND (BLAS_LIBRARIES MATCH
     set(DALI_BLAS_INCLUDE_DIR "/System/Library/Frameworks/Accelerate.framework/Versions/Current/Frameworks/vecLib.framework/Versions/Current/Headers/")
 ENDIF()
 
-IF (MKL_FOUND)
-    set(MSHADOW_USE_CBLAS 0)
-    set(MSHADOW_USE_MKL 1)
-ELSE(MKL_FOUND)
-    set(MSHADOW_USE_CBLAS 1)
-    set(MSHADOW_USE_MKL 0)
-ENDIF(MKL_FOUND)
-
 if (NOT GPERFTOOLS_FOUND)
     if (APPLE)
         message(WARNING "consider installing gperftools for better multithreaded performance.\n    > brew install gperftools")
@@ -139,14 +131,7 @@ foreach(libvar ${LIBVARS_TO_FIX})
     endif (NOT ${libvar})
 endforeach(libvar)
 
-# whether to force an error when no stream
-# is used when calling cuda-functions (currently
-# we always use default stream, so this is
-# not yet needed)a
-set(MSHADOW_FORCE_STREAM 0)
-
 # INCLUDES
-include_directories(${PROJECT_SOURCE_DIR}/third_party/mshadow)
 include_directories(${MKL_INCLUDE_DIR})
 IF (OpenBLAS_FOUND)
     include_directories(${OpenBLAS_INCLUDE_DIR})
@@ -195,10 +180,11 @@ else()
     endif()
 endif(DEFINED WITH_CUDA)
 
+message(STATUS "CUDA_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS}")
+
 if (WITH_CUDA)
     SET(DALI_USE_CUDA 1)
     SET(DALI_CUDA_CXX_COMPILER ${CUDA_HOST_COMPILER})
-    SET(MSHADOW_USE_CUDA 1)
     INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
     LIST(APPEND CUDA_NVCC_FLAGS
         --compiler-options ${CUDA_EXTRA_FLAGS}
@@ -230,7 +216,6 @@ if (WITH_CUDA)
     SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CUDA_EXTRA_FLAGS}")
 else (WITH_CUDA)
-    SET(MSHADOW_USE_CUDA 0)
     SET(DALI_CUDA_CXX_COMPILER "compiled_without_cuda")
 endif (WITH_CUDA)
 
@@ -493,16 +478,12 @@ endif(GTEST_FOUND)
 ################################################################################
 
 # THOSE HEADERS ARE REQUIRED FOR DALI HEADERS TO WORK, SO WE AUTOMATICALLY INSTALL THEM.
-# install mshadow
 install(TARGETS dali DESTINATION lib)
 install(DIRECTORY ${DaliDir} ${GENERATED_FILES_DIR}/dali DESTINATION include
         FILES_MATCHING PATTERN "*.h")
 
 install(FILES ${PROJECT_SOURCE_DIR}/cmake/DaliConfig.cmake   DESTINATION lib/dali/cmake)
 install(FILES ${PROJECT_SOURCE_DIR}/cmake/FindOpenBlas.cmake DESTINATION lib/openblas/cmake RENAME OpenBlasConfig.cmake)
-
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/mshadow/mshadow DESTINATION include
-        FILES_MATCHING PATTERN "*.h" PATTERN "*.cuh")
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/nervana_kernels DESTINATION include
         FILES_MATCHING PATTERN "*.sass")
 

@@ -147,7 +147,8 @@ namespace op {
 
         // create a condition under which one jit node can be replaced by another
         // during code generation (e.g. to promote computation to be over warps)
-        int register_jit_optimization(std::function<bool(const Array&, memory::DeviceT, const node_to_info_t&)> condition,
+        int register_jit_optimization(int priority,
+                                      std::function<bool(const Array&, memory::DeviceT, const node_to_info_t&)> condition,
                                       std::function<Array(const Array&)> transformation,
                                       const std::string& name);
     }

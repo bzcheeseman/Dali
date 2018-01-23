@@ -31,7 +31,7 @@ namespace op {
         struct SymbolTable {
             std::vector<const BufferView*> arrays_;
             std::vector<const ScalarView*> scalars_;
-            std::vector<expression_ptr> shapes_;
+            std::vector<const Expression*> shapes_;
             std::unordered_map<const BufferView*, int> arrays_visited_;
             utils::Hasher array_order_;
 
@@ -42,19 +42,18 @@ namespace op {
             std::vector<Array> temporaries_;
             std::vector<expression_ptr> temporary_assigns_expressions_;
             std::vector<hash_t> temporary_assigns_expression_hashes_;
-            std::vector<hash_t> shape_hashes_;
 
             mutable std::unordered_map<const Expression*, std::string> declaration_table_;
             mutable std::unordered_map<const Expression*, std::string> shape_declaration_table_;
             std::string get_name(const Expression*) const;
-            std::string get_shape(const Expression*, const node_to_info_t& node_to_info) const;
+            std::string get_shape(const Expression*) const;
 
             void declare_array(const BufferView*);
             // each unique array gets an index for its insertion time
             int get_array_index(const BufferView*) const;
             int get_scalar_index(const ScalarView*) const;
             void declare_scalar(const ScalarView*);
-            void declare_shape(expression_ptr ptr, const node_to_info_t& node_to_info);
+            void declare_shape(const Expression*);
 
             std::string variable_declarations(const node_to_info_t& node_to_info) const;
             std::vector<Array> collect_buffers(const node_to_info_t& node_to_info) const;

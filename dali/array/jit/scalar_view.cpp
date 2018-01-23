@@ -110,7 +110,7 @@ struct TileScalar : public JITNode {
         return utils::make_message(
             kernel_name(node_to_info), "(",
             as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, node_to_info, device_type),
-            ", ", symbol_table.get_shape(this, node_to_info), ")");
+            ", ", symbol_table.get_shape(this), ")");
     }
 
     virtual void compute_node_compilation_info(int desired_computation_rank,

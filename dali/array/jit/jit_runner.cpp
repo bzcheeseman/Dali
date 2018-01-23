@@ -117,19 +117,8 @@ namespace {
 }
 // TODO(jonathan): ensure declare_shape is not needed, and shape presence can be
 // created based on get_call_code and nothing else.
-void SymbolTable::declare_shape(expression_ptr ptr, const node_to_info_t& node_to_info) {
-    auto pos = node_to_info.find(ptr.get());
-    ASSERT2(pos != node_to_info.end(), utils::make_message(
-        "declare_shape called before compute_node_compilation_info was run on Expression ",
-        ptr->full_name(), ".\nCall declare_shape after compute_node_compilation_info."));
-    auto node_hash = node_temporary_hash(pos->second);
-    auto node_pos = std::find(shape_hashes_.begin(),
-                              shape_hashes_.end(),
-                              node_hash);
-    if (node_pos == shape_hashes_.end()) {
-        shapes_.emplace_back(ptr);
-        shape_hashes_.emplace_back(node_hash);
-    }
+void SymbolTable::declare_shape(const Expression* ptr) {
+    shapes_.emplace_back(ptr);
 }
 
 
@@ -164,20 +153,8 @@ std::string SymbolTable::get_name(const Expression* ptr) const {
     return name_pos->second;
 }
 
-std::string SymbolTable::get_shape(const Expression* ptr, const node_to_info_t& node_to_info) const {
-    auto pos = node_to_info.find(ptr);
-    ASSERT2(pos != node_to_info.end(), utils::make_message(
-        "get_shape called before declare_shape & compute_node_compilation_info was run on Expression ",
-        ptr->full_name(), ".\nCall get_shape after compute_node_compilation_info."));
-    auto node_hash = node_temporary_hash(pos->second);
-    auto node_pos = std::find(shape_hashes_.begin(),
-                              shape_hashes_.end(),
-                              node_hash);
-    ASSERT2(node_pos != shape_hashes_.end(), utils::make_message(
-        "No shape was declared for expression ", ptr->full_name(),
-        ".\nDon't forget to make `shape_required()` return true."));
-    auto shape_ptr = shapes_[node_pos - shape_hashes_.begin()];
-    auto name_pos = shape_declaration_table_.find(shape_ptr.get());
+std::string SymbolTable::get_shape(const Expression* ptr) const {
+    auto name_pos = shape_declaration_table_.find(ptr);
     ASSERT2(name_pos != shape_declaration_table_.end(), utils::make_message(
         "No shape was declared for expression ", ptr->full_name(),
         ".\nDon't forget to call `shape_required()` return true."));
@@ -222,10 +199,10 @@ std::string SymbolTable::variable_declarations(const node_to_info_t& node_to_inf
 
     for (int i = 0; i < shapes_.size(); ++i) {
         auto name = utils::make_message("shape_", i);
-        shape_declaration_table_[shapes_[i].get()] = name;
+        shape_declaration_table_[shapes_[i]] = name;
         result << build_shape_definition(
             name,
-            node_to_info.at(shapes_[i].get()).computation_rank,
+            node_to_info.at(shapes_[i]).computation_rank,
             utils::make_message("shapes[", i, "]")
         );
     }
@@ -288,9 +265,9 @@ std::vector<std::vector<int>> SymbolTable::collect_shapes(const node_to_info_t& 
     std::transform(shapes_.begin(),
                    shapes_.end(),
                    std::back_inserter(shapes),
-                   [&](const expression_ptr& op) {
-                        const auto& rank  = node_to_info.at(op.get()).computation_rank;
-                        const auto& shape = node_to_info.at(op.get()).computation_shape;
+                   [&](const Expression* op) {
+                        const auto& rank  = node_to_info.at(op).computation_rank;
+                        const auto& shape = node_to_info.at(op).computation_shape;
                         // because ranks may have changed from definition to compilation
                         // all shapes are reformated for runtime
                         if (rank == shape.size()) {
@@ -630,10 +607,22 @@ void subexpression_elimination(const Array& root,
 }
 
 void subexpression_elimination(const Array& root,
-                         node_to_info_t& node_to_info,
-                         SymbolTable& symbol_table) {
+                               node_to_info_t& node_to_info,
+                               SymbolTable& symbol_table) {
     std::unordered_map<hash_t, int> occurence_map;
     subexpression_elimination(root, node_to_info, symbol_table, occurence_map);
+}
+
+
+void recursive_declare_shape(const Array& root,
+                             node_to_info_t& node_to_info,
+                             SymbolTable& symbol_table) {
+    if (is_jit_node(root) && static_as_jit_node(root)->shape_required()) {
+        symbol_table.declare_shape(root.expression().get());
+    }
+    for (const auto& arg : root.expression()->arguments()) {
+        recursive_declare_shape(arg, node_to_info, symbol_table);
+    }
 }
 
 
@@ -656,6 +645,8 @@ void JITRunner::compute_node_compilation_info(int desired_computation_rank,
 
     // look for repeated computation opportunities?
     subexpression_elimination(root_, node_to_info, symbol_table);
+    recursive_declare_shape(root_, node_to_info, symbol_table);
+
     utils::Hasher hasher;
     hasher.add(optype_hash)
           .add(desired_computation_rank)
@@ -1094,12 +1085,12 @@ struct JITRunnerImpl : public Computation {
                                                  node_to_info);
 
         auto device = jit_right->preferred_device();
-        auto compiled_self = jit_right->compile(device,
-                                                symbol_table,
-                                                node_to_info);
         auto buffers = symbol_table.collect_buffers(node_to_info);
         auto scalars = symbol_table.collect_scalars(node_to_info);
         auto shapes_vec = symbol_table.collect_shapes(node_to_info);
+        auto compiled_self = jit_right->compile(device,
+                                                symbol_table,
+                                                node_to_info);
         std::vector<const int*> shapes;
         std::transform(shapes_vec.begin(), shapes_vec.end(), std::back_inserter(shapes),
                        [](const std::vector<int>& shape) {return shape.data();});
@@ -1162,9 +1153,6 @@ void compute_node_compilation_info(const Array& a,
             desired_computation_shape,
             symbol_table,
             node_to_info);
-        if (node->shape_required()) {
-            symbol_table.declare_shape(a.expression(), node_to_info);
-        }
         // TODO(jonathan): ask here if this node has been computed beforehand some
         // number of times, and whether it is worth recomputing it, or using it
         // from some previously stored location.

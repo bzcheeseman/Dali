@@ -93,7 +93,7 @@ namespace jit {
             }
             hasher.add(dtype_);
             node_to_info[this].hash = hasher.value();
-            node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
+
         }
 
         virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const {

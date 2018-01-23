@@ -46,7 +46,7 @@ struct Arange : public JITNode {
               .add(node_to_info.at(arguments_[0].expression().get()).hash)
               .add(node_to_info.at(arguments_[1].expression().get()).hash);
         node_to_info[this].hash = hasher.value();
-        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
+
     }
 
     virtual bool shape_required() const {return true;}

@@ -46,7 +46,6 @@ struct ReshapeRestride : public JITNode {
               .add(desired_computation_rank)
               .add(node_to_info.at(arguments_[0].expression().get()).hash);
         node_to_info[this].hash = hasher.value();
-        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
 
     virtual bool shape_required() const {return true;}
@@ -120,7 +119,6 @@ struct BroadcastedReshape : public JITNode {
         }
         hasher.add(node_to_info.at(arguments_[0].expression().get()).hash);
         node_to_info[this].hash = hasher.value();
-        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
 
     virtual bool shape_required() const {return true;}
@@ -224,7 +222,6 @@ struct ExpandDims : public JITNode {
               .add(desired_computation_rank)
               .add(node_to_info.at(arguments_[0].expression().get()).hash);
         node_to_info[this].hash = hasher.value();
-        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
 
     virtual bool shape_required() const {return true;}
@@ -305,7 +302,6 @@ struct Squeeze : public JITNode {
               .add(desired_computation_rank)
               .add(node_to_info.at(arguments_[0].expression().get()).hash);
         node_to_info[this].hash = hasher.value();
-        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
 
     virtual std::string kernel_name(const node_to_info_t& node_to_info) const {

@@ -70,7 +70,7 @@ struct AllReduce : public Reducer {
                                                     .add(functor_name_)
                                                     .add(node_to_info.at(arguments_[0].expression().get()).hash)
                                                     .value();
-        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
+
     }
 
     virtual bool is_axis_collapsible_with_axis_minus_one(int dim) const {
@@ -144,7 +144,7 @@ struct AxisReduce : public Reducer {
                                                     .add(functor_name_)
                                                     .add(node_to_info.at(arguments_[0].expression().get()).hash)
                                                     .value();
-        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
+
     }
 
     virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const {

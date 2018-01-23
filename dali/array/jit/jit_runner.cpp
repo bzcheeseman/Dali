@@ -366,7 +366,7 @@ PARALLELISM_T JITNode::parallelism_type() const {
     return INDEPENDENT_BLOCK_WARP;
 }
 
-hash_t JITNode::compute_node_data_hash(const node_to_info_t& node_to_info) const {
+hash_t JITNode::compute_node_data_hash(const node_to_info_t& node_to_info, const SymbolTable& symbol_table) const {
     utils::Hasher hasher;
     for (const auto& arg : arguments_) {
         hasher.add(node_to_info.at(arg.expression().get()).data_hash);
@@ -646,6 +646,7 @@ void JITRunner::compute_node_compilation_info(int desired_computation_rank,
     // look for repeated computation opportunities?
     subexpression_elimination(root_, node_to_info, symbol_table);
     recursive_declare_shape(root_, node_to_info, symbol_table);
+    recursive_declare_shape(dest_, node_to_info, symbol_table);
 
     utils::Hasher hasher;
     hasher.add(optype_hash)
@@ -1153,6 +1154,7 @@ void compute_node_compilation_info(const Array& a,
             desired_computation_shape,
             symbol_table,
             node_to_info);
+        node_to_info[node].data_hash = node->compute_node_data_hash(node_to_info, symbol_table);
         // TODO(jonathan): ask here if this node has been computed beforehand some
         // number of times, and whether it is worth recomputing it, or using it
         // from some previously stored location.

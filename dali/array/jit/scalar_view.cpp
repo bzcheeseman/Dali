@@ -30,6 +30,11 @@ bool ScalarView::antialias() const {
     return false;
 }
 
+hash_t ScalarView::compute_node_data_hash(const node_to_info_t& node_to_info,
+                                          const SymbolTable& symbol_table) const {
+    return symbol_table.get_scalar_index(this);
+}
+
 void ScalarView::compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
@@ -39,7 +44,6 @@ void ScalarView::compute_node_compilation_info(int desired_computation_rank,
     node_to_info[this].hash = utils::Hasher().add(optype_hash)
     									     .add((int)dtype_)
     									     .add(desired_computation_rank).value();
-    node_to_info[this].data_hash = symbol_table.get_scalar_index(this);
 }
 
 struct ScalarInt32View : public ScalarView {
@@ -129,7 +133,7 @@ struct TileScalar : public JITNode {
               .add(desired_computation_rank)
               .add(node_to_info.at(arguments_[0].expression().get()).hash);
         node_to_info[this].hash = hasher.value();
-        node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
+
     }
 
     virtual bool shape_required() const {return true;}

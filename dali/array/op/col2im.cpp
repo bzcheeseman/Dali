@@ -159,7 +159,7 @@ namespace op {
                     hasher.add(node_to_info.at(arguments_[i].expression().get()).hash);
                 }
                 node_to_info[this].hash = hasher.value();
-                node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
+
             }
 
             virtual bool shape_required() const {return true;}

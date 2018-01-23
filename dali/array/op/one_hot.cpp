@@ -59,7 +59,7 @@ namespace op {
                                                             .add(node_to_info.at(arguments_[1].expression().get()).hash)
                                                             .add(node_to_info.at(arguments_[2].expression().get()).hash)
                                                             .value();
-                node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
+
             }
 
             virtual bool shape_required() const {return true;}

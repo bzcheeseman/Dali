@@ -91,6 +91,7 @@ namespace op {
             virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
             virtual memory::Device preferred_device() const;
             virtual PARALLELISM_T parallelism_type() const;
+            virtual hash_t compute_node_data_hash(const node_to_info_t& node_to_info, const SymbolTable&) const;
 
             ///////////////////////////////////////////////////////
             // REIMPLEMENT IF YOU WANT TO MAKE A NODE ASSIGNABLE //
@@ -123,8 +124,6 @@ namespace op {
                     const std::vector<int>& strides={});
             JITNode(const JITNode& other);
             virtual bool supports_operator(OPERATOR_T operator_t) const;
-            hash_t compute_node_data_hash(const node_to_info_t& node_to_info) const;
-
             virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const override;
             virtual expression_ptr _expand_dims(int new_axis, const Array* owner) const override;
             virtual expression_ptr _squeeze(int axis, const Array* owner) const override;

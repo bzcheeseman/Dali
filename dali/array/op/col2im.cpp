@@ -152,7 +152,6 @@ namespace op {
                 for (size_t i = 1; i < arguments_.size(); i++) {
                     op::jit::compute_node_compilation_info(arguments_[i], 1, {}, symbol_table, node_to_info);
                 }
-                symbol_table.declare_shape(this);
                 auto hasher = utils::Hasher().add(optype_hash)
                                              .add(desired_computation_rank)
                                              .add(data_format_);
@@ -162,6 +161,8 @@ namespace op {
                 node_to_info[this].hash = hasher.value();
                 node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
+
+            virtual bool shape_required() const {return true;}
 
             std::string kernel_name(const node_to_info_t& node_to_info) const {
                 return utils::make_message("col2im_", data_format_, "_", node_to_info.at(this).computation_rank, "d");

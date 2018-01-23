@@ -30,7 +30,6 @@ namespace op {
                                                        node_to_info_t& node_to_info) const {
                 node_to_info[this].computation_rank = desired_computation_rank;
                 node_to_info[this].computation_shape = desired_computation_shape;
-                symbol_table.declare_shape(this);
                 op::jit::compute_node_compilation_info(arguments_[0],
                     1, {desired_computation_shape[desired_computation_shape.size() - 2]},
                     symbol_table, node_to_info);
@@ -38,12 +37,14 @@ namespace op {
                     1, {desired_computation_shape[desired_computation_shape.size() - 1]},
                     symbol_table, node_to_info);
                 node_to_info[this].hash = utils::Hasher().add(optype_hash)
-                                                            .add(desired_computation_rank)
-                                                            .add(node_to_info.at(arguments_[0].expression().get()).hash)
-                                                            .add(node_to_info.at(arguments_[1].expression().get()).hash)
-                                                            .value();
+                                                         .add(desired_computation_rank)
+                                                         .add(node_to_info.at(arguments_[0].expression().get()).hash)
+                                                         .add(node_to_info.at(arguments_[1].expression().get()).hash)
+                                                         .value();
                 node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
+
+            virtual bool shape_required() const {return true;}
 
             std::string get_call_code_nd(
                     const SymbolTable& symbol_table,

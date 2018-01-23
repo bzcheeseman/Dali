@@ -323,7 +323,7 @@ std::string generate_call_code_nd(const Expression* expr,
         if (args.size() > 0) {
             ss << ", ";
         }
-        ss << symbol_table.get_shape(expr);
+        ss << symbol_table.get_shape(expr, node_to_info);
     }
     ss << ")";
     return ss.str();

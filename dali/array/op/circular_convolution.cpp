@@ -67,7 +67,6 @@ namespace op {
                 node_to_info[this].computation_rank = desired_computation_rank;
                 op::jit::compute_node_compilation_info(arguments_[0], desired_computation_rank, desired_computation_shape, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[1], desired_computation_rank, desired_computation_shape, symbol_table, node_to_info);
-                symbol_table.declare_shape(this);
                 node_to_info[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
                                                             .add(node_to_info.at(arguments_[0].expression().get()).hash)
@@ -75,6 +74,8 @@ namespace op {
                                                             .value();
                 node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
+
+            virtual bool shape_required() const {return true;}
 
             std::string kernel_name(const node_to_info_t& node_to_info) const {
                 return utils::make_message("circular_convolution_", node_to_info.at(this).computation_rank, "d");

@@ -24,6 +24,7 @@ struct ScalarView : public JITNode {
                                                node_to_info_t& node_to_info) const;
     virtual expression_ptr copy() const = 0;
     virtual const void* value_ptr() const = 0;
+    virtual bool antialias() const;
 };
 
 Array wrap_scalar(int value);

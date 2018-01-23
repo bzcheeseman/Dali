@@ -50,7 +50,6 @@ namespace op {
                                                        node_to_info_t& node_to_info) const {
                 node_to_info[this].computation_rank = desired_computation_rank;
                 node_to_info[this].computation_shape = desired_computation_shape;
-                symbol_table.declare_shape(this);
                 op::jit::compute_node_compilation_info(arguments_[0], 1, {1}, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[1], 1, {1}, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[2], desired_computation_rank - 1, drop_last(desired_computation_shape), symbol_table, node_to_info);
@@ -62,6 +61,8 @@ namespace op {
                                                             .value();
                 node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
+
+            virtual bool shape_required() const {return true;}
 
             std::string get_call_code_nd(
                     const SymbolTable& symbol_table,

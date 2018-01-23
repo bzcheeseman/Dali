@@ -31,25 +31,30 @@ namespace op {
         struct SymbolTable {
             std::vector<const BufferView*> arrays_;
             std::vector<const ScalarView*> scalars_;
-            std::vector<const Expression*> shapes_;
+            std::vector<expression_ptr> shapes_;
             std::unordered_map<const BufferView*, int> arrays_visited_;
             utils::Hasher array_order_;
+
+            std::unordered_map<const ScalarView*, int> scalars_visited_;
+            utils::Hasher scalar_order_;
 
             // temporary storage:
             std::vector<Array> temporaries_;
             std::vector<expression_ptr> temporary_assigns_expressions_;
             std::vector<hash_t> temporary_assigns_expression_hashes_;
+            std::vector<hash_t> shape_hashes_;
 
             mutable std::unordered_map<const Expression*, std::string> declaration_table_;
             mutable std::unordered_map<const Expression*, std::string> shape_declaration_table_;
             std::string get_name(const Expression*) const;
-            std::string get_shape(const Expression*) const;
+            std::string get_shape(const Expression*, const node_to_info_t& node_to_info) const;
 
             void declare_array(const BufferView*);
             // each unique array gets an index for its insertion time
             int get_array_index(const BufferView*) const;
+            int get_scalar_index(const ScalarView*) const;
             void declare_scalar(const ScalarView*);
-            void declare_shape(const Expression*);
+            void declare_shape(expression_ptr ptr, const node_to_info_t& node_to_info);
 
             std::string variable_declarations(const node_to_info_t& node_to_info) const;
             std::vector<Array> collect_buffers(const node_to_info_t& node_to_info) const;
@@ -78,6 +83,11 @@ namespace op {
             // REIMPLEMENT AS YOU SEE FIT //
             ////////////////////////////////
 
+            // whether this node will need a shape argument (and thus one
+            // should be kept and given to the kernel)
+            virtual bool shape_required() const;
+            // whether to allow aliasing of a node
+            virtual bool antialias() const;
             virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
             virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
             virtual memory::Device preferred_device() const;

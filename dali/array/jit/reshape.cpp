@@ -36,7 +36,6 @@ struct ReshapeRestride : public JITNode {
                                                node_to_info_t& node_to_info) const {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
-        symbol_table.declare_shape(this);
         op::jit::compute_node_compilation_info(arguments_[0],
                                                std::max(1, arguments_[0].ndim()),
                                                arguments_[0].ndim() == 0 ? std::vector<int>({1}) : arguments_[0].shape(),
@@ -49,6 +48,8 @@ struct ReshapeRestride : public JITNode {
         node_to_info[this].hash = hasher.value();
         node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
+
+    virtual bool shape_required() const {return true;}
 
     virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
         return utils::make_message("reshape", node_to_info.at(this).computation_rank, "d");
@@ -105,7 +106,6 @@ struct BroadcastedReshape : public JITNode {
                                                node_to_info_t& node_to_info) const {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
-        symbol_table.declare_shape(this);
         op::jit::compute_node_compilation_info(arguments_[0],
                                                desired_computation_rank,
                                                arguments_[0].shape(),
@@ -122,6 +122,8 @@ struct BroadcastedReshape : public JITNode {
         node_to_info[this].hash = hasher.value();
         node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
+
+    virtual bool shape_required() const {return true;}
 
     std::string bool_encoding(const node_to_info_t& node_to_info) const {
         std::stringstream ss;
@@ -211,7 +213,6 @@ struct ExpandDims : public JITNode {
                                                node_to_info_t& node_to_info) const {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
-        symbol_table.declare_shape(this);
         op::jit::compute_node_compilation_info(arguments_[0],
                                                std::max(1, desired_computation_rank - 1),
                                                arguments_[0].ndim() > 0 ? arguments_[0].shape() : std::vector<int>({1}),
@@ -225,6 +226,8 @@ struct ExpandDims : public JITNode {
         node_to_info[this].hash = hasher.value();
         node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
+
+    virtual bool shape_required() const {return true;}
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
                                     memory::DeviceT device_type) const {
@@ -291,7 +294,6 @@ struct Squeeze : public JITNode {
                                                node_to_info_t& node_to_info) const {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
-        symbol_table.declare_shape(this);
         op::jit::compute_node_compilation_info(arguments_[0],
                                                desired_computation_rank + 1,
                                                arguments_[0].ndim() > 0 ? arguments_[0].shape() : std::vector<int>({1}),
@@ -309,6 +311,8 @@ struct Squeeze : public JITNode {
     virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
         return utils::make_message("squeeze_", axis_, "_", node_to_info.at(this).computation_rank, "d");
     }
+
+    virtual bool shape_required() const {return true;}
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
                                     memory::DeviceT device_type) const {

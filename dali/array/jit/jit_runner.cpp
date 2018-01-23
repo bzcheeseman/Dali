@@ -94,30 +94,61 @@ int SymbolTable::get_array_index(const BufferView* ptr) const {
     return arrays_visited_.at(ptr);
 }
 
-void SymbolTable::declare_scalar(const ScalarView* ptr) {
-    scalars_.emplace_back(ptr);
+int SymbolTable::get_scalar_index(const ScalarView* ptr) const {
+    return scalars_visited_.at(ptr);
 }
 
-void SymbolTable::declare_shape(const Expression* ptr) {
-    shapes_.emplace_back(ptr);
+void SymbolTable::declare_scalar(const ScalarView* ptr) {
+    auto pos = scalars_visited_.find(ptr);
+    if (pos == scalars_visited_.end()) {
+        scalars_.emplace_back(ptr);
+        int index = scalars_visited_.size();
+        scalars_visited_.emplace(ptr, index);
+        scalar_order_.add(index);
+    } else {
+        scalar_order_.add(pos->second);
+    }
 }
+
+namespace {
+    hash_t node_temporary_hash(const CompilationInfo& info) {
+        return utils::Hasher().add(info.hash).add(info.data_hash).value();
+    }
+}
+// TODO(jonathan): ensure declare_shape is not needed, and shape presence can be
+// created based on get_call_code and nothing else.
+void SymbolTable::declare_shape(expression_ptr ptr, const node_to_info_t& node_to_info) {
+    auto pos = node_to_info.find(ptr.get());
+    ASSERT2(pos != node_to_info.end(), utils::make_message(
+        "declare_shape called before compute_node_compilation_info was run on Expression ",
+        ptr->full_name(), ".\nCall declare_shape after compute_node_compilation_info."));
+    auto node_hash = node_temporary_hash(pos->second);
+    auto node_pos = std::find(shape_hashes_.begin(),
+                              shape_hashes_.end(),
+                              node_hash);
+    if (node_pos == shape_hashes_.end()) {
+        shapes_.emplace_back(ptr);
+        shape_hashes_.emplace_back(node_hash);
+    }
+}
+
 
 void SymbolTable::store_into_temporary(expression_ptr ptr, node_to_info_t& node_to_info) {
     // TODO(jonathan): some of the work in this function can be procastinated until
     // the compilation stage (and thus only run once).
-    if (!ptr->is_buffer()) {
+    if (!ptr->is_buffer() && static_cast<JITNode*>(ptr.get())->antialias()) {
         auto pos = node_to_info.find(ptr.get());
         ASSERT2(pos != node_to_info.end(), utils::make_message(
             "store_into_temporary called before compute_node_compilation_info was run on Expression ",
             ptr->full_name(), ".\nCall store_into_temporary after compute_node_compilation_info."));
-        auto node_identity = utils::Hasher().add(pos->second.hash).add(pos->second.data_hash).value();
+        auto node_hash = node_temporary_hash(pos->second);
         auto node_pos = std::find(temporary_assigns_expression_hashes_.begin(),
                                   temporary_assigns_expression_hashes_.end(),
-                                  node_identity);
+                                  node_hash);
         if (node_pos == temporary_assigns_expression_hashes_.end()) {
             temporary_assigns_expressions_.emplace_back(ptr);
-            temporary_assigns_expression_hashes_.emplace_back(node_identity);
-            Array temp(ptr->shape_, ptr->dtype_, ptr->preferred_device());
+            temporary_assigns_expression_hashes_.emplace_back(node_hash);
+            Array temp(ptr->shape_.size() > 0 ? ptr->shape_ : std::vector<int>({1,}), ptr->dtype_, ptr->preferred_device());
             temporaries_.emplace_back(temp);
             node_to_info[temp.expression().get()].computation_rank = pos->second.computation_rank;
         }
@@ -133,11 +164,23 @@ std::string SymbolTable::get_name(const Expression* ptr) const {
     return name_pos->second;
 }
 
-std::string SymbolTable::get_shape(const Expression* ptr) const {
-    auto name_pos = shape_declaration_table_.find(ptr);
+std::string SymbolTable::get_shape(const Expression* ptr, const node_to_info_t& node_to_info) const {
+    auto pos = node_to_info.find(ptr);
+    ASSERT2(pos != node_to_info.end(), utils::make_message(
+        "get_shape called before declare_shape & compute_node_compilation_info was run on Expression ",
+        ptr->full_name(), ".\nCall get_shape after compute_node_compilation_info."));
+    auto node_hash = node_temporary_hash(pos->second);
+    auto node_pos = std::find(shape_hashes_.begin(),
+                              shape_hashes_.end(),
+                              node_hash);
+    ASSERT2(node_pos != shape_hashes_.end(), utils::make_message(
+        "No shape was declared for expression ", ptr->full_name(),
+        ".\nDon't forget to make `shape_required()` return true."));
+    auto shape_ptr = shapes_[node_pos - shape_hashes_.begin()];
+    auto name_pos = shape_declaration_table_.find(shape_ptr.get());
     ASSERT2(name_pos != shape_declaration_table_.end(), utils::make_message(
         "No shape was declared for expression ", ptr->full_name(),
-        ".\nDon't forget to call `symbol_table.declare_shape(this)` inside compute_node_compilation_info."));
+        ".\nDon't forget to call `shape_required()` return true."));
     return name_pos->second;
 }
 
@@ -179,10 +222,10 @@ std::string SymbolTable::variable_declarations(const node_to_info_t& node_to_inf
 
     for (int i = 0; i < shapes_.size(); ++i) {
         auto name = utils::make_message("shape_", i);
-        shape_declaration_table_[(const Expression*)shapes_[i]] = name;
+        shape_declaration_table_[shapes_[i].get()] = name;
         result << build_shape_definition(
             name,
-            node_to_info.at(shapes_[i]).computation_rank,
+            node_to_info.at(shapes_[i].get()).computation_rank,
             utils::make_message("shapes[", i, "]")
         );
     }
@@ -245,9 +288,9 @@ std::vector<std::vector<int>> SymbolTable::collect_shapes(const node_to_info_t& 
     std::transform(shapes_.begin(),
                    shapes_.end(),
                    std::back_inserter(shapes),
-                   [&](const Expression* op) {
-                        const auto& rank  = node_to_info.at(op).computation_rank;
-                        const auto& shape = node_to_info.at(op).computation_shape;
+                   [&](const expression_ptr& op) {
+                        const auto& rank  = node_to_info.at(op.get()).computation_rank;
+                        const auto& shape = node_to_info.at(op.get()).computation_shape;
                         // because ranks may have changed from definition to compilation
                         // all shapes are reformated for runtime
                         if (rank == shape.size()) {
@@ -281,6 +324,14 @@ JITNode::JITNode(const JITNode& other) : Expression(other),
 
 std::string JITNode::prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
     return "";
+}
+
+bool JITNode::shape_required() const {
+    return false;
+}
+
+bool JITNode::antialias() const {
+    return true;
 }
 
 bool JITNode::is_axis_collapsible_with_axis_minus_one(int axis) const {
@@ -561,6 +612,31 @@ void buffer_compute_node_compilation_info(const Array& array, const Array& buffe
 }
 
 
+
+void subexpression_elimination(const Array& root,
+                               node_to_info_t& node_to_info,
+                               SymbolTable& symbol_table,
+                               std::unordered_map<hash_t, int>& occurence_map) {
+    hash_t node_hash = node_temporary_hash(node_to_info.at(root.expression().get()));
+    occurence_map[node_hash] += 1;
+    // if it's worthwhile (basically) -- e.g. test for expensiveness here
+    if (occurence_map[node_hash] > 1) {
+        symbol_table.store_into_temporary(root.expression(), node_to_info);
+    } else {
+        for (const auto& arg : root.expression()->arguments()) {
+            subexpression_elimination(arg, node_to_info, symbol_table, occurence_map);
+        }
+    }
+}
+
+void subexpression_elimination(const Array& root,
+                         node_to_info_t& node_to_info,
+                         SymbolTable& symbol_table) {
+    std::unordered_map<hash_t, int> occurence_map;
+    subexpression_elimination(root, node_to_info, symbol_table, occurence_map);
+}
+
+
 void JITRunner::compute_node_compilation_info(int desired_computation_rank,
                                               const std::vector<int>& desired_computation_shape,
                                               SymbolTable& symbol_table,
@@ -577,6 +653,9 @@ void JITRunner::compute_node_compilation_info(int desired_computation_rank,
                                            desired_computation_shape,
                                            symbol_table,
                                            node_to_info);
+
+    // look for repeated computation opportunities?
+    subexpression_elimination(root_, node_to_info, symbol_table);
     utils::Hasher hasher;
     hasher.add(optype_hash)
           .add(desired_computation_rank)
@@ -682,16 +761,18 @@ std::string JITNode::assignment_code(hash_t hash,
 }
 
 
-void rewrite_with_temporaries(const Array& root, const std::unordered_map<const Expression*, Array>& temps) {
+void rewrite_with_temporaries(const Array& root,
+                              const std::unordered_map<hash_t, Array>& temps,
+                              const node_to_info_t& node_to_info) {
     if (temps.size() == 0) {
         return;
     }
     for (const auto& arg : root.expression()->arguments()) {
-        auto found_temp = temps.find(arg.expression().get());
+        auto found_temp = temps.find(node_temporary_hash(node_to_info.at(arg.expression().get())));
         if (found_temp != temps.end()) {
             arg.set_expression(found_temp->second.expression());
         } else {
-            rewrite_with_temporaries(arg, temps);
+            rewrite_with_temporaries(arg, temps, node_to_info);
         }
     }
 }
@@ -700,11 +781,11 @@ std::vector<Assignment> JITRunner::create_assignment_sequence(
         const SymbolTable& symbol_table,
         const node_to_info_t& node_to_info) const {
     std::vector<Assignment> assignments;
-    std::unordered_map<const Expression*, Array> computed_temporaries;
+    std::unordered_map<hash_t, Array> computed_temporaries;
     for (size_t i = 0; i < symbol_table.temporaries_.size(); i++) {
         auto expr_ptr = symbol_table.temporary_assigns_expressions_[i];
         Array new_right(expr_ptr);
-        rewrite_with_temporaries(new_right, computed_temporaries);
+        rewrite_with_temporaries(new_right, computed_temporaries, node_to_info);
         assignments.emplace_back(
             symbol_table.temporaries_[i],
             OPERATOR_T_EQL,
@@ -712,9 +793,9 @@ std::vector<Assignment> JITRunner::create_assignment_sequence(
         );
         // notify future template generation steps that a particular node
         // no longer needs to be computed
-        computed_temporaries[expr_ptr.get()] = symbol_table.temporaries_[i];
+        computed_temporaries[node_temporary_hash(node_to_info.at(expr_ptr.get()))] = symbol_table.temporaries_[i];
     }
-    rewrite_with_temporaries(root_, computed_temporaries);
+    rewrite_with_temporaries(root_, computed_temporaries, node_to_info);
     assignments.emplace_back(dest_, operator_t_, root_);
     return assignments;
 }
@@ -854,8 +935,8 @@ std::string JITRunner::get_code_template(hash_t hash,
         dests.emplace_back(assign.left());
     }
 
-    if (!dest_.is_buffer()) {
-        result << as_jit_node(dest_)->assignment_code(hash, dests, roots, operators, symbol_table, new_node_to_info, device.type(),
+    if (!assignments.back().left().is_buffer()) {
+        result << as_jit_node(assignments.back().left())->assignment_code(hash, dests, roots, operators, symbol_table, new_node_to_info, device.type(),
                                                       computation_ranks, parallelism_types);
     } else {
         result << assignment_code(hash, dests, roots, operators, symbol_table, new_node_to_info, device.type(),
@@ -874,6 +955,7 @@ std::function<void(void**, const int*, const int**, const int**, const void**, c
     hash_t hash = utils::Hasher().add((int)device.type())
                                  .add(node_to_info.at(this).hash)
                                  .add(symbol_table.array_order_.value())
+                                 .add(symbol_table.scalar_order_.value())
                                  .value();
     // check if the operation needs to be runtime compiled
     if ((should_always_recompile() && !array_op_compiler.is_loaded(hash)) ||
@@ -1010,19 +1092,17 @@ struct JITRunnerImpl : public Computation {
                                                  left_.shape(),
                                                  symbol_table,
                                                  node_to_info);
+
         auto device = jit_right->preferred_device();
         auto compiled_self = jit_right->compile(device,
                                                 symbol_table,
                                                 node_to_info);
-
-
         auto buffers = symbol_table.collect_buffers(node_to_info);
         auto scalars = symbol_table.collect_scalars(node_to_info);
         auto shapes_vec = symbol_table.collect_shapes(node_to_info);
         std::vector<const int*> shapes;
         std::transform(shapes_vec.begin(), shapes_vec.end(), std::back_inserter(shapes),
                        [](const std::vector<int>& shape) {return shape.data();});
-
         std::vector<void*> data_ptrs;
         std::vector<int> array_offsets;
         std::vector<const int*> array_shapes;
@@ -1076,11 +1156,15 @@ void compute_node_compilation_info(const Array& a,
                                              symbol_table,
                                              node_to_info);
     } else if (is_jit_node(a)) {
-        static_as_jit_node(a)->compute_node_compilation_info(
+        auto node = static_as_jit_node(a);
+        node->compute_node_compilation_info(
             desired_computation_rank,
             desired_computation_shape,
             symbol_table,
             node_to_info);
+        if (node->shape_required()) {
+            symbol_table.declare_shape(a.expression(), node_to_info);
+        }
         // TODO(jonathan): ask here if this node has been computed beforehand some
         // number of times, and whether it is worth recomputing it, or using it
         // from some previously stored location.

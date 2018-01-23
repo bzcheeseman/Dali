@@ -150,7 +150,6 @@ namespace op {
 
                 op::jit::compute_node_compilation_info(arguments_[0], source_ndim, source_shape, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[1], desired_computation_rank - (source_ndim - 1), indices_shape, symbol_table, node_to_info);
-                symbol_table.declare_shape(this);
                 bool is_2d = desired_computation_rank == 2 && source_ndim == 2;
                 node_to_info[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
@@ -161,6 +160,7 @@ namespace op {
                 node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
 
+            virtual bool shape_required() const {return true;}
 
             expression_ptr copy() const {
                 return std::make_shared<Gather>(arguments_[0], arguments_[1]);

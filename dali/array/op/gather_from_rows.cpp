@@ -112,7 +112,6 @@ namespace op {
 
                 op::jit::compute_node_compilation_info(arguments_[0], source_ndim, source_shape, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[1], 1, indices_shape, symbol_table, node_to_info);
-                symbol_table.declare_shape(this);
                 node_to_info[this].hash = utils::Hasher().add(optype_hash)
                                                             .add(desired_computation_rank)
                                                             .add(node_to_info.at(arguments_[0].expression().get()).hash)
@@ -120,6 +119,8 @@ namespace op {
                                                             .value();
                 node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
             }
+
+            virtual bool shape_required() const {return true;}
 
             virtual std::string get_call_code_nd(
                     const SymbolTable& symbol_table,

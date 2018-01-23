@@ -26,6 +26,10 @@ std::string ScalarView::get_call_code_nd(const SymbolTable& symbol_table,
 	return symbol_table.get_name(this);
 }
 
+bool ScalarView::antialias() const {
+    return false;
+}
+
 void ScalarView::compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
@@ -35,6 +39,7 @@ void ScalarView::compute_node_compilation_info(int desired_computation_rank,
     node_to_info[this].hash = utils::Hasher().add(optype_hash)
     									     .add((int)dtype_)
     									     .add(desired_computation_rank).value();
+    node_to_info[this].data_hash = symbol_table.get_scalar_index(this);
 }
 
 struct ScalarInt32View : public ScalarView {
@@ -87,14 +92,15 @@ struct TileScalar : public JITNode {
     TileScalar(Array scalar, const std::vector<int>& shape) :
         JITNode(1, shape, scalar.dtype(), {scalar}) {
     }
-    virtual bool spans_entire_memory() const {
+    virtual bool spans_entire_memory() const override {
         return true;
     }
-    virtual memory::Device preferred_device() const {
+
+    virtual memory::Device preferred_device() const override {
         return arguments_[0].preferred_device();
     }
 
-    virtual std::string name() const {
+    virtual std::string name() const override {
         return utils::make_message("TileScalar[", shape_, "]");
     }
 
@@ -104,7 +110,7 @@ struct TileScalar : public JITNode {
         return utils::make_message(
             kernel_name(node_to_info), "(",
             as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, node_to_info, device_type),
-            ", ", symbol_table.get_shape(this), ")");
+            ", ", symbol_table.get_shape(this, node_to_info), ")");
     }
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
@@ -113,7 +119,6 @@ struct TileScalar : public JITNode {
                                                node_to_info_t& node_to_info) const {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
-        symbol_table.declare_shape(this);
         op::jit::compute_node_compilation_info(arguments_[0],
                                                1,
                                                {1},
@@ -127,12 +132,14 @@ struct TileScalar : public JITNode {
         node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
 
+    virtual bool shape_required() const {return true;}
+
     std::string kernel_name(const node_to_info_t& node_to_info) const {
         return utils::make_message("tile_scalar", node_to_info.at(this).computation_rank, "d");
     }
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
+                                    memory::DeviceT device_type) const override {
         return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
                              /*has_shape=*/true,
                              /*arguments=*/{"scalar",},

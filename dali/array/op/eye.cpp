@@ -20,7 +20,7 @@ struct Diag : public JITNode {
         return utils::make_message(
             kernel_name(node_to_info), "(",
             as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, node_to_info, device_type), ", ",
-            symbol_table.get_shape(this), ")");
+            symbol_table.get_shape(this, node_to_info), ")");
     }
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
@@ -29,7 +29,6 @@ struct Diag : public JITNode {
                                                node_to_info_t& node_to_info) const {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
-        symbol_table.declare_shape(this);
         op::jit::compute_node_compilation_info(arguments_[0],
                                                1,
                                                {shape_[0]},
@@ -42,6 +41,8 @@ struct Diag : public JITNode {
         node_to_info[this].hash = hasher.value();
         node_to_info[this].data_hash = compute_node_data_hash(node_to_info);
     }
+
+    virtual bool shape_required() const {return true;}
 
     virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
         return utils::make_message("diag", node_to_info.at(this).computation_rank, "d");

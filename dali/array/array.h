@@ -185,7 +185,7 @@ class Array  {
     Array argmax(const int& axis) const;
     Array argmax() const;
 
-    Array argsort(const int& axis) const;
+    Array argsort(int axis) const;
     Array argsort() const;
 
     operator float() const;

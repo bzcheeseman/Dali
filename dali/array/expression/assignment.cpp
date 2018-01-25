@@ -139,7 +139,7 @@ Array autoreduce_assign(const Array& left, const Array& right) {
 }
 
 Array to_assignment(const Array& node) {
-    return assign(Array::zeros(node.shape(), node.dtype()),
+    return assign(Array(node.shape(), node.dtype()),
                   OPERATOR_T_EQL,
                   Array(node.expression()));
 }

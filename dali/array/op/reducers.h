@@ -35,6 +35,11 @@ namespace op {
     Array L2_norm(const Array& x, const std::vector<int>& axes, bool keepdims=false);
     Array argmax(const Array& x, const int& axis);
     Array argmin(const Array& x, const int& axis);
+
+    Array any_isnan(const Array& array);
+    Array any_isinf(const Array& array);
+    Array any_isnan(const Array& array, const std::vector<int>& axes, bool keepdims=false);
+    Array any_isinf(const Array& array, const std::vector<int>& axes, bool keepdims=false);
 } // namespace op
 
 #endif

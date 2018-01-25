@@ -1655,3 +1655,24 @@ TEST(JITCachedReduction, fused_softmax_no_repeated_val) {
     }
 }
 
+
+TEST(ArrayOtherTests, all_close_and_all_equals) {
+    auto a = op::uniform(-20.0, 20.0, {10,3,1,2});
+    auto b = a + 200.0;
+    auto perturb = op::uniform(-0.1, 0.1, {10,3,1,2});
+    // force sampling of the random values:
+    a.eval();
+    b.eval();
+    perturb.eval();
+
+    EXPECT_TRUE(Array::equals(a, a));
+    EXPECT_TRUE(Array::equals(b, b));
+    EXPECT_TRUE(Array::allclose(b, b, 1e-5));
+    EXPECT_TRUE(Array::allclose(b, b, 1e-5));
+
+    EXPECT_FALSE(Array::equals(a ,b));
+    EXPECT_FALSE(Array::allclose(a, b, 1e-5));
+
+    EXPECT_FALSE(Array::equals(a, a + perturb));
+    EXPECT_TRUE(Array::allclose(a, a + perturb, 0.11));
+}

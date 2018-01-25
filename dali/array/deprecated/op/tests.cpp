@@ -6,36 +6,6 @@
 #include "dali/array/function/function.h"
 #include "dali/array/op.h"
 
-TEST(ArrayOpsTests, imports) {
-    ASSERT_FALSE(lazy::ops_loaded);
-}
-
-TEST(ArrayOpsTests, sigmoid) {
-    auto x = Array::zeros({3,2,2});
-    Array y = op::sigmoid(x);
-}
-
-TEST(ArrayOpsTests, relu) {
-    auto x = Array::zeros({3,2,2}, DTYPE_DOUBLE);
-    Array y = op::relu(x);
-}
-
-TEST(ArrayOpsTests, log_or_zero) {
-    auto x = Array::zeros({3,2,2});
-    Array w = op::log_or_zero(x);
-}
-
-TEST(ArrayOpsTests, abs) {
-    auto x = Array::zeros({3,2,2});
-    Array w = op::abs(x);
-}
-
-TEST(ArrayOpsTests, sign) {
-    auto x = Array::zeros({3,2,2});
-    Array w = op::sign(x);
-}
-
-
 TEST(ArrayOpsTests, log_exp) {
     Array x({50}, DTYPE_DOUBLE);
     x = initializer::uniform(0.1, 20.0);
@@ -81,11 +51,9 @@ TEST(ArrayOpsTests, eltdiv) {
     test_binary_shapes([](const Array& a, const Array& b) { return a / b; });
 }
 
-
 TEST(ArrayOpsTests, isnan) {
     Array x = Array::zeros({4,3,5});
     ASSERT_FALSE(x.any_isnan());
-
     x[2][2][1] = std::nan("");
     ASSERT_TRUE(x.any_isnan());
 }

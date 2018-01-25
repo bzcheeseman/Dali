@@ -79,7 +79,6 @@ void convert_array_to_ops(const Array& element,
     }
 }
 
-// TODO(jonathan): add this from Python
 std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
     std::vector<std::shared_ptr<Computation>> steps;
     std::vector<Array> elements({root});

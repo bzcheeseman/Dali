@@ -5,7 +5,6 @@
 #include "dali/array/op/unary.h"
 
 namespace op {
-
     Array sum(const Array& x) {
         return all_reduce(x, "reducers::sum");
     }
@@ -61,5 +60,17 @@ namespace op {
     }
     Array argmin(const Array& x, const int& axis) {
         return argument_axis_reduce(x, "reducers::minimum", axis);
+    }
+    Array any_isnan(const Array& array) {
+        return op::max(op::isnan(array));
+    }
+    Array any_isinf(const Array& array) {
+        return op::max(op::isinf(array));
+    }
+    Array any_isnan(const Array& array, const std::vector<int>& axes, bool keepdims) {
+        return op::max(op::isnan(array), axes, keepdims);
+    }
+    Array any_isinf(const Array& array, const std::vector<int>& axes, bool keepdims) {
+        return op::max(op::isinf(array), axes, keepdims);
     }
 }

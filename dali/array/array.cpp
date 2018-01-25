@@ -22,6 +22,7 @@
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/gather.h"
 #include "dali/array/op/gather_from_rows.h"
+#include "dali/array/op/top_k.h"
 #include "dali/array/jit/scalar_view.h"
 
 
@@ -661,9 +662,21 @@ DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm);
 DALI_ARRAY_DEFINE_REDUCER(mean, mean);
 DALI_ARRAY_DEFINE_REDUCER(max, max);
 DALI_ARRAY_DEFINE_REDUCER(min, min);
-// DALI_ARRAY_DEFINE_REDUCER(argsort, argsort);
 DALI_ARRAY_DEFINE_REDUCER(argmin, argmin);
 DALI_ARRAY_DEFINE_REDUCER(argmax, argmax);
+
+Array Array::argsort() const {
+    auto raveled = ravel();
+    return op::bottom_k(raveled, raveled.number_of_elements(), true);
+}
+
+Array Array::argsort(int axis) const {
+    if (ndim() == 0) return Array::zeros({}, DTYPE_INT32);
+    if (axis < 0) axis += ndim();
+    ASSERT2(axis >= 0 && axis < ndim(), utils::make_message(
+        "argsort axis must >= 0 and < ndim (", ndim(), "), got axis = ", axis, "."));
+    return op::bottom_k(swapaxes(axis, -1), shape()[axis], true).swapaxes(axis, -1);
+}
 
 Array::operator float() const {
     return scalar_value<float>();

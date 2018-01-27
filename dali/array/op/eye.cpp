@@ -8,15 +8,19 @@ namespace jit {
 
 struct Diag : public JITNode {
     static const hash_t optype_hash;
-    Diag(Array diag, int rows, int cols) : JITNode(2, {rows, cols}, diag.dtype(), {diag}) {}
+    Diag(Array diag, int rows, int cols) : JITNode({rows, cols}, diag.dtype(), {diag}) {}
 
-    virtual memory::Device preferred_device() const {
+    virtual memory::Device preferred_device() const override {
         return arguments_[0].preferred_device();
+    }
+
+    int min_computation_rank() const override {
+        return 2;
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const {
+                                         memory::DeviceT device_type) const override {
         return utils::make_message(
             kernel_name(node_to_info), "(",
             as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, node_to_info, device_type), ", ",
@@ -26,7 +30,7 @@ struct Diag : public JITNode {
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const {
+                                               node_to_info_t& node_to_info) const override {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
         op::jit::compute_node_compilation_info(arguments_[0],
@@ -42,14 +46,14 @@ struct Diag : public JITNode {
 
     }
 
-    virtual bool shape_required() const {return true;}
+    virtual bool shape_required() const override {return true;}
 
     virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
         return utils::make_message("diag", node_to_info.at(this).computation_rank, "d");
     }
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
+                                    memory::DeviceT device_type) const override {
         int ndim = node_to_info.at(this).computation_rank;
         return define_kernel(/*ndim=*/ndim,
                              /*has_shape=*/true,
@@ -60,7 +64,7 @@ struct Diag : public JITNode {
                              /*is_assignable=*/false);
     }
 
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<Diag>(arguments_[0], shape_[0], shape_[1]);
     }
 };

@@ -16,20 +16,6 @@ namespace {
     }
 }
 
-// keeps rightmost (lowest) dimensions
-std::string insert_auto_reshaped_variable(const std::string& name, int rank) {
-    if (rank == 1) {
-        return utils::make_message(
-            name, ".ndim() == ", rank, " ? ",
-            name, " : ", name, ".copyless_ravel()"
-        );
-    } else {
-        return utils::make_message(
-            name, ".copyless_right_fit_ndim(", rank, ")"
-        );
-    }
-}
-
 std::string build_array_definition(const std::string& cpp_type,
                                    const std::string& varname,
                                    bool contiguous,
@@ -216,7 +202,7 @@ std::string define_kernel(int ndim, bool has_shape,
             ss_caller << ">";
         }
     }
-    if (num_args > 0 & has_shape) {
+    if ((num_args > 0) & has_shape) {
         ss_call_arguments_definition << ", ";
         ss_call_arguments << ", ";
         ss_constructor_arguments << ", ";

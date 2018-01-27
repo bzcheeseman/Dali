@@ -39,31 +39,29 @@ namespace jit {
         ElementwiseExpression(const std::string& functor_name,
                               const std::vector<Array>& arguments,
                               DType dtype) :
-                JITNode(compute_min_computation_rank(arguments),
-                        arguments[0].shape(),
-                        dtype, arguments),
+                JITNode(arguments[0].shape(), dtype, arguments),
                 functor_name_(functor_name) {
             ASSERT2(arguments.size() > 0,
                 "Elementwise expression state must have at least one argument.");
         }
 
+        int min_computation_rank() const override {
+            return compute_min_computation_rank(arguments_);
+        }
+
         ElementwiseExpression(const ElementwiseExpression& other) :
             ElementwiseExpression(other.functor_name_, other.arguments_, other.dtype_) {}
 
-        virtual DType dtype() const {
-            return dtype_;
-        }
-
-        virtual std::string name() const {
+        virtual std::string name() const override {
             return functor_name_;
         }
 
-        virtual expression_ptr copy() const {
+        virtual expression_ptr copy() const override {
             return std::make_shared<ElementwiseExpression>(*this);
         }
 
-        virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const {
-
+        virtual expression_ptr _reshape(const std::vector<int>& new_shape,
+                                        const Array* owner) const override {
             std::vector<Array> reshaped_arguments;
             for (const auto& arg : arguments_) {
                 reshaped_arguments.emplace_back(arg.reshape(new_shape));
@@ -74,10 +72,21 @@ namespace jit {
                 dtype_);
         }
 
+        virtual expression_ptr jit_right_fit_ndim(int ndim) const override {
+            std::vector<Array> reshaped_arguments;
+            for (const auto& arg : arguments_) {
+                reshaped_arguments.emplace_back(op::jit::jit_right_fit_ndim(arg, ndim));
+            }
+            return std::make_shared<ElementwiseExpression>(
+                functor_name_,
+                reshaped_arguments,
+                dtype_);
+        }
+
         virtual void compute_node_compilation_info(int desired_computation_rank,
                                                    const std::vector<int>& desired_computation_shape,
                                                    SymbolTable& symbol_table,
-                                                   node_to_info_t& node_to_info) const {
+                                                   node_to_info_t& node_to_info) const override {
             node_to_info[this].computation_rank = desired_computation_rank;
             for (auto& arg: arguments_) {
                 op::jit::compute_node_compilation_info(arg,
@@ -96,7 +105,7 @@ namespace jit {
 
         }
 
-        virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const {
+        virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override {
             bool is_contig = true;
             for (auto& arg : arguments_) {
                 is_contig = is_contig && arg.is_axis_collapsible_with_axis_minus_one(axis);
@@ -104,7 +113,7 @@ namespace jit {
             return is_contig;
         }
 
-        virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const {
+        virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const override {
             std::vector<Array> new_arguments;
             for (auto& arg : arguments_) {
                 new_arguments.emplace_back(arg.collapse_axis_with_axis_minus_one(axis));
@@ -112,25 +121,25 @@ namespace jit {
             return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments, dtype_);
         }
 
-        virtual expression_ptr transpose(const std::vector<int>& permutation) const {
+        virtual expression_ptr dimshuffle(const std::vector<int>& permutation, const Array* owner) const override {
             std::vector<Array> new_arguments;
             for (auto& arg : arguments_) {
-                new_arguments.emplace_back(arg.transpose(permutation));
+                new_arguments.emplace_back(arg.dimshuffle(permutation));
             }
             return std::make_shared<ElementwiseExpression>(functor_name_, new_arguments, dtype_);
         }
 
         virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                              const node_to_info_t& node_to_info,
-                                             memory::DeviceT device_type) const {
+                                             memory::DeviceT device_type) const override {
             return generate_call_code_nd(this,
-                                         utils::make_message(elementwise_kernel_name(arguments_.size(), node_to_info.at(this).computation_rank), "<", functor_name_, ", ", dtype_to_cpp_name(dtype()), ">"),
+                                         utils::make_message(elementwise_kernel_name(arguments_.size(), node_to_info.at(this).computation_rank), "<", functor_name_, ", ", dtype_to_cpp_name(dtype_), ">"),
                                          symbol_table, node_to_info, device_type,
                                          /*has_shape=*/false);
         }
 
         virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                        memory::DeviceT device_type) const {
+                                        memory::DeviceT device_type) const override {
             return create_elementwise_kernel_caller(arguments_.size(), node_to_info.at(this).computation_rank);
         }
     };

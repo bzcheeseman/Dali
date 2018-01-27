@@ -21,13 +21,17 @@ namespace op {
         struct GatherFromRows : public JITNode {
             static const hash_t optype_hash;
             GatherFromRows(Array source, Array indices) :
-                    JITNode(std::max(1, source.ndim() - 1), op_shape(indices.shape(), source.shape()), source.dtype(), {source, indices}) {}
+                    JITNode(op_shape(indices.shape(), source.shape()), source.dtype(), {source, indices}) {}
+
+            virtual int min_computation_rank() const override {
+                return std::max(1, arguments_[0].ndim() - 1);
+            }
 
             virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
                 return utils::make_message("gather_from_rows_kernel_", node_to_info.at(this).computation_rank, "d");
             }
 
-            expression_ptr copy() const {
+            expression_ptr copy() const override {
                 return std::make_shared<GatherFromRows>(arguments_[0], arguments_[1]);
             }
 
@@ -40,8 +44,8 @@ namespace op {
             }
 
             std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type,
-                                    bool assignment_code) const {
+                                            memory::DeviceT device_type,
+                                            bool assignment_code) const {
                 int source_rank = node_to_info.at(arguments_[0].expression().get()).computation_rank;
                 int indices_rank = node_to_info.at(arguments_[1].expression().get()).computation_rank;
                 int self_rank = node_to_info.at(this).computation_rank;
@@ -120,7 +124,7 @@ namespace op {
 
             }
 
-            virtual bool shape_required() const {return true;}
+            virtual bool shape_required() const override {return true;}
 
             virtual std::string get_call_code_nd(
                     const SymbolTable& symbol_table,

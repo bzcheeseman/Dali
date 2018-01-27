@@ -66,9 +66,9 @@ namespace op {
 
         struct JITNode : public Expression {
             static const hash_t optype_hash;
-            ////////////////////
-            // MUST IMPLEMENT //
-            ////////////////////
+            // ////////////////////
+            // // MUST IMPLEMENT //
+            // ////////////////////
             virtual void compute_node_compilation_info(int desired_computation_rank,
                                                        const std::vector<int>& desired_computation_shape,
                                                        SymbolTable& symbol_table,
@@ -77,21 +77,26 @@ namespace op {
                                                  const node_to_info_t& node_to_info,
                                                  memory::DeviceT device_type) const = 0;
 
-
-            ////////////////////////////////
-            // REIMPLEMENT AS YOU SEE FIT //
-            ////////////////////////////////
+            // ////////////////////////////////
+            // // REIMPLEMENT AS YOU SEE FIT //
+            // ////////////////////////////////
 
             // whether this node will need a shape argument (and thus one
             // should be kept and given to the kernel)
             virtual bool shape_required() const;
             // whether to allow aliasing of a node
             virtual bool antialias() const;
-            virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
+            virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override;
+            virtual memory::Device preferred_device() const override;
+
             virtual std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const;
-            virtual memory::Device preferred_device() const;
             virtual PARALLELISM_T parallelism_type() const;
             virtual hash_t compute_node_data_hash(const node_to_info_t& node_to_info, const SymbolTable&) const;
+            virtual expression_ptr jit_right_fit_ndim(int ndim) const;
+
+
+
+            virtual int min_computation_rank() const = 0;
 
             ///////////////////////////////////////////////////////
             // REIMPLEMENT IF YOU WANT TO MAKE A NODE ASSIGNABLE //
@@ -115,15 +120,13 @@ namespace op {
                                                        const std::vector<int>& computation_ranks,
                                                        const std::vector<PARALLELISM_T>& parallelism_types) const;
             // internals:
-            const int min_computation_rank_;
-            JITNode(int min_computation_rank,
-                    const std::vector<int>& shape,
+            JITNode(const std::vector<int>& shape,
                     DType dtype,
                     const std::vector<Array>& arguments,
                     int offset=0,
                     const std::vector<int>& strides={});
             JITNode(const JITNode& other);
-            virtual bool supports_operator(OPERATOR_T operator_t) const;
+            virtual bool supports_operator(OPERATOR_T operator_t) const override;
             virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const override;
             virtual expression_ptr _expand_dims(int new_axis, const Array* owner) const override;
             virtual expression_ptr _squeeze(int axis, const Array* owner) const override;
@@ -149,6 +152,7 @@ namespace op {
                                      memory::DeviceT device_type);
 
         int min_computation_rank(const Array& array);
+        expression_ptr jit_right_fit_ndim(const Array& array, int ndim);
         // describe whether a jit node is using the full warp internally
         // or if it is intra-warp (gpu kernel generation)
         PARALLELISM_T parallelism_type(const Array& array);

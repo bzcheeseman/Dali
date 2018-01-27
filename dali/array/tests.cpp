@@ -1002,6 +1002,14 @@ TEST(ArrayTests, one_hot) {
                               op::one_hot(a, 7, 112.2, 42.0)));
 }
 
+TEST(ArrayTests, one_hot_collapse) {
+    auto a = op::uniform(0, 6, {2, 3});
+    Array res = Array::zeros({2, 3, 7}, DTYPE_DOUBLE);
+    res = op::assign(res, OPERATOR_T_EQL, op::one_hot(a, 7, 112.2, 42.0));
+    EXPECT_TRUE(Array::equals(reference_one_hot(a, 7, 112.2, 42.0),
+                              res));
+}
+
 
 #define DALI_DEFINE_REFERENCE_UNARY(FUNCNAME, FUNCTOR_NAME)\
     Array reference_ ##FUNCNAME (Array x) {\

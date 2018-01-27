@@ -9,15 +9,19 @@ namespace jit {
 struct Arange : public JITNode {
     static const hash_t optype_hash;
     Arange(Array start, Array step, int size) :
-        JITNode(1, {size}, start.dtype(), {start, step}) {
+        JITNode({size}, start.dtype(), {start, step}) {
     }
 
-    virtual memory::Device preferred_device() const {
+    virtual int min_computation_rank() const override {
+        return 1;
+    }
+
+    virtual memory::Device preferred_device() const override {
         return arguments_[0].preferred_device();
     }
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const {
+                                         memory::DeviceT device_type) const override {
         return generate_call_code_nd(this,
                                      kernel_name(node_to_info),
                                      symbol_table, node_to_info, device_type,
@@ -27,7 +31,7 @@ struct Arange : public JITNode {
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const {
+                                               node_to_info_t& node_to_info) const override {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
         op::jit::compute_node_compilation_info(arguments_[0],
@@ -49,14 +53,14 @@ struct Arange : public JITNode {
 
     }
 
-    virtual bool shape_required() const {return true;}
+    virtual bool shape_required() const override {return true;}
 
     virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
         return utils::make_message("arange", node_to_info.at(this).computation_rank, "d");
     }
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
+                                    memory::DeviceT device_type) const override {
         return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
                              /*has_shape=*/true,
                              /*arguments=*/{"start", "step"},
@@ -65,7 +69,7 @@ struct Arange : public JITNode {
                              /*is_assignable=*/false);
     }
 
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<Arange>(arguments_[0], arguments_[1], shape_[0]);
     }
 };

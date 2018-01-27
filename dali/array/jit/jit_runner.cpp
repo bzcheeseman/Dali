@@ -284,20 +284,13 @@ std::vector<std::vector<int>> SymbolTable::collect_shapes(const node_to_info_t& 
     return shapes;
 }
 
-JITNode::JITNode(int min_computation_rank,
-                 const std::vector<int>& shape,
+JITNode::JITNode(const std::vector<int>& shape,
                  DType dtype,
                  const std::vector<Array>& arguments,
                  int offset,
-                 const std::vector<int>& strides) : Expression(shape, dtype, arguments, offset, strides),
-                                                    min_computation_rank_(min_computation_rank) {
-    ASSERT2(min_computation_rank > 0, utils::make_message(
-        "JITNode computation rank must be greater than 0 (got "
-        "min_computation_rank = ", min_computation_rank, ")."));
-}
+                 const std::vector<int>& strides) : Expression(shape, dtype, arguments, offset, strides) {}
 
-JITNode::JITNode(const JITNode& other) : Expression(other),
-                                         min_computation_rank_(other.min_computation_rank_) {};
+JITNode::JITNode(const JITNode& other) : Expression(other) {};
 
 std::string JITNode::prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
     return "";
@@ -498,17 +491,27 @@ struct JITRunner : public JITNode {
     Array dest_, root_;
     const OPERATOR_T operator_t_;
 
-    virtual expression_ptr copy() const;
+    virtual expression_ptr copy() const override;
     JITRunner(Array root, const std::vector<Array>& leaves, OPERATOR_T operator_t, Array dest);
-    virtual memory::Device preferred_device() const;
+    virtual memory::Device preferred_device() const override;
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const;
-    virtual bool is_axis_collapsible_with_axis_minus_one(const int& axis) const;
+                                               node_to_info_t& node_to_info) const override;
+    virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override;
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const;
+                                         memory::DeviceT device_type) const override;
+
+    virtual expression_ptr jit_right_fit_ndim(int ndim) const override {
+        return std::make_shared<JITRunner>(
+            op::jit::jit_right_fit_ndim(root_, ndim),
+            arguments_,
+            operator_t_,
+            op::jit::jit_right_fit_ndim(dest_, ndim));
+    }
+
+    virtual int min_computation_rank() const override;
 
     std::string get_code_template(hash_t hash,
                                   memory::Device device,
@@ -523,7 +526,7 @@ struct JITRunner : public JITNode {
         memory::Device,
         const SymbolTable& symbol_table,
         const node_to_info_t& node_to_info) const;
-    virtual std::string name() const;
+    virtual std::string name() const override;
 };
 
 const hash_t JITRunner::optype_hash = std::hash<std::string>()(typeid(JITRunner).name());
@@ -550,11 +553,11 @@ std::shared_ptr<JITRunner> as_jit_runner(const Array& array) {
 
 // JIT RUNNER //
 JITRunner::JITRunner(Array root, const std::vector<Array>& leaves, OPERATOR_T operator_t, Array dest) :
-        JITNode(as_jit_node(root)->min_computation_rank_, dest.shape(), root.dtype(), leaves),
-        root_(root), operator_t_(operator_t), dest_(dest) {
-    if (is_jit_runner(root)) {
-        throw std::runtime_error("JITRunner should not contain a JITRunner.");
-    }
+        JITNode(dest.shape(), root.dtype(), leaves),
+        root_(root), operator_t_(operator_t), dest_(dest) {}
+
+int JITRunner::min_computation_rank() const {
+    return std::max(op::jit::min_computation_rank(dest_), as_jit_node(root_)->min_computation_rank());
 }
 
 expression_ptr JITRunner::copy() const {
@@ -565,7 +568,7 @@ memory::Device JITRunner::preferred_device() const {
     return root_.preferred_device();
 }
 
-bool JITRunner::is_axis_collapsible_with_axis_minus_one(const int& axis) const {
+bool JITRunner::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return static_as_jit_node(root_)->is_axis_collapsible_with_axis_minus_one(axis);
 }
 
@@ -714,7 +717,7 @@ std::string JITNode::assignment_code(hash_t hash,
             if (computation_ranks.size() > 1) {
                 if (i == 0) {
                     ss << "    int max_num_el = num_el0;\n";
-                } else {
+                } else {
                     ss << "    max_num_el = max(num_el" << i << ", max_num_el);\n";
                 }
             }
@@ -752,6 +755,14 @@ std::string JITNode::assignment_code(hash_t hash,
     }
 }
 
+expression_ptr JITNode::jit_right_fit_ndim(int rank) const {
+    ASSERT2(false, utils::make_message(
+        full_name(), " node declared to have a min computation "
+        "rank (", min_computation_rank(), ") lower than its ndim (", ndim(),
+        "). Override `jit_right_fit_ndim` or declare the node with "
+        "min_computation_rank == ndim."));
+    return nullptr;
+}
 
 void rewrite_with_temporaries(const Array& root,
                               const std::unordered_map<hash_t, Array>& temps,
@@ -1075,13 +1086,18 @@ struct JITRunnerImpl : public Computation {
     using Computation::Computation;
     void run() {
         JITRunner* jit_right = static_cast<JITRunner*>(right_.expression().get());
-        int desired_computation_rank = std::max(
-            min_computation_rank(left_), jit_right->min_computation_rank_
-        );
+        int desired_computation_rank = jit_right->min_computation_rank();
         SymbolTable symbol_table;
         node_to_info_t node_to_info;
+        auto right = right_.expression();
+
+        if (desired_computation_rank < jit_right->ndim()) {
+            right = jit_right->jit_right_fit_ndim(desired_computation_rank);
+            jit_right = static_cast<JITRunner*>(right.get());
+        }
+
         jit_right->compute_node_compilation_info(desired_computation_rank,
-                                                 left_.shape(),
+                                                 jit_right->dest_.shape(),
                                                  symbol_table,
                                                  node_to_info);
 
@@ -1122,9 +1138,21 @@ struct JITRunnerImpl : public Computation {
     }
 };
 
+expression_ptr jit_right_fit_ndim(const Array& array, int ndim) {
+    if (array.ndim() <= 1 | array.ndim() == ndim) return array.expression();
+    if (array.is_buffer()) {
+        return array.right_fit_ndim(ndim).expression();
+    }
+    return static_as_jit_node(array)->jit_right_fit_ndim(ndim);
+}
+
 int min_computation_rank(const Array& array) {
     if (is_jit_node(array)) {
-        return static_as_jit_node(array)->min_computation_rank_;
+        int rank = static_as_jit_node(array)->min_computation_rank();
+        ASSERT2(rank > 0, utils::make_message(
+            array.full_expression_name(), " computation rank must be greater than 0 (got "
+            "min_computation_rank = ", min_computation_rank, ")."));
+        return rank;
     }
     return array.strides().empty() ? 1 : array.ndim();
 }

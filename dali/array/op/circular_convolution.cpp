@@ -10,15 +10,22 @@ namespace op {
             static const hash_t optype_hash;
 
             CircularConvolution(const Array& content, const Array& weights) :
-                    JITNode(std::max(2, std::max(min_computation_rank(content), min_computation_rank(weights))),
-                            get_common_shape({content, weights}),
+                    JITNode(get_common_shape({content, weights}),
                             content.dtype(), {content, weights}) {}
 
-            expression_ptr copy() const {
+            virtual int min_computation_rank() const override {
+                return std::max(2,
+                                std::max(
+                                    op::jit::min_computation_rank(arguments_[0]),
+                                    op::jit::min_computation_rank(arguments_[1])));
+            }
+
+            expression_ptr copy() const override {
                 return std::make_shared<CircularConvolution>(arguments_[0], arguments_[1]);
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+            std::string prefix_code(const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type) const override {
                 std::string kernel = (
                     "T res = static_cast<T>(0);\n"
                     "const int conv_size = shape_[ndim - 1];\n"
@@ -45,7 +52,7 @@ namespace op {
                                      /*is_assignable=*/false);
             }
 
-            bool is_axis_collapsible_with_axis_minus_one(int axis) const {
+            bool is_axis_collapsible_with_axis_minus_one(int axis) const override {
                 if (axis == ndim() - 1) {
                     return false;
                 }
@@ -53,7 +60,7 @@ namespace op {
                        arguments_[1].is_axis_collapsible_with_axis_minus_one(axis);
             }
 
-            expression_ptr collapse_axis_with_axis_minus_one(int axis) const {
+            expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const override {
                 return std::make_shared<CircularConvolution>(
                     arguments_[0].collapse_axis_with_axis_minus_one(axis),
                     arguments_[1].collapse_axis_with_axis_minus_one(axis));
@@ -63,7 +70,7 @@ namespace op {
                     int desired_computation_rank,
                     const std::vector<int>& desired_computation_shape,
                     SymbolTable& symbol_table,
-                    node_to_info_t& node_to_info) const {
+                    node_to_info_t& node_to_info) const override {
                 node_to_info[this].computation_rank = desired_computation_rank;
                 op::jit::compute_node_compilation_info(arguments_[0], desired_computation_rank, desired_computation_shape, symbol_table, node_to_info);
                 op::jit::compute_node_compilation_info(arguments_[1], desired_computation_rank, desired_computation_shape, symbol_table, node_to_info);
@@ -75,7 +82,7 @@ namespace op {
 
             }
 
-            virtual bool shape_required() const {return true;}
+            virtual bool shape_required() const override {return true;}
 
             std::string kernel_name(const node_to_info_t& node_to_info) const {
                 return utils::make_message("circular_convolution_", node_to_info.at(this).computation_rank, "d");
@@ -84,7 +91,7 @@ namespace op {
             std::string get_call_code_nd(
                     const SymbolTable& symbol_table,
                     const node_to_info_t& node_to_info,
-                    memory::DeviceT device_type) const {
+                    memory::DeviceT device_type) const override {
                 return generate_call_code_nd(this,
                                              kernel_name(node_to_info),
                                              symbol_table, node_to_info, device_type,

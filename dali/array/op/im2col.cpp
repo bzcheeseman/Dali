@@ -25,7 +25,7 @@ namespace op {
                    const Array& postpad_w,
                    const std::vector<int>& im2col_shape,
                    const std::string& data_format) :
-                    JITNode(2, im2col_shape, image.dtype(),
+                    JITNode(im2col_shape, image.dtype(),
                         {image,
                          filter_h,
                          filter_w,
@@ -39,7 +39,11 @@ namespace op {
                          postpad_w}), data_format_(data_format) {
             }
 
-            expression_ptr copy() const {
+            virtual int min_computation_rank() const override {
+                return 2;
+            }
+
+            expression_ptr copy() const override {
                 return std::make_shared<Im2Col>(
                     arguments_[0],
                     arguments_[1],
@@ -57,7 +61,8 @@ namespace op {
                 );
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info, memory::DeviceT device_type) const {
+            std::string prefix_code(const node_to_info_t& node_to_info,
+                                    memory::DeviceT device_type) const override {
                 int c_dim = data_format_.find('C'),
                     w_dim = data_format_.find('W'),
                     h_dim = data_format_.find('H'),
@@ -147,7 +152,7 @@ namespace op {
                     int desired_computation_rank,
                     const std::vector<int>& desired_computation_shape,
                     SymbolTable& symbol_table,
-                    node_to_info_t& node_to_info) const {
+                    node_to_info_t& node_to_info) const override {
                 node_to_info[this].computation_rank = desired_computation_rank;
                 op::jit::compute_node_compilation_info(arguments_[0], 4, arguments_[0].shape(), symbol_table, node_to_info);
                 for (size_t i = 1; i < arguments_.size(); i++) {
@@ -163,12 +168,12 @@ namespace op {
 
             }
 
-            virtual bool shape_required() const {return true;}
+            virtual bool shape_required() const override {return true;}
 
             std::string get_call_code_nd(
                     const SymbolTable& symbol_table,
                     const node_to_info_t& node_to_info,
-                    memory::DeviceT device_type) const {
+                    memory::DeviceT device_type) const override {
                 return generate_call_code_nd(this,
                                              kernel_name(node_to_info),
                                              symbol_table, node_to_info, device_type,

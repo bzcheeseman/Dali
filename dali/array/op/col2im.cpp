@@ -42,11 +42,14 @@ namespace op {
                    const Array& postpad_w,
                    const std::vector<int>& image_shape,
                    const std::string& data_format) :
-                    JITNode(image_shape.size(), image_shape, input.dtype(),
+                    JITNode(image_shape, input.dtype(),
                         {input, filter_h, filter_w, stride_h, stride_w, dilate_h,
                          dilate_w, prepad_h, prepad_w, postpad_h, postpad_w}),
                     data_format_(data_format) {}
 
+            virtual int min_computation_rank() const {
+                return ndim();
+            }
 
             expression_ptr copy() const {
                 return std::make_shared<Col2Im>(

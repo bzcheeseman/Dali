@@ -6,19 +6,20 @@
 
 struct Assignment : public Expression {
     OPERATOR_T operator_t_;
-    const Array& left() const;
-    const Array& right() const;
-    virtual expression_ptr copy() const;
     Assignment(Array left, OPERATOR_T operator_t, Array right);
     Assignment(const Assignment& other);
-    virtual std::string name() const;
-    virtual memory::Device preferred_device() const;
-    virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
-    virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const;
-    virtual bool spans_entire_memory() const;
-    virtual bool is_assignable() const;
-    virtual expression_ptr buffer_arg() const;
 
+    const Array& left() const;
+    const Array& right() const;
+
+    virtual expression_ptr copy() const override;
+    virtual std::string name() const override;
+    virtual memory::Device preferred_device() const override;
+    virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override;
+    virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const override;
+    virtual bool spans_entire_memory() const override;
+    virtual bool is_assignable() const override;
+    virtual expression_ptr buffer_arg() const override;
 
     virtual expression_ptr dimshuffle(const std::vector<int>& pattern, const Array* owner) const override;
     virtual expression_ptr pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const override;

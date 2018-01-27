@@ -1,6 +1,7 @@
 #include "reshape.h"
 #include "dali/array/jit/jit_runner.h"
 #include "dali/array/jit/jit_utils.h"
+#include "dali/array/shape.h"
 #include "dali/utils/make_message.h"
 
 namespace op {
@@ -10,30 +11,50 @@ struct ReshapeRestride : public JITNode {
     static const hash_t optype_hash;
     ReshapeRestride(Array array, const std::vector<int>& shape,
                     int offset, const std::vector<int>& strides) :
-        JITNode(min_computation_rank(array), shape, array.dtype(), {array}, offset, strides) {
+        JITNode(shape, array.dtype(), {array}, offset, strides) {
     }
 
-    virtual memory::Device preferred_device() const {
+    virtual int min_computation_rank() const override {
+        return op::jit::min_computation_rank(arguments_[0]);
+    }
+
+    virtual memory::Device preferred_device() const override {
         return arguments_[0].preferred_device();
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const {
+                                         memory::DeviceT device_type) const override {
         return generate_call_code_nd(this,
                                      kernel_name(node_to_info),
                                      symbol_table, node_to_info, device_type,
                                      /*has_shape=*/true);
     }
 
-    virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const {
+    virtual expression_ptr _reshape(const std::vector<int>& new_shape,
+                                    const Array* owner) const override {
+        return std::make_shared<ReshapeRestride>(arguments_[0], new_shape, offset_, strides_);
+    }
+
+    virtual expression_ptr jit_right_fit_ndim(int ndim) const override {
+        if (ndim == 1) {
+            if (arguments_[0].ndim() <= 1) {
+                return arguments_[0].expression();
+            } else {
+                return op::jit::jit_right_fit_ndim(arguments_[0], ndim);
+            }
+        }
+        auto new_shape = collapsed_shape(shape_, ndim);
+        if (new_shape == arguments_[0].shape()) {
+            return arguments_[0].expression();
+        }
         return std::make_shared<ReshapeRestride>(arguments_[0], new_shape, offset_, strides_);
     }
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const {
+                                               node_to_info_t& node_to_info) const override {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
         op::jit::compute_node_compilation_info(arguments_[0],
@@ -48,14 +69,14 @@ struct ReshapeRestride : public JITNode {
         node_to_info[this].hash = hasher.value();
     }
 
-    virtual bool shape_required() const {return true;}
+    virtual bool shape_required() const override {return true;}
 
     virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
         return utils::make_message("reshape", node_to_info.at(this).computation_rank, "d");
     }
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
+                                    memory::DeviceT device_type) const override {
         return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
                              /*has_shape=*/true,
                              /*arguments=*/{"array",},
@@ -64,7 +85,7 @@ struct ReshapeRestride : public JITNode {
                              /*is_assignable=*/false);
     }
 
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<ReshapeRestride>(arguments_[0], shape_, offset_, strides_);
     }
 };
@@ -83,11 +104,15 @@ struct BroadcastedReshape : public JITNode {
     std::vector<bool> broadcasted_;
     BroadcastedReshape(Array array, const std::vector<int>& shape,
                        const std::vector<bool>& broadcasted) :
-        JITNode(shape.size(), shape, array.dtype(), {array}),
+        JITNode(shape, array.dtype(), {array}),
         broadcasted_(broadcasted) {}
 
     virtual memory::Device preferred_device() const {
         return arguments_[0].preferred_device();
+    }
+
+    virtual int min_computation_rank() const {
+        return ndim();
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
@@ -183,16 +208,20 @@ struct ExpandDims : public JITNode {
     static const hash_t optype_hash;
     int axis_;
     ExpandDims(Array array, int axis) :
-        JITNode(array.ndim() + 1, expand_shape(array.shape(), axis), array.dtype(), {array}),
+        JITNode(expand_shape(array.shape(), axis), array.dtype(), {array}),
         axis_(axis) {}
 
-    virtual memory::Device preferred_device() const {
+    virtual int min_computation_rank() const override {
+        return arguments_[0].ndim() + 1;
+    }
+
+    virtual memory::Device preferred_device() const override {
         return arguments_[0].preferred_device();
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const {
+                                         memory::DeviceT device_type) const override {
         return generate_call_code_nd(this,
                                      kernel_name(node_to_info),
                                      symbol_table, node_to_info, device_type,
@@ -208,7 +237,7 @@ struct ExpandDims : public JITNode {
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const {
+                                               node_to_info_t& node_to_info) const override {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
         op::jit::compute_node_compilation_info(arguments_[0],
@@ -224,10 +253,10 @@ struct ExpandDims : public JITNode {
         node_to_info[this].hash = hasher.value();
     }
 
-    virtual bool shape_required() const {return true;}
+    virtual bool shape_required() const override {return true;}
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
+                                    memory::DeviceT device_type) const override {
         int ndim = node_to_info.at(this).computation_rank;
         std::stringstream ss;
         int prefix = ndim - node_to_info.at(arguments_[0].expression().get()).computation_rank;
@@ -254,9 +283,9 @@ struct ExpandDims : public JITNode {
                              /*is_assignable=*/false);
     }
 
-    virtual expression_ptr _squeeze(int axis, const Array* owner) const;
+    virtual expression_ptr _squeeze(int axis, const Array* owner) const override;
 
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<ExpandDims>(arguments_[0], axis_);
     }
 };
@@ -266,29 +295,33 @@ struct Squeeze : public JITNode {
     static const hash_t optype_hash;
     int axis_;
     Squeeze(Array array, int axis) :
-        JITNode(std::max(1, array.ndim() - 1), squeeze_shape(array.shape(), axis), array.dtype(), {array}),
+        JITNode(squeeze_shape(array.shape(), axis), array.dtype(), {array}),
         axis_(axis) {}
 
-    virtual memory::Device preferred_device() const {
+    virtual int min_computation_rank() const override {
+        return std::max(1, arguments_[0].ndim() - 1);
+    }
+
+    virtual memory::Device preferred_device() const override {
         return arguments_[0].preferred_device();
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
                                          const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const {
+                                         memory::DeviceT device_type) const override {
         return generate_call_code_nd(this,
                                      kernel_name(node_to_info),
                                      symbol_table, node_to_info, device_type,
                                      /*has_shape=*/true);
     }
 
-    virtual expression_ptr _expand_dims(int new_axis, const Array* owner) const;
+    virtual expression_ptr _expand_dims(int new_axis, const Array* owner) const override;
 
 
     virtual void compute_node_compilation_info(int desired_computation_rank,
                                                const std::vector<int>& desired_computation_shape,
                                                SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const {
+                                               node_to_info_t& node_to_info) const override {
         node_to_info[this].computation_rank = desired_computation_rank;
         node_to_info[this].computation_shape = desired_computation_shape;
         op::jit::compute_node_compilation_info(arguments_[0],
@@ -308,10 +341,10 @@ struct Squeeze : public JITNode {
         return utils::make_message("squeeze_", axis_, "_", node_to_info.at(this).computation_rank, "d");
     }
 
-    virtual bool shape_required() const {return true;}
+    virtual bool shape_required() const override {return true;}
 
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
+                                    memory::DeviceT device_type) const override {
         int ndim = node_to_info.at(this).computation_rank;
         std::stringstream ss;
         int prefix = ndim - node_to_info.at(arguments_[0].expression().get()).computation_rank;
@@ -332,7 +365,7 @@ struct Squeeze : public JITNode {
                              /*is_assignable=*/false);
     }
 
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<Squeeze>(arguments_[0], axis_);
     }
 };
@@ -341,7 +374,7 @@ const hash_t Squeeze::optype_hash = std::hash<std::string>()(typeid(Squeeze).nam
 expression_ptr Squeeze::_expand_dims(int new_axis, const Array* owner) const {
     if (new_axis == axis_) {
         return arguments_[0].expression();
-    } else {
+    } else {
         return std::make_shared<ExpandDims>(copy(), new_axis);
     }
 }
@@ -349,7 +382,7 @@ expression_ptr Squeeze::_expand_dims(int new_axis, const Array* owner) const {
 expression_ptr ExpandDims::_squeeze(int new_axis, const Array* owner) const {
     if (new_axis == axis_) {
         return arguments_[0].expression();
-    } else {
+    } else {
         return std::make_shared<Squeeze>(copy(), new_axis);
     }
 }

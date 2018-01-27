@@ -63,14 +63,15 @@ endif()
 
 set(ENABLED_WARNINGS "-Wno-return-type -Wno-undefined-bool-conversion -Wno-potentially-evaluated-expression")
 
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fPIC")
 if(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS} -g -fPIC")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS}")
 elseif(CMAKE_BUILD_TYPE MATCHES "nooptimize")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS} -fPIC")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS}")
 elseif(CMAKE_BUILD_TYPE MATCHES "profile_compilation")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Q ${ENABLED_WARNINGS} -fPIC")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Q ${ENABLED_WARNINGS}")
 else(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w ${ENABLED_WARNINGS} -fPIC")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w ${ENABLED_WARNINGS}")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
@@ -80,7 +81,6 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if (NOT DALI_STACKTRACES STREQUAL "none")
     message(STATUS "compiling with pretty stacktraces")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
 
 ################################################################################

@@ -22,9 +22,8 @@ struct Reducer : public JITNode {
     Reducer(const std::string& functor_name,
             const Array& argument,
             const std::vector<int>& output_shape,
-            DType dtype, int min_computation_rank) :
-        JITNode(min_computation_rank, output_shape, dtype, {argument}),
-        functor_name_(functor_name) {
+            DType dtype) :
+        JITNode(output_shape, dtype, {argument}), functor_name_(functor_name) {
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
@@ -46,8 +45,12 @@ struct AllReduce : public Reducer {
     }
 
     AllReduce(const std::string& functor_name,
-                         const Array& argument, DType dtype) :
-        Reducer(functor_name, argument, {}, dtype, 1) {
+              const Array& argument, DType dtype) :
+        Reducer(functor_name, argument, {}, dtype) {
+    }
+
+    virtual int min_computation_rank() const override {
+        return 1;
     }
 
     virtual std::string name() const {
@@ -61,7 +64,7 @@ struct AllReduce : public Reducer {
             node_to_info_t& node_to_info) const {
         node_to_info[this].computation_rank = desired_computation_rank;
         op::jit::compute_node_compilation_info(arguments_[0],
-                                               min_computation_rank(arguments_[0]),
+                                               op::jit::min_computation_rank(arguments_[0]),
                                                arguments_[0].shape(),
                                                symbol_table,
                                                node_to_info);
@@ -107,7 +110,7 @@ namespace {
 struct AxisReduce : public Reducer {
     static const hash_t optype_hash_cache_;
 
-    virtual hash_t optype_hash() const {
+    virtual hash_t optype_hash() const override {
         return optype_hash_cache_;
     }
 
@@ -115,10 +118,13 @@ struct AxisReduce : public Reducer {
                const Array& argument,
                DType dtype) : Reducer(functor_name, argument,
                                       axis_reducer_shape(argument),
-                                      dtype,
-                                      std::max(op::jit::min_computation_rank(argument) - 1, 1)) {}
+                                      dtype) {}
 
-    virtual std::string name() const {
+    virtual int min_computation_rank() const override {
+        return std::max(op::jit::min_computation_rank(arguments_[0]) - 1, 1);
+    }
+
+    virtual std::string name() const override {
         return utils::make_message("axis_reduce<", functor_name_, ">");
     }
 
@@ -126,7 +132,7 @@ struct AxisReduce : public Reducer {
             int desired_computation_rank,
             const std::vector<int>& desired_computation_shape,
             SymbolTable& symbol_table,
-            node_to_info_t& node_to_info) const {
+            node_to_info_t& node_to_info) const override {
         node_to_info[this].computation_rank = desired_computation_rank;
         auto desired_argument_shape = desired_computation_shape;
         if (arguments_[0].ndim() > 0) {
@@ -147,11 +153,11 @@ struct AxisReduce : public Reducer {
 
     }
 
-    virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const {
+    virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override {
         return arguments_[0].is_axis_collapsible_with_axis_minus_one(axis - 1);
     }
 
-    virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const {
+    virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const override {
         return std::make_shared<AxisReduce>(
             functor_name_,
             arguments_[0].collapse_axis_with_axis_minus_one(axis - 1),
@@ -159,19 +165,26 @@ struct AxisReduce : public Reducer {
         );
     }
 
-    virtual expression_ptr transpose(const std::vector<int>& permutation) const {
+    virtual expression_ptr dimshuffle(const std::vector<int>& permutation, const Array* owner) const override {
         auto new_permutation = permutation;
         // add last dim of tensor with rank (permutation.size() + 1)
         new_permutation.emplace_back(permutation.size());
         return std::make_shared<AxisReduce>(
             functor_name_,
-            arguments_[0].transpose(new_permutation),
+            arguments_[0].dimshuffle(new_permutation),
             dtype_
         );
     }
 
+    virtual expression_ptr jit_right_fit_ndim(int ndim) const override {
+        return std::make_shared<AxisReduce>(
+            functor_name_,
+            op::jit::jit_right_fit_ndim(arguments_[0], ndim + 1),
+            dtype_);
+    }
+
     virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
+                                    memory::DeviceT device_type) const override {
         return create_axis_reduce_kernel_caller(
             node_to_info.at(arguments_[0].expression().get()).computation_rank);
     }
@@ -180,7 +193,7 @@ struct AxisReduce : public Reducer {
         return "axis_reduce_kernel_";
     }
 
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<AxisReduce>(
             functor_name_, arguments_[0], dtype_
         );

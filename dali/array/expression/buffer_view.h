@@ -29,12 +29,12 @@ struct BufferView : public Expression {
 
     BufferView(const BufferView& other);
 
-    virtual bool spans_entire_memory() const;
+    virtual bool spans_entire_memory() const override;
     virtual bool is_assignable() const override;
     virtual bool is_buffer() const override;
-    virtual std::string name() const;
+    virtual std::string name() const override;
 
-    virtual memory::Device preferred_device() const ;
+    virtual memory::Device preferred_device() const override;
 
     static std::shared_ptr<BufferView> create_with_shape(
             const std::vector<int>& shape,
@@ -42,15 +42,15 @@ struct BufferView : public Expression {
             memory::Device preferred_device,
             const std::vector<int>& broadcasted_axes);
 
-    virtual bool supports_operator(OPERATOR_T operator_t) const;
-    virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const;
+    virtual bool supports_operator(OPERATOR_T operator_t) const override;
+    virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override;
     void broadcast_axis_internal(const int& axis);
 
-    virtual expression_ptr copy() const;
-    virtual expression_ptr copy(const std::vector<int>& shape,
-                                int offset,
-                                const std::vector<int>& strides) const;
-    virtual expression_ptr buffer_arg() const;
+    virtual expression_ptr copy() const override;
+    expression_ptr copy(const std::vector<int>& shape,
+                        int offset,
+                        const std::vector<int>& strides) const;
+    virtual expression_ptr buffer_arg() const override;
 
     virtual expression_ptr dimshuffle(const std::vector<int>& pattern, const Array* owner) const override;
     virtual expression_ptr pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const override;

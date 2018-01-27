@@ -32,9 +32,12 @@ namespace op {
         struct Gather : public JITNode {
             static const hash_t optype_hash;
             Gather(const Array& source, const Array& indices) :
-                    JITNode(std::max(2, source.ndim() + min_computation_rank(indices) - 1),
-                            gather_shape(source.shape(), indices.shape()), source.dtype(),
+                    JITNode(gather_shape(source.shape(), indices.shape()), source.dtype(),
                             {source, indices}) {}
+
+            int min_computation_rank() const override {
+                return std::max(2, arguments_[0].ndim() + op::jit::min_computation_rank(arguments_[1]) - 1);
+            }
 
             std::string kernel_name(const node_to_info_t& node_to_info) const {
                 return utils::make_message("gather_kernel", node_to_info.at(this).computation_rank, "d");
@@ -160,9 +163,9 @@ namespace op {
 
             }
 
-            virtual bool shape_required() const {return true;}
+            virtual bool shape_required() const override {return true;}
 
-            expression_ptr copy() const {
+            expression_ptr copy() const override {
                 return std::make_shared<Gather>(arguments_[0], arguments_[1]);
             }
 

@@ -375,7 +375,7 @@ expression_ptr Expression::reshape(const std::vector<int>& new_shape, const Arra
     auto norm_shape = normalize_shape(shape_, new_shape);
     if (norm_shape == shape_) return copy();
     ASSERT2(hypercube_volume(norm_shape) == number_of_elements(), utils::make_message(
-        "New shape (", new_shape, ") must have the same number of elements as previous "
+        full_name(), "'s new shape (", new_shape, ") must have the same number of elements as previous "
         "shape (", shape_, ")"));
     return _reshape(norm_shape, owner);
 }

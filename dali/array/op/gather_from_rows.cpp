@@ -42,6 +42,14 @@ namespace op {
                 return arguments_[0].is_assignable();
             }
 
+            virtual void assignment_access_modes(SymbolTable& symbol_table, OPERATOR_T operator_t) const override {
+                if (arguments_[0].is_buffer()) {
+                    symbol_table.notify_access_mode(arguments_[0], memory::AM_MUTABLE);
+                } else {
+                    static_as_jit_node(arguments_[0])->assignment_access_modes(symbol_table, operator_t);
+                }
+            }
+
             std::string prefix_code(memory::DeviceT device_type,
                                     bool assignment_code) const {
                 std::string kernel;

@@ -115,6 +115,14 @@ namespace op {
                 return arguments_[0].is_assignable();
             }
 
+            virtual void assignment_access_modes(SymbolTable& symbol_table, OPERATOR_T operator_t) const override {
+                if (arguments_[0].is_buffer()) {
+                    symbol_table.notify_access_mode(arguments_[0], memory::AM_MUTABLE);
+                } else {
+                    static_as_jit_node(arguments_[0])->assignment_access_modes(symbol_table, operator_t);
+                }
+            }
+
             virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const override {
                 int indices_ndim = arguments_[1].ndim();
                 if (axis < indices_ndim) {

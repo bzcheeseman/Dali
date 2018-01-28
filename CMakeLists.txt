@@ -6,7 +6,9 @@ set(PROJECT_VERSION_MAJOR 1)
 set(PROJECT_VERSION_MINOR 0)
 set(PROJECT_VERSION_PATCH 0)
 
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake
+                      ${PROJECT_SOURCE_DIR}/cmake/FindCUDA
+                      ${CMAKE_MODULE_PATH})
 
 if( UNIX AND NOT APPLE )
     execute_process(COMMAND /usr/bin/lsb_release -i -s
@@ -96,8 +98,7 @@ find_package(OpenBlas QUIET)
 find_package(GooglePerfTools QUIET)
 find_package(MKL QUIET)
 find_package(GTest QUIET)
-find_package(CUDA)
-
+find_package(CUDA 5.5)
 if (NOT OpenBLAS_FOUND)
     set(OpenBLAS_LIB "")
 endif(NOT OpenBLAS_FOUND)
@@ -156,6 +157,7 @@ if (CUDA_FOUND STREQUAL TRUE)
                                             "/usr/lib/nvidia-current/"
                                             "${CUDA_TOOLKIT_ROOT_DIR}/lib/"
                                             NO_DEFAULT_PATH)
+    message(STATUS "CUDA_DRIVER_LIB ${CUDA_DRIVER_LIB}")
     list(APPEND CUDA_LIBRARIES ${CUDA_DRIVER_LIB})
 endif (CUDA_FOUND STREQUAL TRUE)
 
@@ -221,7 +223,6 @@ if (WITH_CUDA)
         LIST(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_${gpu_arch},code=sm_${gpu_arch})
     endforeach()
     SET(CUDA_EXTRA_FLAGS "-fno-strict-aliasing")
-    SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/cuda/lib")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CUDA_EXTRA_FLAGS}")
 else (WITH_CUDA)
     SET(DALI_CUDA_CXX_COMPILER "compiled_without_cuda")
@@ -238,8 +239,7 @@ function(cuda_compile_off)
 endfunction()
 
 if (WITH_CUDA)
-    include("${CMAKE_MODULE_PATH}/DetectCudnn.cmake")
-    detect_cudnn()
+    find_package(CuDNN)
     if (CUDNN_FOUND)
         set(DALI_USE_CUDNN 1)
     else()

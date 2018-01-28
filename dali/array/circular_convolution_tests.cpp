@@ -6,7 +6,6 @@
 #include "dali/array/op/unary.h"
 #include "dali/array/expression/assignment.h"
 
-
 namespace {
     void reference_circular_convolution(const Array& content, const Array& shift, Array* dest_ptr) {
         auto& dest = *dest_ptr;
@@ -105,9 +104,6 @@ TEST(JITTests, chained_circular_convolution) {
     }
 }
 
-
-
-
 TEST(JITTests, circular_conv_unary) {
     int size = 10;
     {
@@ -132,4 +128,3 @@ TEST(JITTests, circular_conv_unary) {
         );
     }
 }
-

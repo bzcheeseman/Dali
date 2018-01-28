@@ -1,54 +1,55 @@
-# Script inspired by Caffe's version
+# - Try to find cuDNN
+#
+# The following variables are optionally searched for defaults
+#  CUDNN_ROOT_DIR:            Base directory where all cuDNN components are found
+#
+# The following are set after configuration is done:
+#  CUDNN_FOUND
+#  CUDNN_INCLUDE_DIRS
+#  CUDNN_LIBRARIES
+#  CUDNN_LIBRARY_DIRS
+#
+# Borrowed from https://github.com/caffe2/caffe2/blob/master/cmake/Modules/FindCuDNN.cmake
 
-function(detect_cudnn)
-    set(CUDNN_ROOT "" CACHE PATH "CUDNN root folder")
-    set(CUDNN_FOUND FALSE PARENT_SCOPE)
+include(FindPackageHandleStandardArgs)
 
-    find_path(CUDNN_INCLUDE cudnn.h
-            PATHS ${CUDNN_ROOT} $ENV{CUDNN_ROOT} ${CUDA_TOOLKIT_INCLUDE}
-            DOC "Path to cuDNN include directory." )
+set(CUDNN_ROOT_DIR "" CACHE PATH "Folder contains NVIDIA cuDNN")
 
-    get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
-    find_library(CUDNN_LIBRARY NAMES cudnn
-            PATHS ${CUDNN_ROOT} $ENV{CUDNN_ROOT} ${CUDNN_INCLUDE} ${__libpath_hist}
-            DOC "Path to cuDNN library.")
+find_path(CUDNN_INCLUDE_DIR cudnn.h
+    HINTS ${CUDNN_ROOT_DIR} ${CUDA_TOOLKIT_ROOT_DIR}
+    PATH_SUFFIXES cuda/include include)
 
-    if (CUDNN_INCLUDE AND CUDNN_LIBRARY)
-        file(READ ${CUDNN_INCLUDE}/cudnn.h CUDNN_VERSION_FILE_CONTENTS)
+find_library(CUDNN_LIBRARY cudnn
+    HINTS ${CUDNN_LIB_DIR} ${CUDNN_ROOT_DIR} ${CUDA_TOOLKIT_ROOT_DIR}
+    PATH_SUFFIXES lib lib64 cuda/lib cuda/lib64 lib/x64)
 
-        # cuDNN v3 and beyond
-        string(REGEX MATCH "define CUDNN_MAJOR * +([0-9]+)"
-                CUDNN_VERSION_MAJOR "${CUDNN_VERSION_FILE_CONTENTS}")
-        string(REGEX REPLACE "define CUDNN_MAJOR * +([0-9]+)" "\\1"
-                CUDNN_VERSION_MAJOR "${CUDNN_VERSION_MAJOR}")
-        string(REGEX MATCH "define CUDNN_MINOR * +([0-9]+)"
-                CUDNN_VERSION_MINOR "${CUDNN_VERSION_FILE_CONTENTS}")
-        string(REGEX REPLACE "define CUDNN_MINOR * +([0-9]+)" "\\1"
-                CUDNN_VERSION_MINOR "${CUDNN_VERSION_MINOR}")
-        string(REGEX MATCH "define CUDNN_PATCHLEVEL * +([0-9]+)"
-                CUDNN_VERSION_PATCH "${CUDNN_VERSION_FILE_CONTENTS}")
-        string(REGEX REPLACE "define CUDNN_PATCHLEVEL * +([0-9]+)" "\\1"
-                CUDNN_VERSION_PATCH "${CUDNN_VERSION_PATCH}")
+find_package_handle_standard_args(
+    CUDNN DEFAULT_MSG CUDNN_INCLUDE_DIR CUDNN_LIBRARY)
 
-        if(NOT CUDNN_VERSION_MAJOR)
-            set(CUDNN_VERSION "???")
-        else()
-            set(CUDNN_VERSION "${CUDNN_VERSION_MAJOR}.${CUDNN_VERSION_MINOR}.${CUDNN_VERSION_PATCH}")
-        endif()
+if(CUDNN_FOUND)
+    # get cuDNN version
+  file(READ ${CUDNN_INCLUDE_DIR}/cudnn.h CUDNN_HEADER_CONTENTS)
+    string(REGEX MATCH "define CUDNN_MAJOR * +([0-9]+)"
+                 CUDNN_VERSION_MAJOR "${CUDNN_HEADER_CONTENTS}")
+    string(REGEX REPLACE "define CUDNN_MAJOR * +([0-9]+)" "\\1"
+                 CUDNN_VERSION_MAJOR "${CUDNN_VERSION_MAJOR}")
+    string(REGEX MATCH "define CUDNN_MINOR * +([0-9]+)"
+                 CUDNN_VERSION_MINOR "${CUDNN_HEADER_CONTENTS}")
+    string(REGEX REPLACE "define CUDNN_MINOR * +([0-9]+)" "\\1"
+                 CUDNN_VERSION_MINOR "${CUDNN_VERSION_MINOR}")
+    string(REGEX MATCH "define CUDNN_PATCHLEVEL * +([0-9]+)"
+                 CUDNN_VERSION_PATCH "${CUDNN_HEADER_CONTENTS}")
+    string(REGEX REPLACE "define CUDNN_PATCHLEVEL * +([0-9]+)" "\\1"
+                 CUDNN_VERSION_PATCH "${CUDNN_VERSION_PATCH}")
+  # Assemble cuDNN version
+  if(NOT CUDNN_VERSION_MAJOR)
+    set(CUDNN_VERSION "?")
+  else()
+    set(CUDNN_VERSION "${CUDNN_VERSION_MAJOR}.${CUDNN_VERSION_MINOR}.${CUDNN_VERSION_PATCH}")
+  endif()
 
-
-        string(COMPARE EQUAL "${CUDNN_VERSION_MAJOR}" 5 cuDNNVersionCompatible)
-
-        if(cuDNNVersionCompatible)
-            message(STATUS "Found cuDNN v${CUDNN_VERSION} (include: ${CUDNN_INCLUDE}, library: ${CUDNN_LIBRARY}).")
-            set(CUDNN_VERSION "${CUDNN_VERSION}" PARENT_SCOPE)
-            set(CUDNN_FOUND   TRUE               PARENT_SCOPE)
-            mark_as_advanced(CUDNN_INCLUDE CUDNN_LIBRARY CUDNN_ROOT)
-        else()
-            message(WARNING "cuDNN v5 is required. Found cuDNN v${CUDNN_VERSION_MAJOR} (include: ${CUDNN_INCLUDE}, library: ${CUDNN_LIBRARY}).")
-        endif()
-
-    else()
-        message(WARNING "cudnn not found")
-    endif()
-endfunction()
+  set(CUDNN_INCLUDE_DIRS ${CUDNN_INCLUDE_DIR})
+  set(CUDNN_LIBRARIES ${CUDNN_LIBRARY})
+  message(STATUS "Found cuDNN: v${CUDNN_VERSION}  (include: ${CUDNN_INCLUDE_DIR}, library: ${CUDNN_LIBRARY})")
+  mark_as_advanced(CUDNN_ROOT_DIR CUDNN_LIBRARY CUDNN_INCLUDE_DIR)
+endif()

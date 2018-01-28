@@ -29,7 +29,17 @@ namespace op {
             std::vector<Array> arrays_;
             std::vector<const ScalarView*> scalars_;
             std::vector<const Expression*> shapes_;
-            std::unordered_map<const BufferView*, int> arrays_visited_;
+
+            struct ArrayUsage {
+                int index_;
+                int count_;
+                memory::AM access_mode_;
+                ArrayUsage(int index, int count, memory::AM access_mode);
+            };
+
+            std::unordered_map<const BufferView*, ArrayUsage> arrays_visited_;
+            // Arrays are by default readonly, but if an access mode is specified
+            // you can upgrade it.
             utils::Hasher array_order_;
 
             std::unordered_map<const ScalarView*, int> scalars_visited_;
@@ -51,9 +61,11 @@ namespace op {
             int get_scalar_index(const ScalarView*) const;
             void declare_scalar(const ScalarView*);
             void declare_shape(const Expression*);
+            void notify_access_mode(const Array&, memory::AM);
 
             std::string variable_declarations() const;
             std::vector<Array> collect_buffers() const;
+            std::vector<memory::AM> collect_access_modes() const;
             std::vector<const void*> collect_scalars() const;
             std::vector<std::vector<int>> collect_shapes() const;
             // mark that a value will be re-used multiple times and should be stored into
@@ -120,6 +132,7 @@ namespace op {
                                                        memory::DeviceT device_type,
                                                        const std::vector<int>& computation_ranks,
                                                        const std::vector<PARALLELISM_T>& parallelism_types) const;
+            virtual void assignment_access_modes(SymbolTable& symbol_table, OPERATOR_T operator_t) const;
             // internals (unlikely to reimplement)
             JITNode(const std::vector<int>& shape,
                     DType dtype,

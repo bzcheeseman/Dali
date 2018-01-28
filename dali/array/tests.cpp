@@ -570,7 +570,6 @@ TEST(ArrayTests, double_striding) {
         for (auto& slice0: generate_interesting_slices(2)) {
             for (auto& slice1: generate_interesting_slices(3)) {
                 for (auto& slice2: generate_interesting_slices(4)) {
-                    SCOPED_TRACE(utils::make_message("x[", slice0, "][", slice1, "][", slice2, "]"));
                     Array sliced = x[slice0][slice1][slice2];
                     int actual_sum = sliced.sum();
                     int expected_sum = 0;

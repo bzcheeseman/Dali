@@ -1,5 +1,7 @@
 #include "print_utils.h"
 
+#include "dali/array/memory/access_modes.h"
+
 #include <iomanip>
 #include <iterator>
 #include <algorithm>
@@ -155,6 +157,28 @@ std::ostream& operator<<(std::ostream& os, const vector<bool>& v) {
     return os << "]";
 }
 
+template<>
+std::ostream& operator<<(std::ostream& os, const vector<memory::AM>& v) {
+    if (v.size() == 0) return os << "[]";
+    os << "[";
+    size_t i = 0;
+    for (auto f : v) {
+      if (f == memory::AM_OVERWRITE) {
+        os << "memory::AM_OVERWRITE";
+      } else if (f == memory::AM_READONLY) {
+        os << "memory::AM_READONLY";
+      } else if (f == memory::AM_MUTABLE) {
+        os << "memory::AM_MUTABLE";
+      } else {
+        os << "unknown AM";
+      }
+      if (i++ + 1 < v.size()) {
+        os << ", ";
+      }
+    }
+    return os << "]";
+}
+template std::ostream& operator<< <memory::AM>(std::ostream& strm, const vector<memory::AM>& a);
 template std::ostream& operator<< <double>(std::ostream& strm, const vector<double>& a);
 template std::ostream& operator<< <float>(std::ostream& strm, const vector<float>& a);
 template std::ostream& operator<< <uint>(std::ostream& strm, const vector<uint>& a);

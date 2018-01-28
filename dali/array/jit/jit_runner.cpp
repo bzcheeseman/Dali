@@ -66,21 +66,45 @@ JITNode* static_as_jit_node(const Array& array) {
     return static_cast<JITNode*>(array.expression().get());
 }
 
+SymbolTable::ArrayUsage::ArrayUsage(int index, int count, memory::AM access_mode) :
+    index_(index), count_(count), access_mode_(access_mode) {}
+
 void SymbolTable::declare_array(const Array& array) {
     const BufferView* ptr = static_as_buffer_view(array);
     auto pos = arrays_visited_.find(ptr);
     if (pos == arrays_visited_.end()) {
         arrays_.emplace_back(array);
         int index = arrays_visited_.size();
-        arrays_visited_.emplace(ptr, index);
+        arrays_visited_.emplace(ptr, ArrayUsage(index, 1, memory::AM_READONLY));
         array_order_.add(index);
     } else {
-        array_order_.add(pos->second);
+        pos->second.count_ += 1;
+        array_order_.add(pos->second.index_);
+    }
+}
+
+void SymbolTable::notify_access_mode(const Array& array, memory::AM mode) {
+    if (mode != memory::AM_READONLY && array.is_buffer()) {
+        if (mode == memory::AM_OVERWRITE && !array.spans_entire_memory()) {
+            mode = memory::AM_MUTABLE;
+        }
+        auto ptr = static_as_buffer_view(array);
+        auto mode_setting = arrays_visited_.find(ptr);
+        ASSERT2(mode_setting != arrays_visited_.end(), utils::make_message(
+            "Attempting to set access_mode for an array that was not declared.\n"
+            "Be sure to call `declare_array(array)` before `notify_access_mode`."));
+        if (mode_setting->second.access_mode_ != mode) {
+            if (mode_setting->second.count_ > 1) {
+                mode_setting->second.access_mode_ = memory::AM_MUTABLE;
+            } else {
+                mode_setting->second.access_mode_ = mode;
+            }
+        }
     }
 }
 
 int SymbolTable::get_array_index(const BufferView* ptr) const {
-    return arrays_visited_.at(ptr);
+    return arrays_visited_.at(ptr).index_;
 }
 
 int SymbolTable::get_scalar_index(const ScalarView* ptr) const {
@@ -229,6 +253,18 @@ std::vector<Array> SymbolTable::collect_buffers() const {
     return arrays;
 }
 
+std::vector<memory::AM> SymbolTable::collect_access_modes() const {
+    std::vector<memory::AM> modes;
+    std::transform(arrays_.begin(),
+                   arrays_.end(),
+                   std::back_inserter(modes),
+                   [this](const Array& op) {
+                        return arrays_visited_.at(static_as_buffer_view(op)).access_mode_;
+                   });
+    modes.insert(modes.end(), temporaries_.size(), memory::AM_OVERWRITE);
+    return modes;
+}
+
 std::vector<const void*> SymbolTable::collect_scalars() const {
     std::vector<const void*> scalars;
     std::transform(scalars_.begin(), scalars_.end(), std::back_inserter(scalars),
@@ -338,6 +374,12 @@ bool JITNode::supports_operator(OPERATOR_T operator_t) const {
 std::string JITNode::assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
                                         std::string dst, std::string src) const {
     return utils::make_message(dst, " ", operator_to_name(operator_t), " ", src);
+}
+
+void JITNode::assignment_access_modes(op::jit::SymbolTable& symbol_table, OPERATOR_T operator_t_) const {
+    ASSERT2(false, utils::make_message(
+        name(), " is assignable but does not define `assignment_access_modes`.\n"
+        "Implement this method to ensure memory access is correctly chosen."));
 }
 
 std::string JITNode::assignment_prefix_code(hash_t hash,
@@ -1027,6 +1069,24 @@ struct JITRunnerImpl : public Computation {
         subexpression_elimination(jit_right->root_, node_to_info, symbol_table);
         recursive_declare_shape(jit_right->dest_, node_to_info, symbol_table);
         recursive_declare_shape(jit_right->root_, node_to_info, symbol_table);
+
+        if (jit_right->dest_.is_buffer()) {
+            // if the operation is an assignment, use overwrite access
+            // else use read + write (mutable access)
+            if (!jit_right->dest_.spans_entire_memory()) {
+                symbol_table.notify_access_mode(jit_right->dest_, memory::AM_MUTABLE);
+            } else {
+                symbol_table.notify_access_mode(
+                    jit_right->dest_,
+                    jit_right->operator_t_ == OPERATOR_T_EQL ? memory::AM_OVERWRITE : memory::AM_MUTABLE
+                );
+            }
+        } else {
+            // else delegate assignment mode decisions to the destination
+            static_as_jit_node(jit_right->dest_)->assignment_access_modes(
+                symbol_table, jit_right->operator_t_
+            );
+        }
         utils::Hasher hasher;
         hasher.add(desired_computation_rank)
               .add(node_to_info.at(jit_right->dest_.expression().get()).hash)
@@ -1036,6 +1096,7 @@ struct JITRunnerImpl : public Computation {
 
         auto device = jit_right->preferred_device();
         auto buffers = symbol_table.collect_buffers();
+        auto access_modes = symbol_table.collect_access_modes();
         auto scalars = symbol_table.collect_scalars();
         auto shapes_vec = symbol_table.collect_shapes();
         auto compiled_self = jit_right->compile(device.type(), symbol_table, node_to_info);
@@ -1046,11 +1107,13 @@ struct JITRunnerImpl : public Computation {
         std::vector<int> array_offsets;
         std::vector<const int*> array_shapes;
         std::vector<const int*> array_strides;
+        int buffer_idx = 0;
         for (auto& buffer : buffers) {
-            data_ptrs.push_back(buffer.memory()->mutable_data(device));
+            data_ptrs.push_back(buffer.memory()->data(device, access_modes[buffer_idx]));
             array_offsets.push_back(buffer.offset());
             array_shapes.push_back(buffer.shape().data());
             array_strides.push_back(buffer.strides().data());
+            buffer_idx++;
         }
         // std::string assign_name;
         // if (Scope::has_observers()) {

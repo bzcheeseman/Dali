@@ -25,10 +25,6 @@
 #define EPS 1e-6
 
 namespace functor {
-
-    struct Functor {
-    };
-
     template<typename T>
     struct near_equal {
         T tol;
@@ -53,23 +49,9 @@ namespace functor {
     };
 
     template<typename R>
-    struct eye {
-        XINLINE static R Map(const R& a, const R& diag, const int& y, const int& x) {
-            return x == y ? diag : 0.0;
-        }
-    };
-
-    template<typename R>
     struct fill {
         XINLINE static R Map(const R& a, const R& filler) {
             return filler;
-        }
-    };
-
-    template<typename R>
-    struct arange {
-        XINLINE static R Map(const R& a, const R& step, const int& y, const int& x) {
-            return a + step * x;
         }
     };
 

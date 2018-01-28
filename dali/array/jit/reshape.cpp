@@ -3,12 +3,12 @@
 #include "dali/array/jit/jit_utils.h"
 #include "dali/array/shape.h"
 #include "dali/utils/make_message.h"
+#include "dali/utils/core_utils.h"
 
 namespace op {
 namespace jit {
 
 struct ReshapeRestride : public JITNode {
-    static const hash_t optype_hash;
     ReshapeRestride(Array array, const std::vector<int>& shape,
                     int offset, const std::vector<int>& strides) :
         JITNode(shape, array.dtype(), {array}, offset, strides) {
@@ -23,11 +23,10 @@ struct ReshapeRestride : public JITNode {
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                         const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const override {
         return generate_call_code_nd(this,
-                                     kernel_name(node_to_info),
-                                     symbol_table, node_to_info, device_type,
+                                     kernel_name(),
+                                     symbol_table, device_type,
                                      /*has_shape=*/true);
     }
 
@@ -51,37 +50,18 @@ struct ReshapeRestride : public JITNode {
         return std::make_shared<ReshapeRestride>(arguments_[0], new_shape, offset_, strides_);
     }
 
-    virtual void compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const override {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        node_to_info[this].computation_shape = desired_computation_shape;
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               std::max(1, arguments_[0].ndim()),
-                                               arguments_[0].ndim() == 0 ? std::vector<int>({1}) : arguments_[0].shape(),
-                                               symbol_table,
-                                               node_to_info);
-        utils::Hasher hasher;
-        hasher.add(optype_hash)
-              .add(desired_computation_rank)
-              .add(node_to_info.at(arguments_[0].expression().get()).hash);
-        node_to_info[this].hash = hasher.value();
-    }
-
     virtual bool shape_required() const override {return true;}
 
-    virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
-        return utils::make_message("reshape", node_to_info.at(this).computation_rank, "d");
+    virtual std::string kernel_name() const {
+        return utils::make_message("reshape", ndim(), "d");
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
-        return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return define_kernel(/*ndim=*/ndim(),
                              /*has_shape=*/true,
                              /*arguments=*/{"array",},
                              /*kernel=*/"array_[index_to_dim(indices_to_offset(shape_, query), array_.shape())]",
-                             /*name=*/kernel_name(node_to_info),
+                             /*name=*/kernel_name(),
                              /*is_assignable=*/false);
     }
 
@@ -89,8 +69,6 @@ struct ReshapeRestride : public JITNode {
         return std::make_shared<ReshapeRestride>(arguments_[0], shape_, offset_, strides_);
     }
 };
-
-const hash_t ReshapeRestride::optype_hash = std::hash<std::string>()(typeid(ReshapeRestride).name());
 
 Array jit_view(const Array& array,
                const std::vector<int>& shape,
@@ -100,97 +78,66 @@ Array jit_view(const Array& array,
 }
 
 struct BroadcastedReshape : public JITNode {
-    static const hash_t optype_hash;
     std::vector<bool> broadcasted_;
     BroadcastedReshape(Array array, const std::vector<int>& shape,
                        const std::vector<bool>& broadcasted) :
         JITNode(shape, array.dtype(), {array}),
         broadcasted_(broadcasted) {}
 
-    virtual memory::Device preferred_device() const {
+    virtual memory::Device preferred_device() const override {
         return arguments_[0].preferred_device();
     }
 
-    virtual int min_computation_rank() const {
-        return ndim();
-    }
-
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                         const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const {
+                                         memory::DeviceT device_type) const override {
         return generate_call_code_nd(this,
-                                     kernel_name(node_to_info),
-                                     symbol_table, node_to_info, device_type,
+                                     kernel_name(),
+                                     symbol_table, device_type,
                                      /*has_shape=*/true);
     }
 
-    virtual void compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        node_to_info[this].computation_shape = desired_computation_shape;
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               desired_computation_rank,
-                                               arguments_[0].shape(),
-                                               symbol_table,
-                                               node_to_info);
-        symbol_table.store_into_temporary(arguments_[0].expression(), node_to_info);
-        utils::Hasher hasher;
-        hasher.add(optype_hash)
-              .add(desired_computation_rank);
+    virtual void update_symbol_table(SymbolTable& symbol_table, node_to_info_t& node_to_info) const override {
+        symbol_table.store_into_temporary(arguments_[0], node_to_info);
+    }
+
+    virtual void compilation_parameters(utils::Hasher& hasher) const override {
         for (auto val : broadcasted_) {
             hasher.add(int(val));
         }
-        hasher.add(node_to_info.at(arguments_[0].expression().get()).hash);
-        node_to_info[this].hash = hasher.value();
     }
 
-    virtual bool shape_required() const {return true;}
+    virtual bool shape_required() const override {return true;}
 
-    std::string bool_encoding(const node_to_info_t& node_to_info) const {
+    virtual std::string kernel_name() const {
         std::stringstream ss;
-        int ndim = node_to_info.at(this).computation_rank;
-        int prefix = ndim - broadcasted_.size();
-        for (int i = 0; i < ndim; i++) {
-            ss << ((i >= prefix && broadcasted_[i - prefix]) ? "T" : "F");
+        ss << "broadcasted_reshape";
+        for (int i = 0; i < ndim(); i++) {
+            ss << (broadcasted_[i] ? "T" : "F");
         }
         return ss.str();
     }
 
-    virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
-        return utils::make_message("broadcasted_reshape", bool_encoding(node_to_info));
-    }
-
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
-        int ndim = node_to_info.at(this).computation_rank;
-        std::stringstream ss;
-        int prefix = ndim - broadcasted_.size();
-        for (int i = 0; i < ndim; i++) {
-            if (i >= prefix && broadcasted_[i - prefix]) {
-                ss << "0";
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        std::vector<std::string> queries;
+        for (int i = 0; i < ndim(); i++) {
+            if (broadcasted_[i]) {
+                queries.emplace_back("0");
             } else {
-                ss << "query[" << i << "]";
-            }
-            if (i + 1 < ndim) {
-                ss << ", ";
+                queries.emplace_back(utils::make_message("query[", i, "]"));
             }
         }
-        auto broadcasted_access = ss.str();
-        return define_kernel(/*ndim=*/ndim,
+        return define_kernel(/*ndim=*/ndim(),
                              /*has_shape=*/true,
                              /*arguments=*/{"array",},
-                             /*kernel=*/utils::make_message("array_[{", broadcasted_access, "}]"),
-                             /*name=*/kernel_name(node_to_info),
+                             /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
+                             /*name=*/kernel_name(),
                              /*is_assignable=*/false);
     }
 
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<BroadcastedReshape>(arguments_[0], shape_, broadcasted_);
     }
 };
-const hash_t BroadcastedReshape::optype_hash = std::hash<std::string>()(typeid(BroadcastedReshape).name());
 
 namespace {
     std::vector<int> expand_shape(std::vector<int> old_shape, int axis) {
@@ -205,7 +152,6 @@ namespace {
 }
 
 struct ExpandDims : public JITNode {
-    static const hash_t optype_hash;
     int axis_;
     ExpandDims(Array array, int axis) :
         JITNode(expand_shape(array.shape(), axis), array.dtype(), {array}),
@@ -220,66 +166,39 @@ struct ExpandDims : public JITNode {
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                         const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const override {
         return generate_call_code_nd(this,
-                                     kernel_name(node_to_info),
-                                     symbol_table, node_to_info, device_type,
+                                     kernel_name(),
+                                     symbol_table, device_type,
                                      /*has_shape=*/true);
     }
 
-    virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
-        return utils::make_message("expand_dims_", axis_, "_", node_to_info.at(this).computation_rank, "d");
+    virtual std::string kernel_name() const {
+        return utils::make_message("expand_dims_", axis_, "_", ndim(), "d");
     }
 
-
-
-    virtual void compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const override {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        node_to_info[this].computation_shape = desired_computation_shape;
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               std::max(1, desired_computation_rank - 1),
-                                               arguments_[0].ndim() > 0 ? arguments_[0].shape() : std::vector<int>({1}),
-                                               symbol_table,
-                                               node_to_info);
-        utils::Hasher hasher;
-        hasher.add(optype_hash)
-              .add(axis_)
-              .add(desired_computation_rank)
-              .add(node_to_info.at(arguments_[0].expression().get()).hash);
-        node_to_info[this].hash = hasher.value();
+    virtual void compilation_parameters(utils::Hasher& hasher) const override {
+        hasher.add(axis_);
     }
 
     virtual bool shape_required() const override {return true;}
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
-        int ndim = node_to_info.at(this).computation_rank;
-        std::stringstream ss;
-        int prefix = ndim - node_to_info.at(arguments_[0].expression().get()).computation_rank;
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        std::vector<std::string> queries;
         int query_index = 0;
-        for (int i = 0; i < ndim; i++) {
-            if (i >= prefix) {
-                if (i - prefix == axis_) {
-                    ss << "0";
-                } else {
-                    ss << "query[" << query_index << "]";
-                    query_index += 1;
-                }
-                if (i + 1 < ndim) {
-                    ss << ", ";
-                }
+        for (int i = 0; i < ndim(); i++) {
+            if (i != axis_) {
+                queries.emplace_back(utils::make_message("query[", query_index, "]"));
+                query_index++;
+            } else {
+                queries.emplace_back("0");
             }
         }
-        auto squeezed_access = ss.str();
-        return define_kernel(/*ndim=*/ndim,
+        return define_kernel(/*ndim=*/ndim(),
                              /*has_shape=*/true,
                              /*arguments=*/{"array",},
-                             /*kernel=*/utils::make_message("array_[{", squeezed_access, "}]"),
-                             /*name=*/kernel_name(node_to_info),
+                             /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
+                             /*name=*/kernel_name(),
                              /*is_assignable=*/false);
     }
 
@@ -289,10 +208,8 @@ struct ExpandDims : public JITNode {
         return std::make_shared<ExpandDims>(arguments_[0], axis_);
     }
 };
-const hash_t ExpandDims::optype_hash = std::hash<std::string>()(typeid(ExpandDims).name());
 
 struct Squeeze : public JITNode {
-    static const hash_t optype_hash;
     int axis_;
     Squeeze(Array array, int axis) :
         JITNode(squeeze_shape(array.shape(), axis), array.dtype(), {array}),
@@ -307,61 +224,37 @@ struct Squeeze : public JITNode {
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                         const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const override {
         return generate_call_code_nd(this,
-                                     kernel_name(node_to_info),
-                                     symbol_table, node_to_info, device_type,
+                                     kernel_name(),
+                                     symbol_table, device_type,
                                      /*has_shape=*/true);
     }
 
     virtual expression_ptr _expand_dims(int new_axis, const Array* owner) const override;
 
-
-    virtual void compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const override {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        node_to_info[this].computation_shape = desired_computation_shape;
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               desired_computation_rank + 1,
-                                               arguments_[0].ndim() > 0 ? arguments_[0].shape() : std::vector<int>({1}),
-                                               symbol_table,
-                                               node_to_info);
-        utils::Hasher hasher;
-        hasher.add(optype_hash)
-              .add(axis_)
-              .add(desired_computation_rank)
-              .add(node_to_info.at(arguments_[0].expression().get()).hash);
-        node_to_info[this].hash = hasher.value();
+    virtual void compilation_parameters(utils::Hasher& hasher) const override {
+        hasher.add(axis_);
     }
 
-    virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
-        return utils::make_message("squeeze_", axis_, "_", node_to_info.at(this).computation_rank, "d");
+    virtual std::string kernel_name() const {
+        return utils::make_message("squeeze_", axis_, "_", ndim(), "d");
     }
 
     virtual bool shape_required() const override {return true;}
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
-        int ndim = node_to_info.at(this).computation_rank;
-        std::stringstream ss;
-        int prefix = ndim - node_to_info.at(arguments_[0].expression().get()).computation_rank;
-        for (int i = 0; i < ndim; i++) {
-            if (i >= prefix && i - prefix != axis_) {
-                ss << "query[" << i << "]";
-                if (i + 1 < ndim) {
-                    ss << ", ";
-                }
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        std::vector<std::string> queries;
+        for (int i = 0; i < ndim(); i++) {
+            if (i != axis_) {
+                queries.emplace_back(utils::make_message("query[", i, "]"));
             }
         }
-        auto squeezed_access = ss.str();
-        return define_kernel(/*ndim=*/ndim,
+        return define_kernel(/*ndim=*/ndim(),
                              /*has_shape=*/true,
                              /*arguments=*/{"array",},
-                             /*kernel=*/utils::make_message("array_[{", squeezed_access, "}]"),
-                             /*name=*/kernel_name(node_to_info),
+                             /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
+                             /*name=*/kernel_name(),
                              /*is_assignable=*/false);
     }
 
@@ -369,7 +262,6 @@ struct Squeeze : public JITNode {
         return std::make_shared<Squeeze>(arguments_[0], axis_);
     }
 };
-const hash_t Squeeze::optype_hash = std::hash<std::string>()(typeid(Squeeze).name());
 
 expression_ptr Squeeze::_expand_dims(int new_axis, const Array* owner) const {
     if (new_axis == axis_) {

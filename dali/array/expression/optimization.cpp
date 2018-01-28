@@ -26,7 +26,6 @@ namespace {
             condition_(condition), transformation_(transformation), name_(name) {}
     };
 
-    // TODO(jonathan): add this from Python
     Array all_assignments_or_buffers(Array node) {
         if (node.is_buffer()) {
             return node;

@@ -33,7 +33,6 @@ namespace jit {
     }
 
     struct ElementwiseExpression : public JITNode {
-        static const hash_t optype_hash;
         const std::string functor_name_;
 
         ElementwiseExpression(const std::string& functor_name,
@@ -47,6 +46,10 @@ namespace jit {
 
         int min_computation_rank() const override {
             return compute_min_computation_rank(arguments_);
+        }
+
+        void compilation_parameters(utils::Hasher& hasher) const override {
+            hasher.add(functor_name_);
         }
 
         ElementwiseExpression(const ElementwiseExpression& other) :
@@ -83,28 +86,6 @@ namespace jit {
                 dtype_);
         }
 
-        virtual void compute_node_compilation_info(int desired_computation_rank,
-                                                   const std::vector<int>& desired_computation_shape,
-                                                   SymbolTable& symbol_table,
-                                                   node_to_info_t& node_to_info) const override {
-            node_to_info[this].computation_rank = desired_computation_rank;
-            for (auto& arg: arguments_) {
-                op::jit::compute_node_compilation_info(arg,
-                                                       desired_computation_rank,
-                                                       desired_computation_shape,
-                                                       symbol_table,
-                                                       node_to_info);
-            }
-            utils::Hasher hasher;
-            hasher.add(optype_hash).add(desired_computation_rank).add(functor_name_);
-            for (auto& arg : arguments_) {
-                hasher.add(node_to_info.at(arg.expression().get()).hash);
-            }
-            hasher.add(dtype_);
-            node_to_info[this].hash = hasher.value();
-
-        }
-
         virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override {
             bool is_contig = true;
             for (auto& arg : arguments_) {
@@ -130,20 +111,17 @@ namespace jit {
         }
 
         virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                             const node_to_info_t& node_to_info,
                                              memory::DeviceT device_type) const override {
             return generate_call_code_nd(this,
-                                         utils::make_message(elementwise_kernel_name(arguments_.size(), node_to_info.at(this).computation_rank), "<", functor_name_, ", ", dtype_to_cpp_name(dtype_), ">"),
-                                         symbol_table, node_to_info, device_type,
+                                         utils::make_message(elementwise_kernel_name(arguments_.size(), std::max(1, ndim())), "<", functor_name_, ", ", dtype_to_cpp_name(dtype_), ">"),
+                                         symbol_table, device_type,
                                          /*has_shape=*/false);
         }
 
-        virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                        memory::DeviceT device_type) const override {
-            return create_elementwise_kernel_caller(arguments_.size(), node_to_info.at(this).computation_rank);
+        virtual std::string prefix_code(memory::DeviceT device_type) const override {
+            return create_elementwise_kernel_caller(arguments_.size(), std::max(1, ndim()));
         }
     };
-    const hash_t ElementwiseExpression::optype_hash = std::hash<std::string>()(typeid(ElementwiseExpression).name());
     }  // namespace jit
     Array elementwise(Array a, const std::string& functor_name) {
         return Array(std::make_shared<jit::ElementwiseExpression>(functor_name, std::vector<Array>({a}), a.dtype()));

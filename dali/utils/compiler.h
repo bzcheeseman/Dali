@@ -15,6 +15,7 @@
 #include "dali/array/memory/device.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/utils/make_message.h"
+#include "dali/utils/assert2.h"
 
 typedef std::unordered_map<std::string, std::string> macro_args_t;
 std::string get_call_args(std::size_t num_args);
@@ -141,12 +142,10 @@ class Compiler {
             device_type
         );
 
-        if (!success) {
-            std::cout << "Failure encoutered when running the following command:" << std::endl;
-            std::cout << compiler_command(cppfile, module_path, logfile, "", device_type) << std::endl;
-            std::cout << "See details in " << logfile << std::endl;
-            exit(EXIT_FAILURE);
-        }
+        ASSERT2(success, utils::make_message(
+            "Failure encoutered when running the following command:\n",
+            compiler_command(cppfile, module_path, logfile, "", device_type), "\n"
+            "See details in ", logfile));
         modules_.emplace_back(module_path, true);
         auto ptr = modules_.back().get_symbol<void*>("maker");
         hash_to_f_ptr_[hash] = ptr;

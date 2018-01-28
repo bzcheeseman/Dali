@@ -7,7 +7,6 @@ namespace op {
 namespace jit {
 
 struct Arange : public JITNode {
-    static const hash_t optype_hash;
     Arange(Array start, Array step, int size) :
         JITNode({size}, start.dtype(), {start, step}) {
     }
@@ -20,52 +19,23 @@ struct Arange : public JITNode {
         return arguments_[0].preferred_device();
     }
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                         const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const override {
-        return generate_call_code_nd(this,
-                                     kernel_name(node_to_info),
-                                     symbol_table, node_to_info, device_type,
+        return generate_call_code_nd(this, kernel_name(), symbol_table, device_type,
                                      /*has_shape=*/true);
-    }
-
-    virtual void compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const override {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        node_to_info[this].computation_shape = desired_computation_shape;
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               1,
-                                               {1},
-                                               symbol_table,
-                                               node_to_info);
-        op::jit::compute_node_compilation_info(arguments_[1],
-                                               1,
-                                               {1},
-                                               symbol_table,
-                                               node_to_info);
-        utils::Hasher hasher;
-        hasher.add(optype_hash)
-              .add(desired_computation_rank)
-              .add(node_to_info.at(arguments_[0].expression().get()).hash)
-              .add(node_to_info.at(arguments_[1].expression().get()).hash);
-        node_to_info[this].hash = hasher.value();
-
     }
 
     virtual bool shape_required() const override {return true;}
 
-    virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
-        return utils::make_message("arange", node_to_info.at(this).computation_rank, "d");
+    virtual std::string kernel_name() const {
+        return utils::make_message("arange", ndim(), "d");
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
-        return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return define_kernel(/*ndim=*/ndim(),
                              /*has_shape=*/true,
                              /*arguments=*/{"start", "step"},
                              /*kernel=*/"start_[0] + indices_to_offset(shape_, query) * step_[0]",
-                             /*name=*/kernel_name(node_to_info),
+                             /*name=*/kernel_name(),
                              /*is_assignable=*/false);
     }
 
@@ -73,9 +43,6 @@ struct Arange : public JITNode {
         return std::make_shared<Arange>(arguments_[0], arguments_[1], shape_[0]);
     }
 };
-
-const hash_t Arange::optype_hash = std::hash<std::string>()(typeid(Arange).name());
-
 }  // namespace jit
 
 Array arange(int size) {

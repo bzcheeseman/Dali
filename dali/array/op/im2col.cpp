@@ -9,7 +9,6 @@
 namespace op {
     namespace jit {
         struct Im2Col : public JITNode {
-            static const hash_t optype_hash;
             std::string data_format_;
 
             Im2Col(const Array& image,
@@ -39,10 +38,6 @@ namespace op {
                          postpad_w}), data_format_(data_format) {
             }
 
-            virtual int min_computation_rank() const override {
-                return 2;
-            }
-
             expression_ptr copy() const override {
                 return std::make_shared<Im2Col>(
                     arguments_[0],
@@ -61,8 +56,7 @@ namespace op {
                 );
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
+            std::string prefix_code(memory::DeviceT device_type) const override {
                 int c_dim = data_format_.find('C'),
                     w_dim = data_format_.find('W'),
                     h_dim = data_format_.find('H'),
@@ -131,7 +125,7 @@ namespace op {
                     "}\n"
                 );
 
-                return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
+                return define_kernel(/*ndim=*/ndim(),
                                      /*has_shape=*/true,
                                      /*arguments=*/{"image",
                                                     "filter_h", "filter_w",
@@ -140,48 +134,28 @@ namespace op {
                                                     "prepad_h", "prepad_w",
                                                     "postpad_h", "postpad_w"},
                                      /*kernel=*/kernel,
-                                     /*name=*/kernel_name(node_to_info),
+                                     /*name=*/kernel_name(),
                                      /*is_assignable=*/false);
             }
 
-            std::string kernel_name(const node_to_info_t& node_to_info) const {
-                return utils::make_message("im2col_", data_format_, "_", node_to_info.at(this).computation_rank, "d");
+            std::string kernel_name() const {
+                return utils::make_message("im2col_", data_format_, "_", ndim(), "d");
             }
 
-            void compute_node_compilation_info(
-                    int desired_computation_rank,
-                    const std::vector<int>& desired_computation_shape,
-                    SymbolTable& symbol_table,
-                    node_to_info_t& node_to_info) const override {
-                node_to_info[this].computation_rank = desired_computation_rank;
-                op::jit::compute_node_compilation_info(arguments_[0], 4, arguments_[0].shape(), symbol_table, node_to_info);
-                for (size_t i = 1; i < arguments_.size(); i++) {
-                    op::jit::compute_node_compilation_info(arguments_[i], 1, {1}, symbol_table, node_to_info);
-                }
-                auto hasher = utils::Hasher().add(optype_hash)
-                                             .add(desired_computation_rank)
-                                             .add(data_format_);
-                for (size_t i = 0; i < arguments_.size(); i++) {
-                    hasher.add(node_to_info.at(arguments_[i].expression().get()).hash);
-                }
-                node_to_info[this].hash = hasher.value();
-
+            virtual void compilation_parameters(utils::Hasher& hasher) const override {
+                hasher.add(data_format_);
             }
 
             virtual bool shape_required() const override {return true;}
 
-            std::string get_call_code_nd(
-                    const SymbolTable& symbol_table,
-                    const node_to_info_t& node_to_info,
-                    memory::DeviceT device_type) const override {
+            std::string get_call_code_nd(const SymbolTable& symbol_table,
+                                         memory::DeviceT device_type) const override {
                 return generate_call_code_nd(this,
-                                             kernel_name(node_to_info),
-                                             symbol_table, node_to_info, device_type,
+                                             kernel_name(),
+                                             symbol_table, device_type,
                                              true);
             }
         };
-
-        const hash_t Im2Col::optype_hash = std::hash<std::string>()(typeid(Im2Col).name());
     }  // namespace jit
 
     std::vector<int> im2col_shape(

@@ -75,7 +75,7 @@ Compiler::Compiler(std::vector<std::string> headers, std::string outpath, std::s
 
 std::string Compiler::kCxxExecutable  = STR(DALI_CXX_COMPILER);
 std::string Compiler::kCudaExecutable = "nvcc";
-std::string Compiler::kCudaCxxExecutable = STR(DALI_CUDA_CXX_COMPILER);
+std::string Compiler::kCudaCxxExecutable = "/usr/local/bin/clang";//STR(DALI_CUDA_CXX_COMPILER);
 std::string Compiler::kCompilerId     = STR(DALI_CXX_COMPILER_ID);
 
 
@@ -140,7 +140,6 @@ std::string Compiler::compiler_command(const std::string& source,
     auto cxx_compile_flags = utils::make_message(
         " -I" , include_path_,
         " -I", STR(DALI_BLAS_INCLUDE_DIRECTORY),
-        " -DDALI_ARRAY_HIDE_LAZY=1",
         " ", extra_args,
         cxx_compiler_os_specific_flags
     );

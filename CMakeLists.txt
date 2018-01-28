@@ -63,13 +63,10 @@ endif()
 
 set(ENABLED_WARNINGS "-Wno-return-type -Wno-undefined-bool-conversion -Wno-potentially-evaluated-expression")
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fPIC")
 if(CMAKE_BUILD_TYPE MATCHES "debug")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -fPIC ${ENABLED_WARNINGS}")
 elseif(CMAKE_BUILD_TYPE MATCHES "nooptimize")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${ENABLED_WARNINGS}")
-elseif(CMAKE_BUILD_TYPE MATCHES "profile_compilation")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Q ${ENABLED_WARNINGS}")
 else(CMAKE_BUILD_TYPE MATCHES "debug")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -w ${ENABLED_WARNINGS}")
 endif(CMAKE_BUILD_TYPE MATCHES "debug")
@@ -180,10 +177,21 @@ else()
     endif()
 endif(DEFINED WITH_CUDA)
 
-message(STATUS "CUDA_INCLUDE_DIRS ${CUDA_INCLUDE_DIRS}")
-
 if (WITH_CUDA)
     SET(DALI_USE_CUDA 1)
+    # Note: As of Jan 28 2018, using clang 3.9 is broken due to lack of support for tuples
+    # https://devtalk.nvidia.com/default/topic/879726/nvcc-fails-if-c-11-activated-and-certain-headers-included/
+    # if (${CUDA_VERSION} VERSION_GREATER "9.0" OR ${CUDA_VERSION} VERSION_EQUAL "9.0")
+    #     if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    #         EXECUTE_PROCESS( COMMAND ${CMAKE_CXX_COMPILER} --version OUTPUT_VARIABLE clang_full_version_string )
+    #         string (REGEX REPLACE ".*clang version ([0-9]+\\.[0-9]+).*" "\\1" CLANG_VERSION_STRING ${clang_full_version_string})
+    #         if (CLANG_VERSION_STRING VERSION_EQUAL "3.9")
+    #             message(STATUS "setting nvcc C++ compiler to clang 3.9 ${CMAKE_C_COMPILER}")
+    #             set(CUDA_HOST_COMPILER ${CMAKE_C_COMPILER})
+    #         endif()
+    #     endif()
+    # endif()
+
     SET(DALI_CUDA_CXX_COMPILER ${CUDA_HOST_COMPILER})
     INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
     LIST(APPEND CUDA_NVCC_FLAGS

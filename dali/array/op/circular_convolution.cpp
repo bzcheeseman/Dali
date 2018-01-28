@@ -7,8 +7,6 @@
 namespace op {
     namespace jit {
         struct CircularConvolution : public JITNode {
-            static const hash_t optype_hash;
-
             CircularConvolution(const Array& content, const Array& weights) :
                     JITNode(get_common_shape({content, weights}),
                             content.dtype(), {content, weights}) {}
@@ -24,8 +22,7 @@ namespace op {
                 return std::make_shared<CircularConvolution>(arguments_[0], arguments_[1]);
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
+            std::string prefix_code(memory::DeviceT device_type) const override {
                 std::string kernel = (
                     "T res = static_cast<T>(0);\n"
                     "const int conv_size = shape_[ndim - 1];\n"
@@ -44,11 +41,11 @@ namespace op {
                     "    res += content_[content_query] * weights_[weights_query];\n"
                     "}\n"
                     "return res;\n");
-                return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
+                return define_kernel(/*ndim=*/std::max(1, ndim()),
                                      /*has_shape=*/true,
                                      /*arguments=*/{"content", "weights"},
                                      /*kernel=*/kernel,
-                                     /*name=*/kernel_name(node_to_info),
+                                     /*name=*/kernel_name(),
                                      /*is_assignable=*/false);
             }
 
@@ -66,39 +63,20 @@ namespace op {
                     arguments_[1].collapse_axis_with_axis_minus_one(axis));
             }
 
-            void compute_node_compilation_info(
-                    int desired_computation_rank,
-                    const std::vector<int>& desired_computation_shape,
-                    SymbolTable& symbol_table,
-                    node_to_info_t& node_to_info) const override {
-                node_to_info[this].computation_rank = desired_computation_rank;
-                op::jit::compute_node_compilation_info(arguments_[0], desired_computation_rank, desired_computation_shape, symbol_table, node_to_info);
-                op::jit::compute_node_compilation_info(arguments_[1], desired_computation_rank, desired_computation_shape, symbol_table, node_to_info);
-                node_to_info[this].hash = utils::Hasher().add(optype_hash)
-                                                            .add(desired_computation_rank)
-                                                            .add(node_to_info.at(arguments_[0].expression().get()).hash)
-                                                            .add(node_to_info.at(arguments_[1].expression().get()).hash)
-                                                            .value();
-
-            }
-
             virtual bool shape_required() const override {return true;}
 
-            std::string kernel_name(const node_to_info_t& node_to_info) const {
-                return utils::make_message("circular_convolution_", node_to_info.at(this).computation_rank, "d");
+            std::string kernel_name() const {
+                return utils::make_message("circular_convolution_", std::max(1, ndim()), "d");
             }
 
-            std::string get_call_code_nd(
-                    const SymbolTable& symbol_table,
-                    const node_to_info_t& node_to_info,
-                    memory::DeviceT device_type) const override {
+            std::string get_call_code_nd(const SymbolTable& symbol_table,
+                                         memory::DeviceT device_type) const override {
                 return generate_call_code_nd(this,
-                                             kernel_name(node_to_info),
-                                             symbol_table, node_to_info, device_type,
+                                             kernel_name(),
+                                             symbol_table, device_type,
                                              /*has_shape=*/true);
             }
         };
-        const hash_t CircularConvolution::optype_hash = std::hash<std::string>()(typeid(CircularConvolution).name());
     } // namespace jit
     Array circular_convolution(Array x, Array weights) {
         std::tie(x, weights) = ensure_arguments_compatible(x, weights, "circular_convolution", true);

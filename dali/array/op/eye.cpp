@@ -5,62 +5,34 @@
 
 namespace op {
 namespace jit {
-
 struct Diag : public JITNode {
-    static const hash_t optype_hash;
     Diag(Array diag, int rows, int cols) : JITNode({rows, cols}, diag.dtype(), {diag}) {}
 
     virtual memory::Device preferred_device() const override {
         return arguments_[0].preferred_device();
     }
 
-    int min_computation_rank() const override {
-        return 2;
-    }
-
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                         const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const override {
         return utils::make_message(
-            kernel_name(node_to_info), "(",
-            as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, node_to_info, device_type), ", ",
+            kernel_name(), "(",
+            as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, device_type), ", ",
             symbol_table.get_shape(this), ")");
-    }
-
-    virtual void compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const override {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        node_to_info[this].computation_shape = desired_computation_shape;
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               1,
-                                               {shape_[0]},
-                                               symbol_table,
-                                               node_to_info);
-        utils::Hasher hasher;
-        hasher.add(optype_hash)
-              .add(desired_computation_rank)
-              .add(node_to_info.at(arguments_[0].expression().get()).hash);
-        node_to_info[this].hash = hasher.value();
-
     }
 
     virtual bool shape_required() const override {return true;}
 
-    virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
-        return utils::make_message("diag", node_to_info.at(this).computation_rank, "d");
+    virtual std::string kernel_name() const {
+        return utils::make_message("diag", ndim(), "d");
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
-        int ndim = node_to_info.at(this).computation_rank;
-        return define_kernel(/*ndim=*/ndim,
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return define_kernel(/*ndim=*/ndim(),
                              /*has_shape=*/true,
                              /*arguments=*/{"diag",},
-                             /*kernel=*/utils::make_message("query[", ndim - 1, "] == query[", ndim - 2, "] ? "
-                                                            "diag_[query[", node_to_info.at(this).computation_rank - 1,"]] : 0"),
-                             /*name=*/kernel_name(node_to_info),
+                             /*kernel=*/utils::make_message("query[", ndim() - 1, "] == query[", ndim() - 2, "] ? "
+                                                            "diag_[query[", ndim() - 1,"]] : 0"),
+                             /*name=*/kernel_name(),
                              /*is_assignable=*/false);
     }
 
@@ -68,9 +40,6 @@ struct Diag : public JITNode {
         return std::make_shared<Diag>(arguments_[0], shape_[0], shape_[1]);
     }
 };
-
-const hash_t Diag::optype_hash = std::hash<std::string>()(typeid(Diag).name());
-
 }  // namespace jit
 
 Array eye(int size) {

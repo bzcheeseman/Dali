@@ -293,14 +293,13 @@ std::string define_kernel(int ndim, bool has_shape,
 std::string generate_call_code_nd(const Expression* expr,
                                   const std::string& kernel_name,
                                   const op::jit::SymbolTable& symbol_table,
-                                  const op::jit::node_to_info_t& node_to_info,
                                   memory::DeviceT device_type,
                                   bool has_shape) {
     std::stringstream ss;
     ss << kernel_name << "(";
     const auto& args = expr->arguments();
     for (size_t i = 0; i < args.size(); i++) {
-        ss << op::jit::get_call_code_nd(args[i], symbol_table, node_to_info, device_type);
+        ss << op::jit::get_call_code_nd(args[i], symbol_table, device_type);
         if (i + 1 != args.size()) {
             ss << ", ";
         }

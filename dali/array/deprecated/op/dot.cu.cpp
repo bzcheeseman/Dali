@@ -307,7 +307,7 @@
 //     Assignable<Array> matrix_vector_dot(
 //             const Array& a,
 //             const Array& b) {
-//         // TODO(jonathan): use correct blas subroutine whenever possible
+//         // TODO(jonathan): use correct blas subroutine whenever possible (gemv)
 
 //         ASSERT2((a.ndim() == 1 && b.ndim() == 2) || (a.ndim() == 2 && b.ndim() == 1),
 //                 utils::MS() << "Gemv inputs must be a vector and a matrix, but got a.ndim()="

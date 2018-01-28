@@ -15,7 +15,6 @@ struct Reducer : public JITNode {
     const std::string functor_name_;
 
     // MUST IMPLEMENT
-    virtual hash_t optype_hash() const = 0;
     virtual std::string kernel_name() const = 0;
 
     // DO NOT REIMPLEMENT
@@ -26,24 +25,20 @@ struct Reducer : public JITNode {
         JITNode(output_shape, dtype, {argument}), functor_name_(functor_name) {
     }
 
+    void compilation_parameters(utils::Hasher& hasher) const override {
+        hasher.add(functor_name_);
+    }
+
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                         const node_to_info_t& node_to_info,
-                                         memory::DeviceT device_type) const {
-        int all_reduce_comp_rank = node_to_info.at(arguments_[0].expression().get()).computation_rank;
+                                         memory::DeviceT device_type) const override {
         return utils::make_message(
-            kernel_name(), all_reduce_comp_rank,
+            kernel_name(), std::max(1, arguments_[0].ndim()),
             "d<", functor_name_, ", " , dtype_to_cpp_name(dtype_), ">(",
-            op::jit::get_call_code_nd(arguments_[0], symbol_table, node_to_info, device_type), ")");
+            op::jit::get_call_code_nd(arguments_[0], symbol_table, device_type), ")");
     }
 };  // struct Reducer
 
 struct AllReduce : public Reducer {
-    static const hash_t optype_hash_cache_;
-
-    virtual hash_t optype_hash() const {
-        return optype_hash_cache_;
-    }
-
     AllReduce(const std::string& functor_name,
               const Array& argument, DType dtype) :
         Reducer(functor_name, argument, {}, dtype) {
@@ -53,46 +48,39 @@ struct AllReduce : public Reducer {
         return 1;
     }
 
-    virtual std::string name() const {
-        return utils::make_message("all_reduce<", functor_name_, ">");
+    virtual bool can_jit_right_fit_inputs() const override {
+        return op::jit::min_computation_rank(arguments_[0]) < arguments_[0].ndim();
     }
 
-    virtual void compute_node_compilation_info(
-            int desired_computation_rank,
-            const std::vector<int>& desired_computation_shape,
-            SymbolTable& symbol_table,
-            node_to_info_t& node_to_info) const {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               op::jit::min_computation_rank(arguments_[0]),
-                                               arguments_[0].shape(),
-                                               symbol_table,
-                                               node_to_info);
-        node_to_info[this].hash = utils::Hasher().add(optype_hash())
-                                                    .add(desired_computation_rank)
-                                                    .add(functor_name_)
-                                                    .add(node_to_info.at(arguments_[0].expression().get()).hash)
-                                                    .value();
-
-    }
-
-    virtual bool is_axis_collapsible_with_axis_minus_one(int dim) const {
-        return true;
-    }
-
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
-        return create_all_reduce_kernel_caller(
-            node_to_info.at(arguments_[0].expression().get()).computation_rank,
-            node_to_info.at(this).computation_rank
+    virtual expression_ptr jit_right_fit_ndim(int ndim) const override {
+        // collapse child to become as collapsed as possible
+        return std::make_shared<AllReduce>(
+            functor_name_,
+            op::jit::jit_right_fit_ndim(
+                arguments_[0],
+                op::jit::min_computation_rank(arguments_[0])
+            ),
+            dtype_
         );
     }
 
-    virtual std::string kernel_name() const {
+    virtual std::string name() const override {
+        return utils::make_message("all_reduce<", functor_name_, ">");
+    }
+
+    virtual bool is_axis_collapsible_with_axis_minus_one(int dim) const override {
+        return true;
+    }
+
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return create_all_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
+    }
+
+    virtual std::string kernel_name() const override {
         return "all_reduce_kernel_";
     }
 
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<AllReduce>(
             functor_name_, arguments_[0], dtype_
         );
@@ -108,12 +96,6 @@ namespace {
 }
 
 struct AxisReduce : public Reducer {
-    static const hash_t optype_hash_cache_;
-
-    virtual hash_t optype_hash() const override {
-        return optype_hash_cache_;
-    }
-
     AxisReduce(const std::string& functor_name,
                const Array& argument,
                DType dtype) : Reducer(functor_name, argument,
@@ -126,31 +108,6 @@ struct AxisReduce : public Reducer {
 
     virtual std::string name() const override {
         return utils::make_message("axis_reduce<", functor_name_, ">");
-    }
-
-    virtual void compute_node_compilation_info(
-            int desired_computation_rank,
-            const std::vector<int>& desired_computation_shape,
-            SymbolTable& symbol_table,
-            node_to_info_t& node_to_info) const override {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        auto desired_argument_shape = desired_computation_shape;
-        if (arguments_[0].ndim() > 0) {
-            desired_argument_shape.emplace_back(arguments_[0].shape().back());
-        } else {
-            desired_argument_shape.emplace_back(1);
-        }
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               desired_computation_rank + 1,
-                                               desired_argument_shape,
-                                               symbol_table,
-                                               node_to_info);
-        node_to_info[this].hash = utils::Hasher().add(optype_hash())
-                                                    .add(desired_computation_rank)
-                                                    .add(functor_name_)
-                                                    .add(node_to_info.at(arguments_[0].expression().get()).hash)
-                                                    .value();
-
     }
 
     virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override {
@@ -183,13 +140,11 @@ struct AxisReduce : public Reducer {
             dtype_);
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
-        return create_axis_reduce_kernel_caller(
-            node_to_info.at(arguments_[0].expression().get()).computation_rank);
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return create_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
     }
 
-    virtual std::string kernel_name() const {
+    virtual std::string kernel_name() const override {
         return "axis_reduce_kernel_";
     }
 
@@ -201,55 +156,54 @@ struct AxisReduce : public Reducer {
 };
 
 struct ArgumentAllReduce : public AllReduce {
-    static const hash_t optype_hash_cache_;
-
     using AllReduce::AllReduce;
-
-    virtual hash_t optype_hash() const {
-        return optype_hash_cache_;
-    }
-
-    virtual std::string name() const {
+    virtual std::string name() const override {
         return utils::make_message(
             "argument_all_reduce<", functor_name_, ">"
         );
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
-        return create_argument_all_reduce_kernel_caller(
-            node_to_info.at(arguments_[0].expression().get()).computation_rank,
-            node_to_info.at(this).computation_rank
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return create_argument_all_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
+    }
+
+    virtual std::string kernel_name() const override {
+        return "argument_all_reduce_kernel_";
+    }
+
+    virtual expression_ptr jit_right_fit_ndim(int ndim) const override {
+        // collapse child to become as collapsed as possible
+        return std::make_shared<ArgumentAllReduce>(
+            functor_name_,
+            op::jit::jit_right_fit_ndim(
+                arguments_[0],
+                op::jit::min_computation_rank(arguments_[0])
+            ),
+            dtype_
         );
     }
 
-    virtual std::string kernel_name() const {
-        return "argument_all_reduce_kernel_";
+    virtual expression_ptr copy() const override {
+        return std::make_shared<ArgumentAllReduce>(
+            functor_name_, arguments_[0], dtype_
+        );
     }
 };
 
 struct ArgumentAxisReduce : public AxisReduce {
-    static const hash_t optype_hash_cache_;
-
     using AxisReduce::AxisReduce;
 
-    virtual hash_t optype_hash() const {
-        return optype_hash_cache_;
-    }
-
-    virtual std::string name() const {
+    virtual std::string name() const override {
         return utils::make_message(
             "argument_axis_reduce<", functor_name_, ">"
         );
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
-        return create_argument_axis_reduce_kernel_caller(
-            node_to_info.at(arguments_[0].expression().get()).computation_rank);
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return create_argument_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
     }
 
-    virtual expression_ptr collapse_axis_with_axis_minus_one(int axis) const {
+    virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const override {
         return std::make_shared<ArgumentAxisReduce>(
             functor_name_,
             arguments_[0].collapse_axis_with_axis_minus_one(axis - 1),
@@ -257,7 +211,7 @@ struct ArgumentAxisReduce : public AxisReduce {
         );
     }
 
-    virtual expression_ptr transpose(const std::vector<int>& permutation) const {
+    virtual expression_ptr dimshuffle(const std::vector<int>& permutation, const Array* owner) const override {
         auto new_permutation = permutation;
         // add last dim of tensor with rank (permutation.size() + 1)
         new_permutation.emplace_back(permutation.size());
@@ -268,36 +222,29 @@ struct ArgumentAxisReduce : public AxisReduce {
         );
     }
 
-    virtual std::string kernel_name() const {
+    virtual std::string kernel_name() const override {
         return "argument_axis_reduce_kernel_";
     }
 };
 
 struct WarpAxisReduce : public AxisReduce {
-    static const hash_t optype_hash_cache_;
     using AxisReduce::AxisReduce;
 
-    virtual hash_t optype_hash() const {
-        return optype_hash_cache_;
-    }
-
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<WarpAxisReduce>(
             functor_name_, arguments_[0], dtype_
         );
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
-        return create_warp_axis_reduce_kernel_caller(
-            node_to_info.at(arguments_[0].expression().get()).computation_rank);
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return create_warp_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
     }
 
     virtual PARALLELISM_T parallelism_type() const override {
         return INDEPENDENT_BLOCK;
     }
 
-    virtual std::string kernel_name() const {
+    virtual std::string kernel_name() const override {
         return "warp_axis_reduce_kernel_";
     }
 };
@@ -361,33 +308,27 @@ namespace {
 }
 
 struct ShflDownWarpAxisSum : public AxisReduce {
-    static const hash_t optype_hash_cache_;
     using AxisReduce::AxisReduce;
 
-    virtual hash_t optype_hash() const {
-        return optype_hash_cache_;
-    }
-
-    virtual expression_ptr copy() const {
+    virtual expression_ptr copy() const override {
         return std::make_shared<ShflDownWarpAxisSum>(
             functor_name_, arguments_[0], dtype_
         );
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const {
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
         // tunable variable:
         int tile_sz = 16;
-        int ndim = node_to_info.at(this).computation_rank;
+        int rank = std::max(ndim(), 1);
         return utils::make_message(
             "#include <cooperative_groups.h>\n",
-            thread_sum_generic(ndim),
+            thread_sum_generic(rank),
             // vector load versions of threadsum:
-            thread_sum("int", 4, ndim),
-            thread_sum("float", 4, ndim),
-            thread_sum("double", 2, ndim),
+            thread_sum("int", 4, rank),
+            thread_sum("float", 4, rank),
+            thread_sum("double", 2, rank),
             "template <int tile_sz, typename T>\n"
-            "__device__ T reduce_sum_tile_shfl", ndim, "(cooperative_groups::thread_block_tile<tile_sz> g, T val) {\n"
+            "__device__ T reduce_sum_tile_shfl", rank, "(cooperative_groups::thread_block_tile<tile_sz> g, T val) {\n"
             "    int lane = g.thread_rank();\n"
             "    // Each iteration halves the number of active threads\n"
             "    // Each thread adds its partial sum[i] to sum[lane+i]\n"
@@ -397,32 +338,32 @@ struct ShflDownWarpAxisSum : public AxisReduce {
             "    return val; // note: only thread 0 will return full sum\n"
             "}\n"
             "template<typename Reducer, typename Type, typename C1>\n"
-            "struct ShflDownWarpAxisSum", ndim, " {\n"
+            "struct ShflDownWarpAxisSum", rank, " {\n"
             "    C1 arg_;\n"
-            "    static const int ndim = ", ndim, ";\n"
+            "    static const int ndim = ", rank, ";\n"
             "    typedef Type T;\n"
             "    XINLINE Shape<ndim> shape() const {\n"
             "        return arg_.shape().template axis_reduced_shape<0, ndim>();\n"
             "    }\n"
-            "    XINLINE ShflDownWarpAxisSum", ndim, "(C1 arg) : arg_(arg) {}\n"
-            "    inline __device__ T operator[](const Shape<", ndim, ">& input_query) const {\n"
+            "    XINLINE ShflDownWarpAxisSum", rank, "(C1 arg) : arg_(arg) {}\n"
+            "    inline __device__ T operator[](const Shape<", rank, ">& input_query) const {\n"
             "        __shared__ T sum;\n"
             "        sum = 0;\n"
-            "        Shape<", ndim + 1, "> query = input_query.expand_dims(", ndim, ");\n"
-            "        query[", ndim, "] = 0;\n"
-            "        T my_sum = thread_sum", ndim, "<T>(arg_, query, threadIdx.x, blockDim.x);\n"
+            "        Shape<", rank + 1, "> query = input_query.expand_dims(", rank, ");\n"
+            "        query[", rank, "] = 0;\n"
+            "        T my_sum = thread_sum", rank, "<T>(arg_, query, threadIdx.x, blockDim.x);\n"
             "        auto tile = cooperative_groups::tiled_partition<", tile_sz, ">(\n"
             "            cooperative_groups::this_thread_block());\n"
-            "        T tile_sum = reduce_sum_tile_shfl", ndim, "<", tile_sz, ">(tile, my_sum);\n"
+            "        T tile_sum = reduce_sum_tile_shfl", rank, "<", tile_sz, ">(tile, my_sum);\n"
             "        if (tile.thread_rank() == 0) atomicAdd(&sum, tile_sum);\n"
             "        __syncthreads();\n"
             "        return sum;\n"
             "    }\n"
             "};\n"
             "template<typename Reducer, typename Type, typename C1>\n"
-            "XINLINE ShflDownWarpAxisSum", ndim, "<Reducer, Type, C1> shfl_down_warp_axis_sum", ndim + 1, "d(\n"
+            "XINLINE ShflDownWarpAxisSum", rank, "<Reducer, Type, C1> shfl_down_warp_axis_sum", rank + 1, "d(\n"
             "        C1 arg) {\n"
-            "    return ShflDownWarpAxisSum", ndim, "<Reducer, Type, C1>(arg);\n"
+            "    return ShflDownWarpAxisSum", rank, "<Reducer, Type, C1>(arg);\n"
             "}\n"
         );
     }
@@ -431,29 +372,10 @@ struct ShflDownWarpAxisSum : public AxisReduce {
         return INDEPENDENT_BLOCK;
     }
 
-    virtual std::string kernel_name() const {
+    virtual std::string kernel_name() const override {
         return "shfl_down_warp_axis_sum";
     }
 };
-
-const hash_t AxisReduce::optype_hash_cache_ = std::hash<std::string>()(
-    typeid(AxisReduce).name());
-
-const hash_t WarpAxisReduce::optype_hash_cache_ = std::hash<std::string>()(
-    typeid(WarpAxisReduce).name());
-
-const hash_t ShflDownWarpAxisSum::optype_hash_cache_ = std::hash<std::string>()(
-    typeid(ShflDownWarpAxisSum).name());
-
-const hash_t AllReduce::optype_hash_cache_ = std::hash<std::string>()(
-    typeid(AllReduce).name());
-
-const hash_t ArgumentAllReduce::optype_hash_cache_ = std::hash<std::string>()(
-    typeid(ArgumentAllReduce).name());
-
-const hash_t ArgumentAxisReduce::optype_hash_cache_ = std::hash<std::string>()(
-    typeid(ArgumentAxisReduce).name());
-
 
 namespace {
     AxisReduce* static_as_axis_reduce(const Array& array) {
@@ -463,8 +385,7 @@ namespace {
     // the warp dimension is still available
     // & the device is a GPU && the op is a reduction.
     bool can_transform_to_blocked_reducer(const Array& array,
-                                          memory::DeviceT device_type,
-                                          const node_to_info_t& node_to_info) {
+                                          memory::DeviceT device_type) {
         return (device_type == memory::DEVICE_T_GPU &&
                 typeid(*array.expression().get()).name() == typeid(AxisReduce).name() &&
                 static_as_jit_node(array)->parallelism_type() == INDEPENDENT_BLOCK_WARP);
@@ -480,9 +401,8 @@ namespace {
     }
 
     bool can_transform_to_shfl_down_sum(const Array& array,
-                                        memory::DeviceT device_type,
-                                        const node_to_info_t& node_to_info) {
-        return (can_transform_to_blocked_reducer(array, device_type, node_to_info) &&
+                                        memory::DeviceT device_type) {
+        return (can_transform_to_blocked_reducer(array, device_type) &&
                 static_as_axis_reduce(array)->functor_name_ == "reducers::sum" &&
                 DALI_CUDA_VERSION >= 9.0);
     }

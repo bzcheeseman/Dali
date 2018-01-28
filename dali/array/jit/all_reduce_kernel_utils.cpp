@@ -60,14 +60,14 @@ namespace {
         );
     }
 
-    std::string generate_all_reduce_kernel_constructor(std::string name, int ndim, int result_ndim) {
+    std::string generate_all_reduce_kernel_constructor(std::string name, int ndim) {
         auto arg = generate_all_reduce_kernel_argument(1);
         return utils::make_message(
             "    C1 ", arg, "_;\n"
-            "    static const int ndim = ", result_ndim, ";\n"
+            "    static const int ndim = 1;\n"
             "    typedef Type T;\n"
             "    XINLINE const Shape<ndim>& shape() const {\n"
-            "        return ", arg, "_.shape();\n"
+            "        return Shape<ndim>(1);\n"
             "    }\n"
             "    XINLINE ", name, ndim, "(\n",
             generate_reduce_kernel_constructor_arguments(1), "\n"
@@ -122,7 +122,7 @@ namespace {
 
     std::string generate_argument_all_reduce_loop(int ndim) {
         return utils::make_message(
-            "        Shape<ndim> idx;"
+            "        Shape<", ndim, "> idx;"
             "        typename C1::T res;\n"
             "        Reducer::SetInitValue(res);\n",
             construct_for_loop(
@@ -135,7 +135,7 @@ namespace {
                 utils::make_message(generate_all_reduce_kernel_argument(1), "_"),
                 8
             ),
-            "        return indices_to_offset(shape(), idx);\n"
+            "        return indices_to_offset(", generate_all_reduce_kernel_argument(1), "_.shape(), idx);\n"
         );
     }
 
@@ -248,12 +248,12 @@ namespace {
 }
 
 
-std::string create_all_reduce_kernel_caller(int ndim, int result_ndim) {
+std::string create_all_reduce_kernel_caller(int ndim) {
     return utils::make_message(
         generate_reduce_kernel_template_code(1),
         "struct AllReduceKernel", ndim, " {\n",
-        generate_all_reduce_kernel_constructor("AllReduceKernel", ndim, result_ndim),
-        "    XINLINE T operator[](const Shape<", result_ndim, ">&) const {\n",
+        generate_all_reduce_kernel_constructor("AllReduceKernel", ndim),
+        "    XINLINE T operator[](const Shape<1>&) const {\n",
         generate_all_reduce_loop(ndim),
         "    }\n"
         "};\n",
@@ -261,12 +261,12 @@ std::string create_all_reduce_kernel_caller(int ndim, int result_ndim) {
     );
 }
 
-std::string create_argument_all_reduce_kernel_caller(int ndim, int result_ndim) {
+std::string create_argument_all_reduce_kernel_caller(int ndim) {
     return utils::make_message(
         generate_reduce_kernel_template_code(1),
         "struct ArgumentAllReduceKernel", ndim, " {\n",
-        generate_all_reduce_kernel_constructor("ArgumentAllReduceKernel", ndim, result_ndim),
-        "    XINLINE T operator[](const Shape<", result_ndim, ">&) const {\n",
+        generate_all_reduce_kernel_constructor("ArgumentAllReduceKernel", ndim),
+        "    XINLINE T operator[](const Shape<1>&) const {\n",
         generate_argument_all_reduce_loop(ndim),
         "    }\n"
         "};\n",

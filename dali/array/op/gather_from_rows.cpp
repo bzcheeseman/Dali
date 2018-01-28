@@ -19,7 +19,6 @@ namespace {
 namespace op {
     namespace jit {
         struct GatherFromRows : public JITNode {
-            static const hash_t optype_hash;
             GatherFromRows(Array source, Array indices) :
                     JITNode(op_shape(indices.shape(), source.shape()), source.dtype(), {source, indices}) {}
 
@@ -27,8 +26,8 @@ namespace op {
                 return std::max(1, arguments_[0].ndim() - 1);
             }
 
-            virtual std::string kernel_name(const node_to_info_t& node_to_info) const {
-                return utils::make_message("gather_from_rows_kernel_", node_to_info.at(this).computation_rank, "d");
+            virtual std::string kernel_name() const {
+                return utils::make_message("gather_from_rows_kernel_", ndim(), "d");
             }
 
             expression_ptr copy() const override {
@@ -43,99 +42,54 @@ namespace op {
                 return arguments_[0].is_assignable();
             }
 
-            std::string prefix_code(const node_to_info_t& node_to_info,
-                                            memory::DeviceT device_type,
-                                            bool assignment_code) const {
-                int source_rank = node_to_info.at(arguments_[0].expression().get()).computation_rank;
-                int indices_rank = node_to_info.at(arguments_[1].expression().get()).computation_rank;
-                int self_rank = node_to_info.at(this).computation_rank;
+            std::string prefix_code(memory::DeviceT device_type,
+                                    bool assignment_code) const {
                 std::string kernel;
-                if (self_rank == 1) {
+                if (ndim() == 1) {
                     kernel = "source_[{query[0], indices_[query[0]]}];";
                 } else {
                     std::stringstream ss;
                     ss << "source_[{query[0]";
-                    ASSERT2(indices_rank == 1, utils::make_message(
-                        "computation_rank for indices should be 1 (got rank=", indices_rank, ")."));
+                    ASSERT2(arguments_[1].ndim() == 1, utils::make_message(
+                        "computation_rank for indices should be 1 (got rank=", arguments_[1].ndim(), ")."));
                     ss << ", indices_[query[0]]";
-                    for (int i = 1; i < source_rank - 1; i++) {
+                    for (int i = 1; i < arguments_[0].ndim() - 1; i++) {
                         ss << ", query[" << i << "]";
                     }
                     ss << "}]";
                     kernel = ss.str();
                 }
-                return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
+                return define_kernel(/*ndim=*/ndim(),
                                      /*has_shape=*/true,
                                      /*arguments=*/{"source", "indices"},
                                      /*kernel=*/kernel,
-                                     /*name=*/kernel_name(node_to_info),
+                                     /*name=*/kernel_name(),
                                      /*is_assignable=*/assignment_code);
             }
 
-            virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
-                return prefix_code(node_to_info, device_type, false);
+            virtual std::string prefix_code(memory::DeviceT device_type) const override {
+                return prefix_code(device_type, false);
             }
 
             virtual std::string assignment_prefix_code(hash_t hash,
                                                        const std::vector<OPERATOR_T>& operators,
-                                                       const node_to_info_t& node_to_info,
                                                        memory::DeviceT device_type,
                                                        const std::vector<int>& computation_ranks,
                                                        const std::vector<PARALLELISM_T>& parallelism_types) const override {
-                return (JITNode::assignment_prefix_code(hash, operators, node_to_info, device_type, computation_ranks, parallelism_types) +
-                        prefix_code(node_to_info, device_type, true));
-            }
-
-            virtual void compute_node_compilation_info(
-                    int desired_computation_rank,
-                    const std::vector<int>& desired_computation_shape,
-                    SymbolTable& symbol_table,
-                    node_to_info_t& node_to_info) const override {
-                node_to_info[this].computation_rank = desired_computation_rank;
-
-                auto source_original_bshape = arguments_[0].shape();
-                int source_ndim = source_original_bshape.size();
-                // indices dim 1, dim2, etc... source dim 3, dim 4, etc...
-                std::vector<int> source_shape(
-                    desired_computation_shape.end() - (source_ndim - 2),
-                    desired_computation_shape.end()
-                );
-                // add dim 1 & 2 of source back in (hidden from output by gather operation).
-                if (source_original_bshape[0] == -1) {
-                    source_original_bshape[0] = desired_computation_shape[0];
-                }
-                if (source_original_bshape[1] == -1) {
-                    source_original_bshape[1] = desired_computation_shape[0];
-                }
-                source_shape.insert(source_shape.begin(), source_original_bshape.begin(), source_original_bshape.begin() + 2);
-                std::vector<int> indices_shape(
-                    desired_computation_shape.begin(),
-                    desired_computation_shape.end() - (source_ndim - 2)
-                );
-
-                op::jit::compute_node_compilation_info(arguments_[0], source_ndim, source_shape, symbol_table, node_to_info);
-                op::jit::compute_node_compilation_info(arguments_[1], 1, indices_shape, symbol_table, node_to_info);
-                node_to_info[this].hash = utils::Hasher().add(optype_hash)
-                                                            .add(desired_computation_rank)
-                                                            .add(node_to_info.at(arguments_[0].expression().get()).hash)
-                                                            .add(node_to_info.at(arguments_[1].expression().get()).hash)
-                                                            .value();
-
+                return (JITNode::assignment_prefix_code(hash, operators, device_type, computation_ranks, parallelism_types) +
+                        prefix_code(device_type, true));
             }
 
             virtual bool shape_required() const override {return true;}
 
             virtual std::string get_call_code_nd(
                     const SymbolTable& symbol_table,
-                    const node_to_info_t& node_to_info,
                     memory::DeviceT device_type) const override {
-                return generate_call_code_nd(this, kernel_name(node_to_info),
-                                             symbol_table, node_to_info, device_type,
+                return generate_call_code_nd(this, kernel_name(),
+                                             symbol_table, device_type,
                                              /*has_shape=*/true);
             }
         };
-        const hash_t GatherFromRows::optype_hash = std::hash<std::string>()(typeid(GatherFromRows).name());
     }  // namespace jit
     Array gather_from_rows(const Array& source, const Array& indices) {
         ASSERT2(source.ndim() > 1, utils::make_message(

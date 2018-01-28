@@ -51,7 +51,6 @@ std::string define_kernel(int ndim, bool has_shape,
 std::string generate_call_code_nd(const Expression*,
                                   const std::string& kernel_name,
                                   const op::jit::SymbolTable& symbol_table,
-                                  const op::jit::node_to_info_t& node_to_info,
                                   memory::DeviceT device_type,
                                   bool has_shape);
 #endif

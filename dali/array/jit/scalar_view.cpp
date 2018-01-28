@@ -11,21 +11,13 @@
 
 namespace op {
 namespace jit {
-
-const hash_t ScalarView::optype_hash = std::hash<std::string>()(typeid(ScalarView).name());
-
 ScalarView::ScalarView(DType type) : JITNode({}, type, {}) {}
 
 memory::Device ScalarView::preferred_device() const {
     return memory::default_preferred_device;
 }
 
-int ScalarView::min_computation_rank() const {
-    return 1;
-}
-
 std::string ScalarView::get_call_code_nd(const SymbolTable& symbol_table,
-										 const node_to_info_t& node_to_info,
 										 memory::DeviceT device_type) const {
 	return symbol_table.get_name(this);
 }
@@ -39,15 +31,8 @@ hash_t ScalarView::compute_node_data_hash(const node_to_info_t& node_to_info,
     return symbol_table.get_scalar_index(this);
 }
 
-void ScalarView::compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const {
+void ScalarView::update_symbol_table(SymbolTable& symbol_table, node_to_info_t&) const {
     symbol_table.declare_scalar(this);
-    node_to_info[this].computation_rank = desired_computation_rank;
-    node_to_info[this].hash = utils::Hasher().add(optype_hash)
-    									     .add((int)dtype_)
-    									     .add(desired_computation_rank).value();
 }
 
 struct ScalarInt32View : public ScalarView {
@@ -96,7 +81,6 @@ Array wrap_scalar(double value) {
 
 
 struct TileScalar : public JITNode {
-    static const hash_t optype_hash;
     TileScalar(Array scalar, const std::vector<int>& shape) :
         JITNode(shape, scalar.dtype(), {scalar}) {
     }
@@ -117,46 +101,25 @@ struct TileScalar : public JITNode {
     }
 
     virtual std::string get_call_code_nd(const SymbolTable& symbol_table,
-                                         const node_to_info_t& node_to_info,
                                          memory::DeviceT device_type) const override {
         return utils::make_message(
-            kernel_name(node_to_info), "(",
-            as_jit_node(arguments_[0])->get_call_code_nd(symbol_table, node_to_info, device_type),
+            kernel_name(), "(",
+            op::jit::get_call_code_nd(arguments_[0], symbol_table, device_type),
             ", ", symbol_table.get_shape(this), ")");
-    }
-
-    virtual void compute_node_compilation_info(int desired_computation_rank,
-                                               const std::vector<int>& desired_computation_shape,
-                                               SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const override {
-        node_to_info[this].computation_rank = desired_computation_rank;
-        node_to_info[this].computation_shape = desired_computation_shape;
-        op::jit::compute_node_compilation_info(arguments_[0],
-                                               1,
-                                               {1},
-                                               symbol_table,
-                                               node_to_info);
-        utils::Hasher hasher;
-        hasher.add(optype_hash)
-              .add(desired_computation_rank)
-              .add(node_to_info.at(arguments_[0].expression().get()).hash);
-        node_to_info[this].hash = hasher.value();
-
     }
 
     virtual bool shape_required() const override {return true;}
 
-    std::string kernel_name(const node_to_info_t& node_to_info) const {
-        return utils::make_message("tile_scalar", node_to_info.at(this).computation_rank, "d");
+    std::string kernel_name() const {
+        return utils::make_message("tile_scalar", ndim(), "d");
     }
 
-    virtual std::string prefix_code(const node_to_info_t& node_to_info,
-                                    memory::DeviceT device_type) const override {
-        return define_kernel(/*ndim=*/node_to_info.at(this).computation_rank,
+    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+        return define_kernel(/*ndim=*/ndim(),
                              /*has_shape=*/true,
                              /*arguments=*/{"scalar",},
                              /*kernel=*/"scalar_[0]",
-                             /*name=*/kernel_name(node_to_info),
+                             /*name=*/kernel_name(),
                              /*is_assignable=*/false);
     }
 
@@ -176,12 +139,11 @@ struct TileScalar : public JITNode {
     }
 };
 
-const hash_t TileScalar::optype_hash = std::hash<std::string>()(typeid(TileScalar).name());
-
 Array tile_scalar(Array node, const std::vector<int>& shape) {
     ASSERT2(node.is_scalar(), utils::make_message(
         "tile_scalar can only be called on a scalar array "
         "(got Array with shape = ", node.shape(), ")."));
+    if (shape.size() == 0) return node;
     return Array(std::make_shared<TileScalar>(node, shape));
 }
 

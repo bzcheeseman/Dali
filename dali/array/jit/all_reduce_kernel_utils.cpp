@@ -66,7 +66,7 @@ namespace {
             "    C1 ", arg, "_;\n"
             "    static const int ndim = 1;\n"
             "    typedef Type T;\n"
-            "    XINLINE const Shape<ndim>& shape() const {\n"
+            "    XINLINE Shape<ndim> shape() const {\n"
             "        return Shape<ndim>(1);\n"
             "    }\n"
             "    XINLINE ", name, ndim, "(\n",
@@ -156,8 +156,8 @@ namespace {
     std::string construct_warp_axis_reduce_for_loop(int ndim) {
         std::string num_cols = utils::make_message(
                 generate_all_reduce_kernel_argument(1), "_.shape()[", ndim - 1, "]");
-        int x_bits = 8;
-        const unsigned buffer_size = 1 << x_bits;
+        int x_bits = op::jit::thread_bits();
+        const unsigned buffer_size = op::jit::nthreads();
         return utils::make_message(
             "        __shared__ T buffer[", buffer_size, "];\n"
             "        query[", ndim - 1, "] = threadIdx.x;\n"

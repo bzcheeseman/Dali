@@ -14,7 +14,7 @@ typedef std::shared_ptr<Expression> expression_ptr;
 
 class Array;
 
-struct Expression {
+struct Expression : public std::enable_shared_from_this<Expression> {
   public:
     std::vector<int> shape_;
     DType            dtype_;

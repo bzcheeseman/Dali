@@ -185,13 +185,9 @@ struct ExpandDims : public JITNode {
 
     virtual std::string prefix_code(memory::DeviceT device_type) const override {
         std::vector<std::string> queries;
-        int query_index = 0;
         for (int i = 0; i < ndim(); i++) {
             if (i != axis_) {
-                queries.emplace_back(utils::make_message("query[", query_index, "]"));
-                query_index++;
-            } else {
-                queries.emplace_back("0");
+                queries.emplace_back(utils::make_message("query[", i, "]"));
             }
         }
         return define_kernel(/*ndim=*/ndim(),

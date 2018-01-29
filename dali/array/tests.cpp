@@ -20,6 +20,7 @@
 #include "dali/array/op/one_hot.h"
 #include "dali/array/op/gather.h"
 #include "dali/array/op/gather_from_rows.h"
+#include "dali/array/op/scan.h"
 #include "dali/array/jit/scalar_view.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/buffer_view.h"
@@ -1685,3 +1686,73 @@ TEST(ArrayOtherTests, all_close_and_all_equals) {
     EXPECT_FALSE(Array::equals(a, a + perturb));
     EXPECT_TRUE(Array::allclose(a, a + perturb, 0.11));
 }
+
+
+namespace {
+    Array reference_scan(Array input, bool prod, bool inclusive) {
+        Array out;
+        if (inclusive) {
+            out = Array::zeros_like(input);
+        } else {
+            auto out_shape = input.shape();
+            out_shape.back() += 1;
+            out = Array::zeros(out_shape, input.dtype());
+        }
+
+        if (input.ndim() == 2) {
+            for (int i = 0; i < input.shape()[0]; i++) {
+                op::assign(out[i], OPERATOR_T_EQL, reference_scan(input[i], prod, inclusive)).eval();
+            }
+        } else if (input.ndim() == 1) {
+            int offset = inclusive ? 0 : 1;
+            if (!inclusive) {
+                int neutral_element = prod ? 1 : 0;
+                op::assign(out[0], OPERATOR_T_EQL, neutral_element).eval();
+            }
+            for (int i = 0; i < input.shape()[0]; i++) {
+                int index = offset + i;
+                if (index == 0) {
+                    op::assign(out[i], OPERATOR_T_EQL, input[i]).eval();
+                } else {
+                    if (prod) {
+                        op::assign(out[index], OPERATOR_T_EQL, input[i] * out[index - 1]).eval();
+                    } else {
+                        op::assign(out[index], OPERATOR_T_EQL, input[i] + out[index - 1]).eval();
+                    }
+                }
+            }
+        } else {
+            ASSERT2(false, "reference_scan only supports 1d and 2d.");
+        }
+        return out;
+    }
+
+    Array reference_cumsum(Array input, bool inclusive) {
+        return reference_scan(input, false, inclusive);
+    }
+
+    Array reference_cumprod(Array input, bool inclusive) {
+        return reference_scan(input, true, inclusive);
+    }
+}
+
+TEST(ScanTests, cumsum) {
+    for (auto inclusive : {true, false}) {
+        auto a = op::arange(0, 20);
+        auto csum1d = op::cumsum(a, inclusive);
+        EXPECT_TRUE(Array::equals(csum1d, reference_cumsum(a, inclusive)));
+        auto csum2d = op::cumsum(a.reshape({2, 10}), inclusive);
+        EXPECT_TRUE(Array::equals(csum2d, reference_cumsum(a.reshape({2, 10}), inclusive)));
+    }
+}
+
+TEST(ScanTests, cumprod) {
+    for (auto inclusive : {true, false}) {
+        auto a = op::arange(1, 21);
+        auto csum1d = op::cumprod(a, inclusive);
+        EXPECT_TRUE(Array::equals(csum1d, reference_cumprod(a, inclusive)));
+        auto csum2d = op::cumprod(a.reshape({2, 10}), inclusive);
+        EXPECT_TRUE(Array::equals(csum2d, reference_cumprod(a.reshape({2, 10}), inclusive)));
+    }
+}
+

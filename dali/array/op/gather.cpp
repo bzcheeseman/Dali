@@ -74,9 +74,12 @@ namespace op {
                                                        const std::vector<OPERATOR_T>& operators,
                                                        memory::DeviceT device_type,
                                                        const std::vector<int>& computation_ranks,
-                                                       const std::vector<PARALLELISM_T>& parallelism_types) const override {
-                return (JITNode::assignment_prefix_code(hash, operators, device_type, computation_ranks, parallelism_types) +
-                        prefix_code(device_type, true));
+                                                       const std::vector<PARALLELISM_T>& parallelism_types,
+                                                       const std::vector<bool>& assignment,
+                                                       const std::vector<bool>& grid_keep_inner_dims) const override {
+                return (JITNode::assignment_prefix_code(
+                    hash, operators, device_type, computation_ranks,
+                    parallelism_types, assignment, grid_keep_inner_dims) + prefix_code(device_type, true));
             }
 
             virtual std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,

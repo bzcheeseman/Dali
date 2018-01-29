@@ -75,7 +75,7 @@ Compiler::Compiler(std::vector<std::string> headers, std::string outpath, std::s
 
 std::string Compiler::kCxxExecutable  = STR(DALI_CXX_COMPILER);
 std::string Compiler::kCudaExecutable = "nvcc";
-std::string Compiler::kCudaCxxExecutable = "/usr/local/bin/clang";//STR(DALI_CUDA_CXX_COMPILER);
+std::string Compiler::kCudaCxxExecutable = STR(DALI_CUDA_CXX_COMPILER);
 std::string Compiler::kCompilerId     = STR(DALI_CXX_COMPILER_ID);
 
 

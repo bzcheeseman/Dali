@@ -129,6 +129,32 @@ XINLINE Shape<ndim> index_to_dim(int index, const Shape<ndim>& shape) {
 }
 
 template<int ndim>
+XINLINE Shape<ndim> index_to_dim_ignore_inner(int index, const Shape<ndim>& shape) {
+    Shape<ndim> multi_dimensional_index;
+    multi_dimensional_index[ndim - 1] = 0;
+    #pragma unroll
+    for (int i = ndim - 2; i >= 0; i--) {
+        multi_dimensional_index[i] = index % shape[i];
+        index /= shape[i];
+    }
+    return multi_dimensional_index;
+}
+
+template<>
+XINLINE Shape<1> index_to_dim_ignore_inner(int index, const Shape<1>& shape) {
+    return Shape<1>(0);
+}
+
+template<>
+XINLINE Shape<2> index_to_dim_ignore_inner(int index, const Shape<2>& shape) {
+    Shape<2> multi_dimensional_index;
+    multi_dimensional_index[0] = index % shape[0];
+    multi_dimensional_index[1] = 0;
+    return multi_dimensional_index;
+}
+
+
+template<int ndim>
 XINLINE int indices_to_offset(const Shape<ndim>& shape, const Shape<ndim>& indices) {
     int offset = 0;
     int volume = 1;

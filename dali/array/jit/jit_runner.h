@@ -26,6 +26,10 @@ namespace op {
         // Convenience class for keeping track of shapes, names, declarations
         // and later using them in the template engine
         struct SymbolTable {
+            SymbolTable(const Expression* root, OPERATOR_T operator_t, const Expression* dest);
+            const Expression* root_;
+            const Expression* dest_;
+            const OPERATOR_T operator_t_;
             std::vector<Array> arrays_;
             std::vector<const ScalarView*> scalars_;
             std::vector<const Expression*> shapes_;
@@ -53,6 +57,8 @@ namespace op {
             mutable std::unordered_map<const Expression*, std::string> declaration_table_;
             mutable std::unordered_map<const Expression*, std::string> shape_declaration_table_;
             std::string get_name(const Expression*) const;
+            // get the name of the variable that stores the output of this expression
+            std::string get_temporary_name(const Expression*) const;
             std::string get_shape(const Expression*) const;
 
             void declare_array(const Array& array);
@@ -71,7 +77,11 @@ namespace op {
             // mark that a value will be re-used multiple times and should be stored into
             // a temporary storage (if the value is a Buffer, then this is ignored)
             void store_into_temporary(const Array& stored, node_to_info_t& node_to_info);
+            void store_into_temporary(expression_ptr stored, node_to_info_t& node_to_info);
         };
+
+        int thread_bits();
+        int nthreads();
 
         struct JITNode : public Expression {
             ////////////////////
@@ -103,6 +113,14 @@ namespace op {
             virtual bool shape_required() const;
             // whether to allow aliasing of a node
             virtual bool antialias() const;
+            // whether a node supports chaining with other nodes (if not, then a temporary will be created
+            // as an output destination) - defaults to true
+            virtual bool chainable() const;
+
+            // Whether the last dimension of the array should count towards
+            // the grid size, or is this dimension controled by the threadIdx.x
+            virtual bool grid_keep_inner_dim() const;
+
             virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override;
             virtual memory::Device preferred_device() const override;
             virtual std::string prefix_code(memory::DeviceT device_type) const;
@@ -124,14 +142,18 @@ namespace op {
                                                 const SymbolTable& symbol_table,
                                                 memory::DeviceT device_type,
                                                 const std::vector<int>& computation_ranks,
-                                                const std::vector<PARALLELISM_T>& parallelism_types) const;
+                                                const std::vector<PARALLELISM_T>& parallelism_types,
+                                                const std::vector<bool>& assignment,
+                                                const std::vector<bool>& grid_keep_inner_dims) const;
             virtual std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
                                                    std::string dst, std::string src) const;
             virtual std::string assignment_prefix_code(hash_t hash,
                                                        const std::vector<OPERATOR_T>& operators,
                                                        memory::DeviceT device_type,
                                                        const std::vector<int>& computation_ranks,
-                                                       const std::vector<PARALLELISM_T>& parallelism_types) const;
+                                                       const std::vector<PARALLELISM_T>& parallelism_types,
+                                                       const std::vector<bool>& assignment,
+                                                       const std::vector<bool>& grid_keep_inner_dims) const;
             virtual void assignment_access_modes(SymbolTable& symbol_table, OPERATOR_T operator_t) const;
             // internals (unlikely to reimplement)
             JITNode(const std::vector<int>& shape,
@@ -142,7 +164,7 @@ namespace op {
             JITNode(const JITNode& other);
             virtual bool supports_operator(OPERATOR_T operator_t) const override;
             void compute_node_compilation_info(SymbolTable& symbol_table,
-                                               node_to_info_t& node_to_info) const;
+                                               node_to_info_t& node_to_info);
 
             virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const override;
             virtual expression_ptr _expand_dims(int new_axis, const Array* owner) const override;
@@ -153,9 +175,6 @@ namespace op {
         std::shared_ptr<JITNode> as_jit_node(Array array);
         // return a pointer to the underlying jit node, does not dynamic_cast
         JITNode* static_as_jit_node(const Array& array);
-        // does dynamic_cast to check if an expression is a jit node:
-        bool is_jit_node(const Array& arr);
-
         void compute_node_compilation_info(const Array& a,
                                            SymbolTable& symbol_table,
                                            node_to_info_t& node_to_info);

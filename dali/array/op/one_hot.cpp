@@ -9,13 +9,6 @@ namespace {
         base_shape.emplace_back(new_dim);
         return base_shape;
     }
-    std::vector<int> drop_last(std::vector<int> base_shape) {
-        ASSERT2(base_shape.size() > 1, utils::make_message(
-            "Attempting to remove last dimension of indices in OneHot with ndim ",
-            base_shape.size(), ", but indices must have at least ndim = 2"));
-        base_shape.pop_back();
-        return base_shape;
-    }
 }
 
 namespace op {

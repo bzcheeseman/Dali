@@ -138,31 +138,32 @@ namespace op {
                 );
             }
 
-            std::string prefix_code(memory::DeviceT device_type) const override {
+            void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
                 std::string clsname = utils::make_message(char(std::toupper(base_kernel_name()[0])),
                                       base_kernel_name().substr(1));
                 bool is_cpu = device_type == memory::DEVICE_T_CPU;
-                return utils::make_message(
-                        "template<typename Reducer, typename Type, typename C1, typename C2>\n"
-                        "struct ", clsname, " {\n"
-                        "    C1 arg_;\n"
-                        "    C2 output_;\n"
-                        "    static const int ndim = C1::ndim;\n"
-                        "    typedef Type T;\n"
-                        "    XINLINE Shape<ndim> shape() const {\n"
-                        "        return output_.shape();\n"
-                        "    }\n"
-                        "    XINLINE ", clsname, "(C1 arg, C2 output) : arg_(arg), output_(output) {}\n"
-                        "    ", (is_cpu ? "XINLINE" : "inline __device__"), " void operator[](Shape<ndim> query) {\n"
-                        "        int row_size = arg_.shape()[ndim - 1];\n",
-                        (is_cpu ? cpu_scan_code() : gpu_scan_code()),
-                        "    }\n"
-                        "};\n"
-                        "template<typename Reducer, typename Type, typename C1, typename C2>\n"
-                        "XINLINE ", clsname, "<Reducer, Type, C1, C2> ", base_kernel_name(), "(\n"
-                        "        C1 arg, C2 output) {\n"
-                        "    return ", clsname, "<Reducer, Type, C1, C2>(arg, output);\n"
-                        "}\n");
+                insert(utils::make_message(
+                    "template<typename Reducer, typename Type, typename C1, typename C2>\n"
+                    "struct ", clsname, " {\n"
+                    "    C1 arg_;\n"
+                    "    C2 output_;\n"
+                    "    static const int ndim = C1::ndim;\n"
+                    "    typedef Type T;\n"
+                    "    XINLINE Shape<ndim> shape() const {\n"
+                    "        return output_.shape();\n"
+                    "    }\n"
+                    "    XINLINE ", clsname, "(C1 arg, C2 output) : arg_(arg), output_(output) {}\n"
+                    "    ", (is_cpu ? "XINLINE" : "inline __device__"), " void operator[](Shape<ndim> query) {\n"
+                    "        int row_size = arg_.shape()[ndim - 1];\n",
+                    (is_cpu ? cpu_scan_code() : gpu_scan_code()),
+                    "    }\n"
+                    "};\n"));
+                insert(utils::make_message(
+                    "template<typename Reducer, typename Type, typename C1, typename C2>\n"
+                    "XINLINE ", clsname, "<Reducer, Type, C1, C2> ", base_kernel_name(), "(\n"
+                    "        C1 arg, C2 output) {\n"
+                    "    return ", clsname, "<Reducer, Type, C1, C2>(arg, output);\n"
+                    "}\n"));
             }
 
             expression_ptr copy() const override {

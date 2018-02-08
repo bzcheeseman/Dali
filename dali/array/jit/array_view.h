@@ -110,6 +110,7 @@ struct Shape {
 
     int XINLINE numel() const {
         int volume = 1;
+        #pragma unroll
         for (int i = 0; i < num_dims; i++) {
             volume *= sizes_[i];
         }

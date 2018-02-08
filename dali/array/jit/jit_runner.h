@@ -22,6 +22,7 @@ namespace op {
         };
 
         typedef std::unordered_map<const Expression*, CompilationInfo> node_to_info_t;
+        typedef std::function<void(const std::string&)> insert_t;
 
         // Convenience class for keeping track of shapes, names, declarations
         // and later using them in the template engine
@@ -123,7 +124,8 @@ namespace op {
 
             virtual bool is_axis_collapsible_with_axis_minus_one(int axis) const override;
             virtual memory::Device preferred_device() const override;
-            virtual std::string prefix_code(memory::DeviceT device_type) const;
+            virtual void prefix_code(memory::DeviceT device_type,
+                                     insert_t insert) const;
             virtual PARALLELISM_T parallelism_type() const;
             virtual hash_t compute_node_data_hash(const node_to_info_t& node_to_info, const SymbolTable&) const;
 
@@ -147,13 +149,14 @@ namespace op {
                                                 const std::vector<bool>& grid_keep_inner_dims) const;
             virtual std::string assignment_code_nd(OPERATOR_T operator_t, memory::DeviceT device_type,
                                                    std::string dst, std::string src) const;
-            virtual std::string assignment_prefix_code(hash_t hash,
-                                                       const std::vector<OPERATOR_T>& operators,
-                                                       memory::DeviceT device_type,
-                                                       const std::vector<int>& computation_ranks,
-                                                       const std::vector<PARALLELISM_T>& parallelism_types,
-                                                       const std::vector<bool>& assignment,
-                                                       const std::vector<bool>& grid_keep_inner_dims) const;
+            virtual void assignment_prefix_code(hash_t hash,
+                                                const std::vector<OPERATOR_T>& operators,
+                                                memory::DeviceT device_type,
+                                                const std::vector<int>& computation_ranks,
+                                                const std::vector<PARALLELISM_T>& parallelism_types,
+                                                const std::vector<bool>& assignment,
+                                                const std::vector<bool>& grid_keep_inner_dims,
+                                                insert_t insert) const;
             virtual void assignment_access_modes(SymbolTable& symbol_table, OPERATOR_T operator_t) const;
             // internals (unlikely to reimplement)
             JITNode(const std::vector<int>& shape,

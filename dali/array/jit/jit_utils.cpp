@@ -146,10 +146,11 @@ std::vector<int> get_common_shape(const std::vector<Array>& arrays) {
     return get_common_shape(arg_shapes);
 }
 
-std::string define_kernel(int ndim, bool has_shape,
-                          const std::vector<std::string>& arguments,
-                          std::string kernel, std::string kernel_name,
-                          bool assignment_code) {
+void define_kernel(int ndim, bool has_shape,
+                   const std::vector<std::string>& arguments,
+                   std::string kernel, std::string kernel_name,
+                   bool assignment_code,
+                   op::jit::insert_t insert) {
     ASSERT2(kernel_name.size() > 0, "kernel_name must be a non-empty string.");
     ASSERT2(ndim > 0, utils::make_message("ndim must be strictly positive (got ndim=", ndim, ")."));
     size_t num_args = arguments.size();
@@ -276,18 +277,18 @@ std::string define_kernel(int ndim, bool has_shape,
         "    }\n");
     }
 
-    return utils::make_message(templated_declarer, "\n",
+    insert(utils::make_message(templated_declarer, "\n",
         "struct ", name, " {\n", member_variables,
         "    static const int ndim = ", ndim, ";\n", typedefinition, get_shape_fun,
         "    XINLINE ", name, "(", call_arguments_definition, ")\n"
         "       : ", constructor_arguments, " {}\n",
         const_query, modifiable_query,
-        "};\n", templated_declarer, "\n",
+        "};\n"));
+    insert(utils::make_message(templated_declarer, "\n",
         name, templated_caller, " ", kernel_name,
         "(", call_arguments_definition, ") {\n"
         "    return ", name, templated_caller, "(", call_arguments, ");\n"
-        "}\n"
-    );
+        "}\n"));
 }
 
 std::string generate_call_code_nd(const Expression* expr,

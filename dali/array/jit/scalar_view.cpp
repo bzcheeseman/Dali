@@ -114,13 +114,14 @@ struct TileScalar : public JITNode {
         return utils::make_message("tile_scalar", ndim(), "d");
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return define_kernel(/*ndim=*/ndim(),
-                             /*has_shape=*/true,
-                             /*arguments=*/{"scalar",},
-                             /*kernel=*/"scalar_[0]",
-                             /*name=*/kernel_name(),
-                             /*is_assignable=*/false);
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        define_kernel(/*ndim=*/ndim(),
+                      /*has_shape=*/true,
+                      /*arguments=*/{"scalar",},
+                      /*kernel=*/"scalar_[0]",
+                      /*name=*/kernel_name(),
+                      /*is_assignable=*/false,
+                      insert);
     }
 
     virtual expression_ptr _reshape(const std::vector<int>& new_shape, const Array* owner) const override {

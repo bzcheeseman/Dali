@@ -157,14 +157,13 @@ namespace {
         std::string num_cols = utils::make_message(
                 generate_all_reduce_kernel_argument(1), "_.shape()[", ndim - 1, "]");
         int x_bits = op::jit::thread_bits();
-        const unsigned buffer_size = op::jit::nthreads();
         return utils::make_message(
-            "        __shared__ T buffer[", buffer_size, "];\n"
+            "        __shared__ T buffer[", op::jit::nthreads(), "];\n"
             "        query[", ndim - 1, "] = threadIdx.x;\n"
             "        if (threadIdx.x < ", num_cols, ") {\n"
             "            buffer[threadIdx.x] = ", generate_all_reduce_kernel_argument(1), "_[query];\n"
             "        }\n"
-            "        for (unsigned x = ", buffer_size, "; x < ", num_cols, "; x += ", buffer_size, ") {\n"
+            "        for (unsigned x = blockDim.x; x < ", num_cols, "; x += blockDim.x) {\n"
             "            const int col = x + threadIdx.x;\n"
             "            if (col < ", num_cols, ") {\n"
             "                query[", ndim - 1, "] = col;\n"
@@ -178,7 +177,32 @@ namespace {
             "            Reducer::SetInitValue(buffer[threadIdx.x]);\n"
             "        }\n"
             "        __syncthreads();\n"
-            "        ReduceX", ndim, "<Reducer, ", x_bits, ">(buffer, threadIdx.x);\n"
+            "        ReduceX<Reducer, ", x_bits, ">(buffer, threadIdx.x);\n"
+            "        return buffer[0];\n"
+        );
+    }
+
+    std::string construct_warp_all_reduce_for_loop() {
+        return utils::make_message(
+            "        __shared__ T buffer[", op::jit::nthreads(), "];\n"
+            "        int num_el = ", generate_all_reduce_kernel_argument(1), "_.shape().numel();\n"
+            "        if (threadIdx.x < num_el) {\n"
+            "            buffer[threadIdx.x] = ", generate_all_reduce_kernel_argument(1), "_[index_to_dim(threadIdx.x, ", generate_all_reduce_kernel_argument(1), "_.shape())];\n"
+            "        }\n"
+            "        for (unsigned x = blockDim.x; x < num_el; x += blockDim.x) {\n"
+            "             const int idx = x + threadIdx.x;\n"
+            "             if (idx < num_el) {\n"
+            "                Reducer::Reduce(buffer[threadIdx.x], ", generate_all_reduce_kernel_argument(1), "_[index_to_dim(idx, ", generate_all_reduce_kernel_argument(1), "_.shape())]);\n"
+            "            }\n"
+            "        }\n"
+            "        __syncthreads();\n"
+            "        // if number of rows is smaller than buffer,\n"
+            "        // fill buffer with neutral value\n"
+            "        if (threadIdx.x >= num_el) {\n"
+            "            Reducer::SetInitValue(buffer[threadIdx.x]);\n"
+            "        }\n"
+            "        __syncthreads();\n"
+            "        ReduceX<Reducer, ", op::jit::thread_bits(), ">(buffer, threadIdx.x);\n"
             "        return buffer[0];\n"
         );
     }
@@ -198,10 +222,10 @@ namespace {
         );
     }
 
-    std::string warp_axis_reduce_prefix_code(int ndim) {
+    std::string warp_axis_reduce_prefix_code() {
         return utils::make_message(
             "template<typename Reducer, int x_bits, typename DType>\n"
-            "inline __device__ void ReduceX", ndim, "(volatile DType buf[], int tid) {\n"
+            "inline __device__ void ReduceX(volatile DType buf[], int tid) {\n"
             "  if (x_bits >= 10) {\n"
             "    if (tid < 512) Reducer::Reduce(buf[tid] , buf[tid + 512]);\n"
             "    __syncthreads();\n"
@@ -247,36 +271,35 @@ namespace {
     }
 }
 
+typedef std::function<void(const std::string&)> inserter;
 
-std::string create_all_reduce_kernel_caller(int ndim) {
-    return utils::make_message(
+void create_all_reduce_kernel_caller(int ndim, inserter insert) {
+    insert(utils::make_message(
         generate_reduce_kernel_template_code(1),
         "struct AllReduceKernel", ndim, " {\n",
         generate_all_reduce_kernel_constructor("AllReduceKernel", ndim),
         "    XINLINE T operator[](const Shape<1>&) const {\n",
         generate_all_reduce_loop(ndim),
         "    }\n"
-        "};\n",
-        generate_reduce_kernel_caller_code("AllReduceKernel", "all_reduce_kernel", ndim, 1)
-    );
+        "};\n"));
+    insert(generate_reduce_kernel_caller_code("AllReduceKernel", "all_reduce_kernel", ndim, 1));
 }
 
-std::string create_argument_all_reduce_kernel_caller(int ndim) {
-    return utils::make_message(
+void create_argument_all_reduce_kernel_caller(int ndim, inserter insert) {
+    insert(utils::make_message(
         generate_reduce_kernel_template_code(1),
         "struct ArgumentAllReduceKernel", ndim, " {\n",
         generate_all_reduce_kernel_constructor("ArgumentAllReduceKernel", ndim),
         "    XINLINE T operator[](const Shape<1>&) const {\n",
         generate_argument_all_reduce_loop(ndim),
         "    }\n"
-        "};\n",
-        generate_reduce_kernel_caller_code("ArgumentAllReduceKernel", "argument_all_reduce_kernel", ndim, 1)
-    );
+        "};\n"));
+    insert(generate_reduce_kernel_caller_code("ArgumentAllReduceKernel", "argument_all_reduce_kernel", ndim, 1));
 }
 
-std::string create_warp_axis_reduce_kernel_caller(int ndim) {
-    return utils::make_message(
-        warp_axis_reduce_prefix_code(ndim),
+void create_warp_axis_reduce_kernel_caller(int ndim, inserter insert) {
+    insert(warp_axis_reduce_prefix_code());
+    insert(utils::make_message(
         generate_reduce_kernel_template_code(1),
         "struct WarpAxisReduceKernel", ndim, " {\n",
         generate_axis_reduce_kernel_constructor("WarpAxisReduceKernel", ndim, ndim - 1),
@@ -284,14 +307,26 @@ std::string create_warp_axis_reduce_kernel_caller(int ndim) {
         "        Shape<", ndim, "> query = input_query.expand_dims(", ndim, ");\n",
         construct_warp_axis_reduce_for_loop(ndim),
         "    }\n"
-        "};\n",
-        generate_reduce_kernel_caller_code("WarpAxisReduceKernel", "warp_axis_reduce_kernel", ndim, 1)
-    );
+        "};\n"));
+    insert(generate_reduce_kernel_caller_code("WarpAxisReduceKernel", "warp_axis_reduce_kernel", ndim, 1));
 }
 
-std::string create_shfl_down_warp_axis_sum_kernel_caller(int ndim) {
-    return utils::make_message(
-        "#include <cooperative_groups.h>\n",
+void create_warp_all_reduce_kernel_caller(int ndim, inserter insert) {
+    insert(warp_axis_reduce_prefix_code());
+    insert(utils::make_message(
+        generate_reduce_kernel_template_code(1),
+        "struct WarpAllReduceKernel", ndim, " {\n",
+        generate_all_reduce_kernel_constructor("WarpAllReduceKernel", ndim),
+        "    inline __device__ T operator[](const Shape<1>&) const {\n",
+        construct_warp_all_reduce_for_loop(),
+        "    }\n"
+        "};\n"));
+    insert(generate_reduce_kernel_caller_code("WarpAllReduceKernel", "warp_all_reduce_kernel", ndim, 1));
+}
+
+void create_shfl_down_warp_axis_sum_kernel_caller(int ndim, inserter insert) {
+    insert("#include <cooperative_groups.h>\n");
+    insert(utils::make_message(
         generate_reduce_kernel_template_code(1),
         "struct ShflDownAxisSumKernel", ndim, " {\n",
         generate_axis_reduce_kernel_constructor("ShflDownAxisSumKernel", ndim, ndim - 1),
@@ -299,13 +334,12 @@ std::string create_shfl_down_warp_axis_sum_kernel_caller(int ndim) {
         "        Shape<", ndim, "> query = input_query.expand_dims(", ndim, ");\n",
         construct_warp_axis_reduce_for_loop(ndim),
         "    }\n"
-        "};\n",
-        generate_reduce_kernel_caller_code("ShflDownAxisSumKernel", "shfl_down_warp_axis_sum", ndim, 1)
-    );
+        "};\n"));
+    insert(generate_reduce_kernel_caller_code("ShflDownAxisSumKernel", "shfl_down_warp_axis_sum", ndim, 1));
 }
 
-std::string create_axis_reduce_kernel_caller(int ndim) {
-    return utils::make_message(
+void create_axis_reduce_kernel_caller(int ndim, inserter insert) {
+    insert(utils::make_message(
         generate_reduce_kernel_template_code(1),
         "struct AxisReduceKernel", ndim, " {\n",
         generate_axis_reduce_kernel_constructor("AxisReduceKernel", ndim, ndim - 1),
@@ -313,13 +347,12 @@ std::string create_axis_reduce_kernel_caller(int ndim) {
         "        Shape<", ndim, "> query = input_query.expand_dims(", ndim, ");\n",
         construct_axis_reduce_for_loop(ndim),
         "    }\n"
-        "};\n",
-        generate_reduce_kernel_caller_code("AxisReduceKernel", "axis_reduce_kernel", ndim, 1)
-    );
+        "};\n"));
+    insert(generate_reduce_kernel_caller_code("AxisReduceKernel", "axis_reduce_kernel", ndim, 1));
 }
 
-std::string create_argument_axis_reduce_kernel_caller(int ndim) {
-    return utils::make_message(
+void create_argument_axis_reduce_kernel_caller(int ndim, inserter insert) {
+    insert(utils::make_message(
         generate_reduce_kernel_template_code(1),
         "struct ArgumentAxisReduceKernel", ndim, " {\n",
         generate_axis_reduce_kernel_constructor("ArgumentAxisReduceKernel", ndim, ndim - 1),
@@ -327,7 +360,6 @@ std::string create_argument_axis_reduce_kernel_caller(int ndim) {
         "        Shape<", ndim, "> query = input_query.expand_dims(", ndim, ");\n",
         construct_argument_axis_reduce_for_loop(ndim),
         "    }\n"
-        "};\n",
-        generate_reduce_kernel_caller_code("ArgumentAxisReduceKernel", "argument_axis_reduce_kernel", ndim, 1)
-    );
+        "};\n"));
+    insert(generate_reduce_kernel_caller_code("ArgumentAxisReduceKernel", "argument_axis_reduce_kernel", ndim, 1));
 }

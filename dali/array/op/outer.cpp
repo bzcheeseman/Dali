@@ -13,13 +13,14 @@ namespace op {
                 return utils::make_message("outer", ndim(), "d");
             }
 
-            std::string prefix_code(memory::DeviceT device_type) const override {
-                return define_kernel(/*ndim=*/ndim(),
-                                     /*has_shape=*/true,
-                                     /*arguments=*/{"left", "right"},
-                                     /*kernel=*/"left_[query[ndim - 2]] * right_[query[ndim - 1]]",
-                                     /*name=*/kernel_name(),
-                                     /*is_assignable=*/false);
+            void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+                define_kernel(/*ndim=*/ndim(),
+                              /*has_shape=*/true,
+                              /*arguments=*/{"left", "right"},
+                              /*kernel=*/"left_[query[ndim - 2]] * right_[query[ndim - 1]]",
+                              /*name=*/kernel_name(),
+                              /*is_assignable=*/false,
+                              insert);
             }
             expression_ptr copy() const override {return std::make_shared<Outer>(arguments_[0], arguments_[1]);}
 

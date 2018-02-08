@@ -44,10 +44,11 @@ void ensure_output_array_compatible(const Array& out,
 std::vector<int> get_common_shape(const std::vector<const std::vector<int>*>& shapes);
 std::vector<int> get_common_shape(const std::vector<Array>& arrays);
 
-std::string define_kernel(int ndim, bool has_shape,
-                          const std::vector<std::string>& arguments,
-                          std::string kernel, std::string kernel_name,
-                          bool is_assignable);
+void define_kernel(int ndim, bool has_shape,
+                   const std::vector<std::string>& arguments,
+                   std::string kernel, std::string kernel_name,
+                   bool is_assignable,
+                   op::jit::insert_t insert);
 std::string generate_call_code_nd(const Expression*,
                                   const std::string& kernel_name,
                                   const op::jit::SymbolTable& symbol_table,

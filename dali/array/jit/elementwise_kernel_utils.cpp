@@ -105,15 +105,15 @@ std::string elementwise_kernel_name(int num_args, int ndim) {
     return utils::make_message("element_wise_kernel", ndim, "D", num_args);
 }
 
-std::string create_elementwise_kernel_caller(int num_args, int ndim) {
-    return utils::make_message(
+void create_elementwise_kernel_caller(int num_args, int ndim,
+                                      std::function<void(const std::string&)> insert) {
+    insert(utils::make_message(
         generate_elementwise_kernel_template_code(num_args),
         "struct ", kernel_struct_name(num_args, ndim), " {\n",
         generate_elementwise_kernel_constructor(num_args, ndim),
         "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
         "        return Functor<T>::Map(", generate_elementwise_kernel_arguments(num_args, "_[query]"), ");\n",
         "    }\n"
-        "};\n",
-        generate_elementwise_kernel_caller_code(num_args, ndim)
-    );
+        "};\n"));
+    insert(generate_elementwise_kernel_caller_code(num_args, ndim));
 }

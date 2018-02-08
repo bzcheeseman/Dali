@@ -50,8 +50,9 @@ namespace op {
                 }
             }
 
-            std::string prefix_code(memory::DeviceT device_type,
-                                    bool assignment_code) const {
+            void prefix_code(memory::DeviceT device_type,
+                             bool assignment_code,
+                             insert_t insert) const {
                 std::string kernel;
                 if (ndim() == 1) {
                     kernel = "source_[{query[0], indices_[query[0]]}];";
@@ -67,28 +68,31 @@ namespace op {
                     ss << "}]";
                     kernel = ss.str();
                 }
-                return define_kernel(/*ndim=*/ndim(),
-                                     /*has_shape=*/true,
-                                     /*arguments=*/{"source", "indices"},
-                                     /*kernel=*/kernel,
-                                     /*name=*/kernel_name(),
-                                     /*is_assignable=*/assignment_code);
+                define_kernel(/*ndim=*/ndim(),
+                              /*has_shape=*/true,
+                              /*arguments=*/{"source", "indices"},
+                              /*kernel=*/kernel,
+                              /*name=*/kernel_name(),
+                              /*is_assignable=*/assignment_code,
+                              insert);
             }
 
-            virtual std::string prefix_code(memory::DeviceT device_type) const override {
-                return prefix_code(device_type, false);
+            virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+                prefix_code(device_type, false, insert);
             }
 
-            virtual std::string assignment_prefix_code(hash_t hash,
+            virtual void assignment_prefix_code(hash_t hash,
                                                        const std::vector<OPERATOR_T>& operators,
                                                        memory::DeviceT device_type,
                                                        const std::vector<int>& computation_ranks,
                                                        const std::vector<PARALLELISM_T>& parallelism_types,
                                                        const std::vector<bool>& assignment,
-                                                       const std::vector<bool>& grid_keep_inner_dims) const override {
-                return (JITNode::assignment_prefix_code(
+                                                       const std::vector<bool>& grid_keep_inner_dims,
+                                                       insert_t insert) const override {
+                JITNode::assignment_prefix_code(
                     hash, operators, device_type, computation_ranks,
-                    parallelism_types, assignment, grid_keep_inner_dims) + prefix_code(device_type, true));
+                    parallelism_types, assignment, grid_keep_inner_dims, insert);
+                prefix_code(device_type, true, insert);
             }
 
             virtual bool shape_required() const override {return true;}

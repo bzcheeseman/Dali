@@ -56,13 +56,14 @@ struct ReshapeRestride : public JITNode {
         return utils::make_message("reshape", ndim(), "d");
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return define_kernel(/*ndim=*/ndim(),
-                             /*has_shape=*/true,
-                             /*arguments=*/{"array",},
-                             /*kernel=*/"array_[index_to_dim(indices_to_offset(shape_, query), array_.shape())]",
-                             /*name=*/kernel_name(),
-                             /*is_assignable=*/false);
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        define_kernel(/*ndim=*/ndim(),
+                      /*has_shape=*/true,
+                      /*arguments=*/{"array",},
+                      /*kernel=*/"array_[index_to_dim(indices_to_offset(shape_, query), array_.shape())]",
+                      /*name=*/kernel_name(),
+                      /*is_assignable=*/false,
+                      insert);
     }
 
     virtual expression_ptr copy() const override {
@@ -117,7 +118,7 @@ struct BroadcastedReshape : public JITNode {
         return ss.str();
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
         std::vector<std::string> queries;
         for (int i = 0; i < ndim(); i++) {
             if (broadcasted_[i]) {
@@ -126,12 +127,13 @@ struct BroadcastedReshape : public JITNode {
                 queries.emplace_back(utils::make_message("query[", i, "]"));
             }
         }
-        return define_kernel(/*ndim=*/ndim(),
-                             /*has_shape=*/true,
-                             /*arguments=*/{"array",},
-                             /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
-                             /*name=*/kernel_name(),
-                             /*is_assignable=*/false);
+        define_kernel(/*ndim=*/ndim(),
+                      /*has_shape=*/true,
+                      /*arguments=*/{"array",},
+                      /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
+                      /*name=*/kernel_name(),
+                      /*is_assignable=*/false,
+                      insert);
     }
 
     virtual expression_ptr copy() const override {
@@ -183,19 +185,20 @@ struct ExpandDims : public JITNode {
 
     virtual bool shape_required() const override {return true;}
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
         std::vector<std::string> queries;
         for (int i = 0; i < ndim(); i++) {
             if (i != axis_) {
                 queries.emplace_back(utils::make_message("query[", i, "]"));
             }
         }
-        return define_kernel(/*ndim=*/ndim(),
-                             /*has_shape=*/true,
-                             /*arguments=*/{"array",},
-                             /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
-                             /*name=*/kernel_name(),
-                             /*is_assignable=*/false);
+        define_kernel(/*ndim=*/ndim(),
+                      /*has_shape=*/true,
+                      /*arguments=*/{"array",},
+                      /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
+                      /*name=*/kernel_name(),
+                      /*is_assignable=*/false,
+                      insert);
     }
 
     virtual expression_ptr _squeeze(int axis, const Array* owner) const override;
@@ -239,19 +242,20 @@ struct Squeeze : public JITNode {
 
     virtual bool shape_required() const override {return true;}
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
         std::vector<std::string> queries;
         for (int i = 0; i < ndim(); i++) {
             if (i != axis_) {
                 queries.emplace_back(utils::make_message("query[", i, "]"));
             }
         }
-        return define_kernel(/*ndim=*/ndim(),
-                             /*has_shape=*/true,
-                             /*arguments=*/{"array",},
-                             /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
-                             /*name=*/kernel_name(),
-                             /*is_assignable=*/false);
+        define_kernel(/*ndim=*/ndim(),
+                      /*has_shape=*/true,
+                      /*arguments=*/{"array",},
+                      /*kernel=*/utils::make_message("array_[{", utils::join(queries, ", "), "}]"),
+                      /*name=*/kernel_name(),
+                      /*is_assignable=*/false,
+                      insert);
     }
 
     virtual expression_ptr copy() const override {

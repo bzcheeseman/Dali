@@ -118,8 +118,8 @@ namespace jit {
                                          /*has_shape=*/false);
         }
 
-        virtual std::string prefix_code(memory::DeviceT device_type) const override {
-            return create_elementwise_kernel_caller(arguments_.size(), std::max(1, ndim()));
+        virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+            create_elementwise_kernel_caller(arguments_.size(), std::max(1, ndim()), insert);
         }
     };
     }  // namespace jit

@@ -25,7 +25,7 @@ struct Reducer : public JITNode {
         JITNode(output_shape, dtype, {argument}), functor_name_(functor_name) {
     }
 
-    void compilation_parameters(utils::Hasher& hasher) const override {
+    virtual void compilation_parameters(utils::Hasher& hasher) const override {
         hasher.add(functor_name_);
     }
 
@@ -72,8 +72,8 @@ struct AllReduce : public Reducer {
         return true;
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return create_all_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        create_all_reduce_kernel_caller(std::max(1, arguments_[0].ndim()), insert);
     }
 
     virtual std::string kernel_name() const override {
@@ -140,8 +140,8 @@ struct AxisReduce : public Reducer {
             dtype_);
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return create_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        create_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()), insert);
     }
 
     virtual std::string kernel_name() const override {
@@ -163,8 +163,8 @@ struct ArgumentAllReduce : public AllReduce {
         );
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return create_argument_all_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        create_argument_all_reduce_kernel_caller(std::max(1, arguments_[0].ndim()), insert);
     }
 
     virtual std::string kernel_name() const override {
@@ -199,8 +199,8 @@ struct ArgumentAxisReduce : public AxisReduce {
         );
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return create_argument_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        create_argument_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()), insert);
     }
 
     virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const override {
@@ -236,8 +236,8 @@ struct WarpAxisReduce : public AxisReduce {
         );
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return create_warp_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()));
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        create_warp_axis_reduce_kernel_caller(std::max(1, arguments_[0].ndim()), insert);
     }
 
     virtual PARALLELISM_T parallelism_type() const override {
@@ -246,6 +246,28 @@ struct WarpAxisReduce : public AxisReduce {
 
     virtual std::string kernel_name() const override {
         return "warp_axis_reduce_kernel_";
+    }
+};
+
+struct WarpAllReduce : public AllReduce {
+    using AllReduce::AllReduce;
+
+    virtual expression_ptr copy() const override {
+        return std::make_shared<WarpAllReduce>(
+            functor_name_, arguments_[0], dtype_
+        );
+    }
+
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        create_warp_all_reduce_kernel_caller(std::max(1, arguments_[0].ndim()), insert);
+    }
+
+    virtual PARALLELISM_T parallelism_type() const override {
+        return INDEPENDENT_BLOCK;
+    }
+
+    virtual std::string kernel_name() const override {
+        return "warp_all_reduce_kernel_";
     }
 };
 
@@ -266,10 +288,11 @@ namespace {
         }
     }
 
-    std::string thread_sum(std::string dtype, int word_length, int ndim) {
+    // TODO(jonathan) ensure word size checking happens at compile time
+    std::string thread_sum(std::string dtype, int word_length) {
         return utils::make_message(
             "template<typename T, int ndim>\n"
-            "inline __device__ ", dtype, " thread_sum", ndim, "(const ArrayView<", dtype, ", ndim>& input, Shape<ndim> query, int start, int stride) {\n"
+            "inline __device__ ", dtype, " thread_sum(const ArrayView<", dtype, ", ndim>& input, Shape<ndim> query, int start, int stride) {\n"
             "    ", dtype, " sum = 0;\n"
             "    ", dtype, word_length, "* ptr = (", dtype, word_length, "*) &input[query];\n"
             "    int cols_div_word_length = input.shape()[ndim-1] / ", word_length, ";\n"
@@ -292,9 +315,10 @@ namespace {
             "}\n");
     }
 
-    std::string thread_sum_generic(int ndim) {
+
+    std::string thread_sum_generic() {
         return utils::make_message("template<typename T, typename C1, int ndim>\n"
-           "inline __device__ T thread_sum", ndim, "(const C1& input, Shape<ndim> query, int start, int stride) {\n"
+           "inline __device__ T thread_sum(const C1& input, Shape<ndim> query, int start, int stride) {\n"
            "    T sum = 0;\n"
            "    int& i = query[ndim - 1];\n"
            "    for(i = start;\n"
@@ -304,6 +328,62 @@ namespace {
            "    }\n"
            "    return sum;\n"
            "}\n");
+    }
+
+    std::string thread_sum_all(std::string dtype, int word_length) {
+        return utils::make_message(
+            "template<typename T, int ndim>\n"
+            "inline __device__ ", dtype, " thread_sum_all(const ArrayView<", dtype, ", ndim>& input, int start, int stride) {\n"
+            "    ", dtype, " sum = 0;\n"
+            "    ", dtype, word_length, "* ptr = (", dtype, word_length, "*) &input[Shape<ndim>(0)];\n"
+            "    int cols_div_word_length = input.shape()[ndim-1] / ", word_length, ";\n"
+            "    int numel = input.shape().numel();\n"
+            "    int i;\n"
+            "    if (cols_div_word_length * ", word_length, " == numel) {\n"
+            "        for(i = start;\n"
+            "            i < cols_div_word_length;\n"
+            "            i += stride) {\n"
+            "            ", dtype, word_length, " in = ptr[i];\n"
+            "            sum += ", word_length_to_sum(word_length), ";\n"
+            "        }\n"
+            "    } else {\n"
+            "        for(i = start;\n"
+            "            i < numel;\n"
+            "            i += stride) {\n"
+            "            sum += input[index_to_dim(i, input.shape())];\n"
+            "        }\n"
+            "    }\n"
+            "    return sum;\n"
+            "}\n");
+    }
+
+    std::string thread_sum_all_generic() {
+        return utils::make_message("template<typename T, typename C1>\n"
+           "inline __device__ T thread_sum_all(const C1& input, int start, int stride) {\n"
+           "    T sum = 0;\n"
+           "    int i;\n"
+           "    auto shape = input.shape();\n"
+           "    int numel = shape.numel();\n"
+           "    for(i = start;\n"
+           "        i < numel;\n"
+           "        i += stride) {\n"
+           "        sum += input[index_to_dim(i, shape)];\n"
+           "    }\n"
+           "    return sum;\n"
+           "}\n");
+    }
+
+    std::string reduce_sum_tile_shfl() {
+        return "template <int tile_sz, typename T>\n"
+               "__device__ T reduce_sum_tile_shfl(cooperative_groups::thread_block_tile<tile_sz> g, T val) {\n"
+               "    int lane = g.thread_rank();\n"
+               "    // Each iteration halves the number of active threads\n"
+               "    // Each thread adds its partial sum[i] to sum[lane+i]\n"
+               "    for (int i = g.size() / 2; i > 0; i /= 2) {\n"
+               "        val += g.shfl_down(val, i);\n"
+               "    }\n"
+               "    return val; // note: only thread 0 will return full sum\n"
+               "}\n";
     }
 }
 
@@ -316,56 +396,48 @@ struct ShflDownWarpAxisSum : public AxisReduce {
         );
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
         // tunable variable:
         int tile_sz = 16;
         int rank = std::max(ndim(), 1);
-        return utils::make_message(
-            "#include <cooperative_groups.h>\n",
-            thread_sum_generic(rank),
-            // vector load versions of threadsum:
-            thread_sum("int", 4, rank),
-            thread_sum("float", 4, rank),
-            thread_sum("double", 2, rank),
-            "template <int tile_sz, typename T>\n"
-            "__device__ T reduce_sum_tile_shfl", rank, "(cooperative_groups::thread_block_tile<tile_sz> g, T val) {\n"
-            "    int lane = g.thread_rank();\n"
-            "    // Each iteration halves the number of active threads\n"
-            "    // Each thread adds its partial sum[i] to sum[lane+i]\n"
-            "    for (int i = g.size() / 2; i > 0; i /= 2) {\n"
-            "        val += g.shfl_down(val, i);\n"
-            "    }\n"
-            "    return val; // note: only thread 0 will return full sum\n"
-            "}\n"
+        std::string clsname = "ShflDownWarpAxisSum";
+        insert("#include <cooperative_groups.h>\n");
+        insert(thread_sum_generic());
+        // vector load versions of threadsum:
+        insert(thread_sum("int", 4));
+        insert(thread_sum("float", 4));
+        insert(thread_sum("double", 2));
+        insert(reduce_sum_tile_shfl());
+        insert(utils::make_message(
             "template<typename Reducer, typename Type, typename C1>\n"
-            "struct ShflDownWarpAxisSum", rank, " {\n"
+            "struct ", clsname, rank, " {\n"
             "    C1 arg_;\n"
-            "    static const int ndim = ", rank, ";\n"
+            "    static const int ndim = C1::ndim - 1;\n"
             "    typedef Type T;\n"
             "    XINLINE Shape<ndim> shape() const {\n"
             "        return arg_.shape().template axis_reduced_shape<0, ndim>();\n"
             "    }\n"
-            "    XINLINE ShflDownWarpAxisSum", rank, "(C1 arg) : arg_(arg) {}\n"
-            "    inline __device__ T operator[](const Shape<", rank, ">& input_query) const {\n"
+            "    XINLINE ", clsname, rank, "(C1 arg) : arg_(arg) {}\n"
+            "    inline __device__ T operator[](const Shape<ndim>& input_query) const {\n"
             "        __shared__ T sum;\n"
             "        sum = 0;\n"
-            "        Shape<", rank + 1, "> query = input_query.expand_dims(", rank, ");\n"
-            "        query[", rank, "] = 0;\n"
-            "        T my_sum = thread_sum", rank, "<T>(arg_, query, threadIdx.x, blockDim.x);\n"
+            "        Shape<ndim + 1> query = input_query.expand_dims(ndim);\n"
+            "        query[ndim] = 0;\n"
+            "        T my_sum = thread_sum<T>(arg_, query, threadIdx.x, blockDim.x);\n"
             "        auto tile = cooperative_groups::tiled_partition<", tile_sz, ">(\n"
             "            cooperative_groups::this_thread_block());\n"
-            "        T tile_sum = reduce_sum_tile_shfl", rank, "<", tile_sz, ">(tile, my_sum);\n"
+            "        T tile_sum = reduce_sum_tile_shfl<", tile_sz, ">(tile, my_sum);\n"
             "        if (tile.thread_rank() == 0) atomicAdd(&sum, tile_sum);\n"
             "        __syncthreads();\n"
             "        return sum;\n"
             "    }\n"
-            "};\n"
+            "};\n"));
+        insert(utils::make_message(
             "template<typename Reducer, typename Type, typename C1>\n"
-            "XINLINE ShflDownWarpAxisSum", rank, "<Reducer, Type, C1> shfl_down_warp_axis_sum", rank + 1, "d(\n"
+            "XINLINE ", clsname, rank, "<Reducer, Type, C1> ", kernel_name(), rank + 1, "d(\n"
             "        C1 arg) {\n"
-            "    return ShflDownWarpAxisSum", rank, "<Reducer, Type, C1>(arg);\n"
-            "}\n"
-        );
+            "    return ", clsname, rank, "<Reducer, Type, C1>(arg);\n"
+            "}\n"));
     }
 
     virtual PARALLELISM_T parallelism_type() const override {
@@ -377,9 +449,74 @@ struct ShflDownWarpAxisSum : public AxisReduce {
     }
 };
 
+
+struct ShflDownWarpAllSum : public AllReduce {
+    using AllReduce::AllReduce;
+
+    virtual expression_ptr copy() const override {
+        return std::make_shared<ShflDownWarpAllSum>(
+            functor_name_, arguments_[0], dtype_
+        );
+    }
+
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        // tunable variable:
+        int tile_sz = 16;
+        int rank = std::max(ndim(), 1);
+        int arg_rank = std::max(1, arguments_[0].ndim());
+        std::string clsname = "ShflDownWarpAllSum";
+
+        insert("#include <cooperative_groups.h>\n");
+        insert(thread_sum_all_generic());
+        insert(thread_sum_all("int", 4));
+        insert(thread_sum_all("float", 4));
+        insert(thread_sum_all("double", 2));
+        insert(reduce_sum_tile_shfl());
+        insert(utils::make_message(
+            "template<typename Reducer, typename Type, typename C1>\n"
+            "struct ", clsname, arg_rank, " {\n"
+            "    C1 arg_;\n"
+            "    static const int ndim = 1;\n"
+            "    typedef Type T;\n"
+            "    XINLINE Shape<ndim> shape() const {\n"
+            "        return Shape<ndim>(1);\n"
+            "    }\n"
+            "    XINLINE ", clsname, arg_rank, "(C1 arg) : arg_(arg) {}\n"
+            "    inline __device__ T operator[](const Shape<1>&) const {\n"
+            "        __shared__ T sum;\n"
+            "        sum = 0;\n"
+            "        T my_sum = thread_sum_all<T>(arg_, threadIdx.x, blockDim.x);\n"
+            "        auto tile = cooperative_groups::tiled_partition<", tile_sz, ">(\n"
+            "            cooperative_groups::this_thread_block());\n"
+            "        T tile_sum = reduce_sum_tile_shfl<", tile_sz, ">(tile, my_sum);\n"
+            "        if (tile.thread_rank() == 0) atomicAdd(&sum, tile_sum);\n"
+            "        __syncthreads();\n"
+            "        return sum;\n"
+            "    }\n"
+            "};\n"));
+        insert(utils::make_message(
+            "template<typename Reducer, typename Type, typename C1>\n"
+            "XINLINE ", clsname, arg_rank, "<Reducer, Type, C1> ", kernel_name(), arg_rank, "d(\n"
+            "        C1 arg) {\n"
+            "    return ", clsname, arg_rank, "<Reducer, Type, C1>(arg);\n"
+            "}\n"));
+    }
+
+    virtual PARALLELISM_T parallelism_type() const override {
+        return INDEPENDENT_BLOCK;
+    }
+
+    virtual std::string kernel_name() const override {
+        return "shfl_down_warp_all_sum";
+    }
+};
+
 namespace {
     AxisReduce* static_as_axis_reduce(const Array& array) {
         return static_cast<AxisReduce*>(array.expression().get());
+    }
+    AllReduce* static_as_all_reduce(const Array& array) {
+        return static_cast<AllReduce*>(array.expression().get());
     }
     // convert a reduction to a warp reduction if
     // the warp dimension is still available
@@ -391,13 +528,11 @@ namespace {
                 static_as_jit_node(array)->parallelism_type() == INDEPENDENT_BLOCK_WARP);
     }
 
-    Array transform_to_blocked_reducer(const Array& array) {
-        auto reducer = static_as_axis_reduce(array);;
-        return Array(std::make_shared<WarpAxisReduce>(
-            reducer->functor_name_,
-            reducer->arguments_[0],
-            reducer->dtype_
-        ));
+    bool can_transform_to_blocked_allreducer(const Array& array,
+                                             memory::DeviceT device_type) {
+        return (device_type == memory::DEVICE_T_GPU &&
+                typeid(*array.expression().get()).name() == typeid(AllReduce).name() &&
+                static_as_jit_node(array)->parallelism_type() == INDEPENDENT_BLOCK_WARP);
     }
 
     bool can_transform_to_shfl_down_sum(const Array& array,
@@ -407,37 +542,54 @@ namespace {
                 DALI_CUDA_VERSION >= 9.0);
     }
 
-    Array transform_to_shfl_down_sum(const Array& array) {
-        auto reducer = static_as_axis_reduce(array);
-        return Array(std::make_shared<ShflDownWarpAxisSum>(
-            reducer->functor_name_,
-            reducer->arguments_[0],
-            reducer->dtype_
-        ));
+    bool can_transform_to_shfl_down_allsum(const Array& array,
+                                        memory::DeviceT device_type) {
+        return (can_transform_to_blocked_allreducer(array, device_type) &&
+                static_as_all_reduce(array)->functor_name_ == "reducers::sum" &&
+                DALI_CUDA_VERSION >= 9.0);
     }
+
+    int register_axis_blocked = register_jit_optimization(
+        1,
+        can_transform_to_blocked_reducer,
+        [](const Array& array) {
+            auto r = static_as_axis_reduce(array);;
+            return Array(std::make_shared<WarpAxisReduce>(
+                r->functor_name_, r->arguments_[0], r->dtype_));
+        },
+        "warp_axis_reduce");
+    int register_shfl_down_axis = register_jit_optimization(
+        0,
+        can_transform_to_shfl_down_sum,
+        [](const Array& array) {
+            auto r = static_as_axis_reduce(array);
+            return Array(std::make_shared<ShflDownWarpAxisSum>(
+                r->functor_name_, r->arguments_[0], r->dtype_));},
+        "shfl_down_axis_sum");
+    int register_all_blocked = register_jit_optimization(
+        1,
+        can_transform_to_blocked_allreducer,
+        [](const Array& array) {
+            auto r = static_as_all_reduce(array);;
+            return Array(std::make_shared<WarpAllReduce>(
+                r->functor_name_, r->arguments_[0], r->dtype_));},
+        "warp_all_reduce");
+    int register_all_reduce_shfl_down = register_jit_optimization(
+        0,
+        can_transform_to_shfl_down_allsum,
+        [](const Array& array) {
+            auto r = static_as_all_reduce(array);
+            return Array(std::make_shared<ShflDownWarpAllSum>(
+                r->functor_name_, r->arguments_[0], r->dtype_));},
+        "shfl_down_all_sum");
 }
-
-int register_axis_blocked = register_jit_optimization(
-    1,
-    can_transform_to_blocked_reducer,
-    transform_to_blocked_reducer,
-    "warp_axis_reduce");
-int register_shfl_down_axis = register_jit_optimization(
-    0,
-    can_transform_to_shfl_down_sum,
-    transform_to_shfl_down_sum,
-    "shfl_down_axis_sum");
-
 } // namespace jit
 
 Array all_reduce(
         const Array& a,
         const std::string& reducer_name) {
     return Array(std::make_shared<op::jit::AllReduce>(
-        reducer_name,
-        a,
-        a.dtype()
-    ));
+        reducer_name, a, a.dtype()));
 }
 
 Array axis_reduce(
@@ -461,9 +613,7 @@ Array axis_reduce(
             utils::make_message(
                 "Reduction axis must strictly positive and less than the "
                 "number of dimensions of the input (got axis=", axes[0], ","
-                " ndim=", ndim, ", input.shape = ", a.shape(), ")."
-            )
-        );
+                " ndim=", ndim, ", input.shape = ", a.shape(), ")."));
     }
     // now look to see what kind of a reduction this is:
     std::vector<bool> reduced_dims(ndim, false);
@@ -471,8 +621,7 @@ Array axis_reduce(
     for (auto& axis : normalized_axes) {
         ASSERT2(!reduced_dims[axis], utils::make_message("axis_reduce "
             "received duplicate axes to operate on (axis=", axis,
-            " axes=", axes, ")."
-        ));
+            " axes=", axes, ")."));
         reduced_dims[axis] = true;
     }
     // all axes are present:
@@ -531,10 +680,7 @@ Array axis_reduce(
 
 Array argument_all_reduce(const Array& a, const std::string& reducer_name) {
     return Array(std::make_shared<op::jit::ArgumentAllReduce>(
-        reducer_name,
-        a,
-        a.dtype()
-    ));
+        reducer_name, a, a.dtype()));
 }
 
 Array argument_axis_reduce(const Array& a, const std::string& reducer_name, const int& axis) {
@@ -546,8 +692,7 @@ Array argument_axis_reduce(const Array& a, const std::string& reducer_name, cons
         utils::make_message(
             "Reduction axis must strictly positive and less than the "
             "number of dimensions of the input (got axis=", normalized_axis, ","
-            " ndim=", ndim, ").")
-    );
+            " ndim=", ndim, ")."));
     if (ndim == 1) return argument_all_reduce(a, reducer_name);
 
     auto res = a;
@@ -561,7 +706,6 @@ Array argument_axis_reduce(const Array& a, const std::string& reducer_name, cons
         res = res.transpose(axes);
     }
     return Array(std::make_shared<op::jit::ArgumentAxisReduce>(
-        reducer_name, res, DTYPE_INT32
-    ));
+        reducer_name, res, DTYPE_INT32));
 }
 }  // namespace op

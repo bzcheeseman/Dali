@@ -22,7 +22,7 @@ namespace op {
                 return std::make_shared<CircularConvolution>(arguments_[0], arguments_[1]);
             }
 
-            std::string prefix_code(memory::DeviceT device_type) const override {
+            void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
                 std::string kernel = (
                     "T res = static_cast<T>(0);\n"
                     "const int conv_size = shape_[ndim - 1];\n"
@@ -41,12 +41,13 @@ namespace op {
                     "    res += content_[content_query] * weights_[weights_query];\n"
                     "}\n"
                     "return res;\n");
-                return define_kernel(/*ndim=*/std::max(1, ndim()),
-                                     /*has_shape=*/true,
-                                     /*arguments=*/{"content", "weights"},
-                                     /*kernel=*/kernel,
-                                     /*name=*/kernel_name(),
-                                     /*is_assignable=*/false);
+                define_kernel(/*ndim=*/std::max(1, ndim()),
+                              /*has_shape=*/true,
+                              /*arguments=*/{"content", "weights"},
+                              /*kernel=*/kernel,
+                              /*name=*/kernel_name(),
+                              /*is_assignable=*/false,
+                              insert);
             }
 
             bool is_axis_collapsible_with_axis_minus_one(int axis) const override {

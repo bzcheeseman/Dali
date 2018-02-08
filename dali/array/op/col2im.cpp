@@ -56,7 +56,7 @@ namespace op {
                     arguments_[10], shape_, data_format_);
             }
 
-            std::string prefix_code(memory::DeviceT device_type) const override {
+            void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
                 int computation_rank = ndim();
                 int c_dim = data_format_.find('C'),
                     w_dim = data_format_.find('W'),
@@ -128,17 +128,18 @@ namespace op {
                     "}\n"
                     "return res;\n");
 
-                return define_kernel(/*ndim=*/ndim(),
-                                     /*has_shape=*/true,
-                                     /*arguments=*/{"input",
-                                                    "filter_h", "filter_w",
-                                                    "stride_h", "stride_w",
-                                                    "dilate_h", "dilate_w",
-                                                    "prepad_h", "prepad_w",
-                                                    "postpad_h", "postpad_w"},
-                                     /*kernel=*/kernel,
-                                     /*name=*/kernel_name(),
-                                     /*is_assignable=*/false);
+                define_kernel(/*ndim=*/ndim(),
+                              /*has_shape=*/true,
+                              /*arguments=*/{"input",
+                                             "filter_h", "filter_w",
+                                             "stride_h", "stride_w",
+                                             "dilate_h", "dilate_w",
+                                             "prepad_h", "prepad_w",
+                                             "postpad_h", "postpad_w"},
+                              /*kernel=*/kernel,
+                              /*name=*/kernel_name(),
+                              /*is_assignable=*/false,
+                              insert);
             }
 
             virtual void compilation_parameters(utils::Hasher& hasher) const override {

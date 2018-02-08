@@ -30,13 +30,14 @@ struct Arange : public JITNode {
         return utils::make_message("arange", ndim(), "d");
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return define_kernel(/*ndim=*/ndim(),
-                             /*has_shape=*/true,
-                             /*arguments=*/{"start", "step"},
-                             /*kernel=*/"start_[0] + indices_to_offset(shape_, query) * step_[0]",
-                             /*name=*/kernel_name(),
-                             /*is_assignable=*/false);
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        define_kernel(/*ndim=*/ndim(),
+                      /*has_shape=*/true,
+                      /*arguments=*/{"start", "step"},
+                      /*kernel=*/"start_[0] + indices_to_offset(shape_, query) * step_[0]",
+                      /*name=*/kernel_name(),
+                      /*is_assignable=*/false,
+                      insert);
     }
 
     virtual expression_ptr copy() const override {

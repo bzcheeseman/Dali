@@ -26,14 +26,15 @@ struct Diag : public JITNode {
         return utils::make_message("diag", ndim(), "d");
     }
 
-    virtual std::string prefix_code(memory::DeviceT device_type) const override {
-        return define_kernel(/*ndim=*/ndim(),
-                             /*has_shape=*/true,
-                             /*arguments=*/{"diag",},
-                             /*kernel=*/utils::make_message("query[", ndim() - 1, "] == query[", ndim() - 2, "] ? "
-                                                            "diag_[query[", ndim() - 1,"]] : 0"),
-                             /*name=*/kernel_name(),
-                             /*is_assignable=*/false);
+    virtual void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+        define_kernel(/*ndim=*/ndim(),
+                      /*has_shape=*/true,
+                      /*arguments=*/{"diag",},
+                      /*kernel=*/utils::make_message("query[", ndim() - 1, "] == query[", ndim() - 2, "] ? "
+                                                     "diag_[query[", ndim() - 1,"]] : 0"),
+                      /*name=*/kernel_name(),
+                      /*is_assignable=*/false,
+                      insert);
     }
 
     virtual expression_ptr copy() const override {

@@ -324,9 +324,7 @@ JITNode::JITNode(const std::vector<int>& shape,
 
 JITNode::JITNode(const JITNode& other) : Expression(other) {};
 
-std::string JITNode::prefix_code(memory::DeviceT device_type) const {
-    return "";
-}
+void JITNode::prefix_code(memory::DeviceT device_type, insert_t) const {}
 
 bool JITNode::shape_required() const {
     return false;
@@ -425,13 +423,14 @@ void JITNode::assignment_access_modes(op::jit::SymbolTable& symbol_table, OPERAT
         "Implement this method to ensure memory access is correctly chosen."));
 }
 
-std::string JITNode::assignment_prefix_code(hash_t hash,
-                                            const std::vector<OPERATOR_T>& operators,
-                                            memory::DeviceT device_type,
-                                            const std::vector<int>& computation_ranks,
-                                            const std::vector<PARALLELISM_T>& parallelism_types,
-                                            const std::vector<bool>& assignment,
-                                            const std::vector<bool>& grid_keep_inner_dims) const {
+void JITNode::assignment_prefix_code(hash_t hash,
+                                     const std::vector<OPERATOR_T>& operators,
+                                     memory::DeviceT device_type,
+                                     const std::vector<int>& computation_ranks,
+                                     const std::vector<PARALLELISM_T>& parallelism_types,
+                                     const std::vector<bool>& assignment,
+                                     const std::vector<bool>& grid_keep_inner_dims,
+                                     insert_t insert) const {
     if (device_type == memory::DEVICE_T_GPU) {
         std::stringstream ss;
         ss << "template <";
@@ -465,7 +464,6 @@ std::string JITNode::assignment_prefix_code(hash_t hash,
             }
         }
         bool strided_written = false;
-
         std::unordered_map<int, std::string> nd_idxes;
 
         for (int i = 0; i < computation_ranks.size(); i++) {
@@ -536,9 +534,8 @@ std::string JITNode::assignment_prefix_code(hash_t hash,
             }
         }
         ss << "}\n";
-        return ss.str();
+        insert(ss.str());
     }
-    return "";
 }
 
 expression_ptr only_buffers(std::shared_ptr<Expression> expr) {
@@ -943,7 +940,7 @@ std::string JITRunner::get_code_template(hash_t hash,
     };
     auto add_prefix_code = [&](const Array& arr) {
         if (!arr.is_buffer()) {
-            insert_once(static_as_jit_node(arr)->prefix_code(device_type));
+            static_as_jit_node(arr)->prefix_code(device_type, insert_once);
         }
     };
 
@@ -972,13 +969,13 @@ std::string JITRunner::get_code_template(hash_t hash,
     }
 
     if (!assignments.back().left().is_buffer()) {
-        insert_once(as_jit_node(assignments.back().left())->assignment_prefix_code(
+        as_jit_node(assignments.back().left())->assignment_prefix_code(
             hash, operators, device_type,
-            computation_ranks, parallelism_types, is_assignment, grid_keep_inner_dims));
+            computation_ranks, parallelism_types, is_assignment, grid_keep_inner_dims, insert_once);
     } else {
-        insert_once(assignment_prefix_code(
+        assignment_prefix_code(
             hash, operators, device_type,
-            computation_ranks, parallelism_types, is_assignment, grid_keep_inner_dims));
+            computation_ranks, parallelism_types, is_assignment, grid_keep_inner_dims, insert_once);
     }
 
     result << "void run(void** array_data, const int* offsets, "

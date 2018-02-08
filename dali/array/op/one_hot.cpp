@@ -35,14 +35,15 @@ namespace op {
                 return utils::make_message("one_hot", std::max(1, ndim()), "d");
             }
 
-            std::string prefix_code(memory::DeviceT device_type) const override {
-                return define_kernel(/*ndim=*/std::max(1, ndim()),
-                                     /*has_shape=*/true,
-                                     /*arguments=*/{"on_value", "off_value", "indices"},
-                                     /*kernel=*/"T is_on = indices_[query.template axis_reduced_shape<0, ndim-1>()] == query[ndim - 1];\n"
-                                                "return on_value_[0] * is_on + (1.0 - is_on) * off_value_[0]",
-                                     /*name=*/kernel_name(),
-                                     /*is_assignable=*/false);
+            void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
+                define_kernel(/*ndim=*/std::max(1, ndim()),
+                              /*has_shape=*/true,
+                              /*arguments=*/{"on_value", "off_value", "indices"},
+                              /*kernel=*/"T is_on = indices_[query.template axis_reduced_shape<0, ndim-1>()] == query[ndim - 1];\n"
+                                         "return on_value_[0] * is_on + (1.0 - is_on) * off_value_[0]",
+                              /*name=*/kernel_name(),
+                              /*is_assignable=*/false,
+                              insert);
             }
 
             expression_ptr copy() const override {

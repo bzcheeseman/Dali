@@ -395,13 +395,13 @@ bool Array::allclose(const Array& left, const Array& right, const double& atoler
 }
 
 bool Array::any_isnan() const {
-    // bool any_isnan_ = ((float)(Array)op::any_isnan(*this)) > 0 ? true : false;
-    // return any_isnan_;
+    bool any_isnan_ = ((float)(Array)op::any_isnan(*this)) > 0 ? true : false;
+    return any_isnan_;
 }
 
 bool Array::any_isinf() const {
-    // bool any_isinf_ = ((float)(Array)op::any_isinf(*this)) > 0 ? true : false;
-    // return any_isinf_;
+    bool any_isinf_ = ((float)(Array)op::any_isinf(*this)) > 0 ? true : false;
+    return any_isinf_;
 }
 
 bool Array::is_stateless() const {
@@ -762,13 +762,13 @@ void Array::debug_memory(const bool& print_contents) const {
 }
 
 void Array::clear() {
-    auto buffer = std::dynamic_pointer_cast<BufferView>(expression());
-    if (buffer) {
-        if (buffer->spans_entire_memory()) {
+    if (is_buffer()) {
+        if (spans_entire_memory()) {
             memory()->lazy_clear();
         } else {
-            ASSERT2(false, "not implemented");
-            // TODO(szymon): fill with zeros
+            // TODO(jonathan): enqueue this update rather than
+            // evaluating immediately
+            op::assign(*this, OPERATOR_T_EQL, 0).eval();
         }
     } else {
         set_expression(zeros_like(*this).expression());
@@ -827,7 +827,6 @@ DALI_DEFINE_ARRAY_INTERACTION(*, op::eltmul);
 DALI_DEFINE_ARRAY_INTERACTION(/, op::eltdiv);
 
 DType type_promotion(const Array& a, const Array& b) {
-    // TODO(jonathan,szymon) speed up this function
     bool a_scalar = a.is_scalar();
     bool b_scalar = b.is_scalar();
 

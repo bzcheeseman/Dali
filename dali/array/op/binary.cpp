@@ -2,6 +2,7 @@
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/elementwise_operation.h"
 #include "dali/array/op/unary.h"
+#include "dali/array/expression/assignment.h"
 
 namespace op {
     Array all_equals(Array left, Array right) {
@@ -72,5 +73,25 @@ namespace op {
     }
     Array binary_cross_entropy_grad(Array a, Array b) {
         return elementwise(a, b, "functor::binary_cross_entropy_grad");
+    }
+    Array add(const std::vector<Array>& arrays, bool single_op) {
+        ASSERT2(arrays.size() > 0, "add must have at least one Array to add but got 0.");
+        if (arrays.size() == 1) {
+            return arrays[0];
+        }
+        if (single_op | arrays.size() < 6) {
+            Array out = arrays[0];
+            for (int i = 1; i < arrays.size(); i++) {
+                out = op::add(out, arrays[i]);
+            }
+            return out;
+        } else {
+            int midpoint = arrays.size() / 2;
+            // TODO(jonathan): ensure these assignments are not removable
+            return op::add(
+                op::to_assignment(op::add(std::vector<Array>(arrays.begin(), arrays.begin() + midpoint), false)),
+                op::to_assignment(op::add(std::vector<Array>(arrays.begin() + midpoint, arrays.end()), false))
+            );
+        }
     }
 }

@@ -139,12 +139,23 @@ Array autoreduce_assign(const Array& left, const Array& right) {
 }
 
 Array to_assignment(const Array& node) {
-    return assign(Array(node.shape(), node.dtype()),
-                  OPERATOR_T_EQL,
-                  Array(node.expression()));
+    return Array(std::make_shared<Assignment>(
+                Array(node.shape(), node.dtype()),
+                OPERATOR_T_EQL, Array(node.expression())));
 }
 
 Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
+    if (operator_t == OPERATOR_T_LSE) {
+        return autoreduce_assign(left, right);
+    }
+    ASSERT2(right.ndim() == 0 | right.ndim() == left.ndim(), utils::make_message(
+            "Incompatible dimensions for assignment between left.ndim = ",
+            left.ndim(), "(", left.full_expression_name(), ", and right.ndim = ", right.ndim(),
+            " (", right.full_expression_name(), ")."));
+    ASSERT2(right.ndim() == 0 | right.shape() == left.shape(), utils::make_message(
+            "Incompatible shapes for assignment between left.shape = ",
+            left.shape(), "(", left.full_expression_name(), ", and right.shape = ", right.shape(),
+            " (", right.full_expression_name(), ")."));
     if (operator_t == OPERATOR_T_EQL) {
         if (left.is_buffer() || left.spans_entire_memory()) {
             return Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right));
@@ -153,8 +164,6 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
                 left,
                 Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right)));
         }
-    } else if (operator_t == OPERATOR_T_LSE) {
-        return autoreduce_assign(left, right);
     } else {
         Array assigned_right = right;
         Array assigned_left = left;

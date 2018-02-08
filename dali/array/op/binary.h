@@ -29,6 +29,8 @@ namespace op {
     Array eltmin(Array a, Array b);
     Array binary_cross_entropy(Array a, Array b);
     Array binary_cross_entropy_grad(Array a, Array b);
+
+    Array add(const std::vector<Array>& arrays, bool single_op=false);
 }
 
 #endif

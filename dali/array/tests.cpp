@@ -1786,3 +1786,151 @@ TEST(ScanTests, cumprod) {
 #endif
 }
 
+
+TEST(ArrayOpsTests, add_vector) {
+    Array res = op::add({
+        Array::ones({1, 2}),
+        Array::ones({2})[Broadcast()],
+        Array::ones({1,1, 2})[0],
+        Array::ones({1, 2})
+    });
+
+    EXPECT_EQ(std::vector<int>({1, 2}), res.shape());
+    EXPECT_EQ(4, (int)res(0));
+    EXPECT_EQ(4, (int)res(1));
+
+    Array res2 = op::add({
+        Array::ones({1, 2}),
+        Array::ones({2})[Broadcast()],
+        Array::ones({1,1, 2})[0],
+        Array::ones({1, 2}),
+        Array::ones({1, 2}),
+        Array::ones({1, 2})
+    });
+
+    EXPECT_EQ(6, (int)res2(0));
+    EXPECT_EQ(6, (int)res2(1));
+}
+
+
+
+TEST(ArrayOpsTests, log_exp) {
+    Array x = op::uniform(0.1, 20.0, {50});
+    // don't sample twice
+    x.eval();
+    Array exp_log_x = op::exp(op::log(x));
+    EXPECT_TRUE(Array::allclose(x, exp_log_x, 1e-3));
+}
+
+template<typename T>
+void test_binary_shapes(T op_f) {
+    auto x = Array::zeros({3,2,2});
+    auto y = Array::zeros({12});
+    // binary op on args of different sizes
+    ASSERT_THROW(op_f(x, y), std::runtime_error);
+
+    // binary op on args with the same sized args
+    Array z = op::eltdiv(x.ravel(), y);
+
+    // assigning to preallocated output of wrong shape.
+    Array q({12});
+    auto output_wrong_size = [&]() {   op::assign(q, OPERATOR_T_EQL, op_f(x, y.reshape(x.shape()))).eval();   };
+    ASSERT_THROW(output_wrong_size(), std::runtime_error);
+
+    // resetting q to baby array makes it stateless again.
+    q.reset() = x / y.reshape(x.shape());
+}
+
+TEST(ArrayOpsTests, add) {
+    test_binary_shapes([](const Array& a, const Array& b) { return a + b; });
+}
+
+TEST(ArrayOpsTests, sub) {
+    test_binary_shapes([](const Array& a, const Array& b) { return a - b; });
+}
+
+TEST(ArrayOpsTests, eltmul) {
+    test_binary_shapes([](const Array& a, const Array& b) { return a * b; });
+}
+
+TEST(ArrayOpsTests, eltdiv) {
+    test_binary_shapes([](const Array& a, const Array& b) { return a / b; });
+}
+
+TEST(ArrayOpsTests, isnan) {
+    Array x = Array::zeros({4,3,5});
+    ASSERT_FALSE(x.any_isnan());
+    op::assign(x[2][2][1], OPERATOR_T_EQL, std::nan("")).eval();
+    ASSERT_TRUE(x.any_isnan());
+}
+
+TEST(ArrayOpsTests, isinf) {
+    Array x = Array::zeros({4,3,5});
+    ASSERT_FALSE(x.any_isinf());
+    op::assign(x[2][2][1], OPERATOR_T_EQL, std::numeric_limits<double>::infinity()).eval();
+    ASSERT_TRUE(x.any_isinf());
+}
+
+TEST(ArrayOpsTests, isnan_axis) {
+    Array x = Array::zeros({3,3});
+
+    Array is_nan_axis = op::any_isnan(x, {0});
+    auto expected_mask = Array::zeros_like(is_nan_axis);
+    EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
+
+    op::assign(x[0][0], OPERATOR_T_EQL, std::nan("")).eval();
+
+    op::assign(expected_mask[0], OPERATOR_T_EQL, 1.0).eval();
+    is_nan_axis = op::any_isnan(x, {0});
+    EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
+}
+
+TEST(ArrayOpsTests, isinf_axis) {
+    Array x = Array::zeros({3,3});
+
+    Array is_nan_axis = op::any_isinf(x, {0});
+    auto expected_mask = Array::zeros_like(is_nan_axis);
+    EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
+
+    op::assign(x[0][0], OPERATOR_T_EQL, std::numeric_limits<double>::infinity()).eval();
+
+    op::assign(expected_mask[0], OPERATOR_T_EQL, 1.0).eval();
+    is_nan_axis = op::any_isinf(x, {0});
+    EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
+}
+
+TEST(ArrayOpsTests, ascontiguousarray) {
+    Array x({3,2});
+    // create array is contiguous
+    EXPECT_EQ(true, x.contiguous_memory());
+    // contiguous version of an already
+    // contiguous array is just the same array:
+    Array x_contig = x.ascontiguousarray();
+    EXPECT_EQ(x.memory(), x_contig.memory());
+
+    Array x_T = x.transpose();
+    // transpose is not contiguous
+    EXPECT_EQ(false, x_T.contiguous_memory());
+    // is a view:
+    EXPECT_EQ(x.memory(), x_T.memory());
+
+    // we copy memory into a contiguous array
+    x_T = x_T.ascontiguousarray();
+    // now memory is contiguous:
+    EXPECT_EQ(true, x.contiguous_memory());
+    EXPECT_NE(x.memory(), x_T.memory());
+}
+
+TEST(ArrayOpsTests, arange) {
+    for (auto dtype : {DTYPE_FLOAT, DTYPE_DOUBLE, DTYPE_INT32}) {
+        Array x = op::arange(0, 2 * 3 * 3).reshape({2,3,3}).astype(dtype);
+        if (dtype == DTYPE_FLOAT) {
+            ASSERT_NEAR((float)(Array)x.sum(), 153, 1e-4);
+        } else if (dtype == DTYPE_DOUBLE) {
+            ASSERT_NEAR((double)(Array)x.sum(), 153, 1e-4);
+        } else {
+            ASSERT_EQ((int)(Array)x.sum(), 153);
+        }
+    }
+}
+

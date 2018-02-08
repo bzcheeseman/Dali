@@ -10,7 +10,7 @@ namespace op {
     namespace jit {
 
         enum PARALLELISM_T {
-            INDEPENDENT_BLOCK_WARP  = 0,
+            INDEPENDENT_BLOCK_WARP = 0,
             INDEPENDENT_BLOCK = 1
         };
 

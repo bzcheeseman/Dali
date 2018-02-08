@@ -1628,17 +1628,16 @@ TEST(JITCachedReduction, fused_softmax) {
         a.eval();
         auto exped = op::exp(a - op::max(a, {-1}, true));
         auto fused_softmax = exped / op::sum(exped, {-1}, true);
-        fused_softmax.eval();
         // reference impl
-        // auto maxed = op::max(a, {-1}, true);
-        // maxed.eval();
-        // auto exped2 = op::exp(a - maxed);
-        // exped2.eval();
-        // auto denom = op::sum(exped2, {-1}, true);
-        // denom.eval();
-        // auto reference_softmax = exped2 / denom;
-        // reference_softmax.eval();
-        // EXPECT_TRUE(Array::allclose(fused_softmax, reference_softmax, 1e-6));
+        auto maxed = op::max(a, {-1}, true);
+        maxed.eval();
+        auto exped2 = op::exp(a - maxed);
+        exped2.eval();
+        auto denom = op::sum(exped2, {-1}, true);
+        denom.eval();
+        auto reference_softmax = exped2 / denom;
+        reference_softmax.eval();
+        EXPECT_TRUE(Array::allclose(fused_softmax, reference_softmax, 1e-6));
     }
 }
 

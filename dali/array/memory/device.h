@@ -48,15 +48,12 @@ namespace memory {
         static Device device_of_doom();
         // static functions
         static std::vector<memory::Device> installed_devices();
-#ifdef DALI_USE_CUDA
         // gpu devices
         void set_cuda_device() const;
         bool is_gpu() const;
         static Device gpu(int number);
         static int num_gpus();
         std::string gpu_name() const;
-
-#endif
     };
 
     bool operator==(const Device& a, const Device& b);

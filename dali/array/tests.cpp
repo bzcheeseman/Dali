@@ -1737,22 +1737,53 @@ namespace {
 }
 
 TEST(ScanTests, cumsum) {
-    for (auto inclusive : {true, false}) {
-        auto a = op::arange(0, 20);
-        auto csum1d = op::cumsum(a, inclusive);
-        EXPECT_TRUE(Array::equals(csum1d, reference_cumsum(a, inclusive)));
-        auto csum2d = op::cumsum(a.reshape({2, 10}), inclusive);
-        EXPECT_TRUE(Array::equals(csum2d, reference_cumsum(a.reshape({2, 10}), inclusive)));
+    {
+        memory::WithDevicePreference dp(memory::Device::cpu());
+
+        for (auto inclusive : {true, false}) {
+            auto a = op::arange(0, 20);
+            auto csum1d = op::cumsum(a, inclusive);
+            EXPECT_TRUE(Array::equals(csum1d, reference_cumsum(a, inclusive)));
+            auto csum2d = op::cumsum(a.reshape({2, 10}), inclusive);
+            EXPECT_TRUE(Array::equals(csum2d, reference_cumsum(a.reshape({2, 10}), inclusive)));
+        }
     }
+#ifdef DALI_USE_CUDA
+    {
+        memory::WithDevicePreference dp(memory::Device::gpu(0));
+        for (auto inclusive : {true, false}) {
+            auto a = op::arange(0, 20);
+            auto csum1d = op::cumsum(a, inclusive);
+            EXPECT_TRUE(Array::equals(csum1d, reference_cumsum(a, inclusive)));
+            auto csum2d = op::cumsum(a.reshape({2, 10}), inclusive);
+            EXPECT_TRUE(Array::equals(csum2d, reference_cumsum(a.reshape({2, 10}), inclusive)));
+        }
+    }
+#endif
 }
 
 TEST(ScanTests, cumprod) {
-    for (auto inclusive : {true, false}) {
-        auto a = op::arange(1, 21);
-        auto csum1d = op::cumprod(a, inclusive);
-        EXPECT_TRUE(Array::equals(csum1d, reference_cumprod(a, inclusive)));
-        auto csum2d = op::cumprod(a.reshape({2, 10}), inclusive);
-        EXPECT_TRUE(Array::equals(csum2d, reference_cumprod(a.reshape({2, 10}), inclusive)));
+    {
+        memory::WithDevicePreference dp(memory::Device::cpu());
+        for (auto inclusive : {true, false}) {
+            auto a = op::arange(1, 21);
+            auto csum1d = op::cumprod(a, inclusive);
+            EXPECT_TRUE(Array::equals(csum1d, reference_cumprod(a, inclusive)));
+            auto csum2d = op::cumprod(a.reshape({2, 10}), inclusive);
+            EXPECT_TRUE(Array::equals(csum2d, reference_cumprod(a.reshape({2, 10}), inclusive)));
+        }
     }
+#ifdef DALI_USE_CUDA
+    {
+        memory::WithDevicePreference dp(memory::Device::gpu(0));
+        for (auto inclusive : {true, false}) {
+            auto a = op::arange(0, 20);
+            auto csum1d = op::cumsum(a, inclusive);
+            EXPECT_TRUE(Array::equals(csum1d, reference_cumsum(a, inclusive)));
+            auto csum2d = op::cumsum(a.reshape({2, 10}), inclusive);
+            EXPECT_TRUE(Array::equals(csum2d, reference_cumsum(a.reshape({2, 10}), inclusive)));
+        }
+    }
+#endif
 }
 

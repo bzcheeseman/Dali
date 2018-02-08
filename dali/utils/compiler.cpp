@@ -197,7 +197,6 @@ bool Compiler::compile_code(const std::string& source,
                             const memory::DeviceT& device_type) {
     auto cmd = compiler_command(source, dest, logfile, extra_args, device_type);
     int ret = system(cmd.c_str());
-    // std::cout << cmd << std::endl;
     // std::cout << "utils::listdir(outpath) = " << utils::listdir(array_op_compiler.outpath_) << std::endl;
 
     // std::cout << "printing code:" << std::endl;

@@ -46,13 +46,35 @@ namespace op {
             }
 
             void compilation_parameters(utils::Hasher& hasher) const override {
-                hasher.add(functor_name_).add(inclusive_);
+                hasher.add(functor_name_)
+                      .add(inclusive_);
             }
 
-            std::string prefix_code(memory::DeviceT device_type) const override {
-                int rank = std::max(1, ndim());
-                std::string clsname = utils::make_message(char(std::toupper(base_kernel_name()[0])),
-                                      base_kernel_name().substr(1));
+            std::string cpu_scan_code() const {
+                if (inclusive_) {
+                    return "        int& idx = query[ndim - 1];\n"
+                           "        T so_far;\n"
+                           "        Reducer::SetInitValue(so_far);\n"
+                           "        idx = 0;\n"
+                           "        for (idx = 0; idx < row_size; idx++) {\n"
+                           "            Reducer::Reduce(so_far, arg_[query]);\n"
+                           "            output_[query] = so_far;\n"
+                           "        }\n";
+                } else {
+                    return "        int& idx = query[ndim - 1];\n"
+                           "        idx = 0;\n"
+                           "        T so_far;\n"
+                           "        Reducer::SetInitValue(output_[query]);\n"
+                           "        Reducer::SetInitValue(so_far);\n"
+                           "        while (idx < row_size) {\n"
+                           "            Reducer::Reduce(so_far, arg_[query]);\n"
+                           "            idx++;\n"
+                           "            output_[query] = so_far;\n"
+                           "        }\n";
+                }
+            }
+
+            std::string gpu_scan_code() const {
                 std::string exclusive_set_init_element = "";
                 if (!inclusive_) {
                     exclusive_set_init_element = (
@@ -60,20 +82,8 @@ namespace op {
                         "                output_[query] = init;\n");
                 }
                 return utils::make_message(
-                    "template<typename Reducer, typename Type, typename C1, typename C2>\n"
-                    "struct ", clsname, " {\n"
-                    "    C1 arg_;\n"
-                    "    C2 output_;\n"
-                    "    static const int ndim = C1::ndim;\n"
-                    "    typedef Type T;\n"
-                    "    XINLINE Shape<ndim> shape() const {\n"
-                    "        return output_.shape();\n"
-                    "    }\n"
-                    "    XINLINE ", clsname, "(C1 arg, C2 output) : arg_(arg), output_(output) {}\n"
-                    "    inline __device__ void operator[](Shape<ndim> query) {\n"
                     "        T init;\n"
-                    "        int row_size = arg_.shape()[ndim - 1];\n"
-                    "        Reducer::SetInitValue(init);\n"
+                    "        Reducer::SetInitValue(init);\n",
                     "        __shared__ T buffer[", 2 * op::jit::nthreads(), "];\n"
                     "        T block_total = init;\n"
                     "        // Perform scan on one block at a time, keeping track of the total value of\n"
@@ -125,14 +135,34 @@ namespace op {
                     "            block_total = buffer[", 2 * op::jit::nthreads() - 1, "];\n"
                     "            __syncthreads();\n"
                     "        }\n"
-                    "    }\n"
-                    "};\n"
-                    "template<typename Reducer, typename Type, typename C1, typename C2>\n"
-                    "XINLINE ", clsname, "<Reducer, Type, C1, C2> ", base_kernel_name(), "(\n"
-                    "        C1 arg, C2 output) {\n"
-                    "    return ", clsname, "<Reducer, Type, C1, C2>(arg, output);\n"
-                    "}\n"
                 );
+            }
+
+            std::string prefix_code(memory::DeviceT device_type) const override {
+                std::string clsname = utils::make_message(char(std::toupper(base_kernel_name()[0])),
+                                      base_kernel_name().substr(1));
+                bool is_cpu = device_type == memory::DEVICE_T_CPU;
+                return utils::make_message(
+                        "template<typename Reducer, typename Type, typename C1, typename C2>\n"
+                        "struct ", clsname, " {\n"
+                        "    C1 arg_;\n"
+                        "    C2 output_;\n"
+                        "    static const int ndim = C1::ndim;\n"
+                        "    typedef Type T;\n"
+                        "    XINLINE Shape<ndim> shape() const {\n"
+                        "        return output_.shape();\n"
+                        "    }\n"
+                        "    XINLINE ", clsname, "(C1 arg, C2 output) : arg_(arg), output_(output) {}\n"
+                        "    ", (is_cpu ? "XINLINE" : "inline __device__"), " void operator[](Shape<ndim> query) {\n"
+                        "        int row_size = arg_.shape()[ndim - 1];\n",
+                        (is_cpu ? cpu_scan_code() : gpu_scan_code()),
+                        "    }\n"
+                        "};\n"
+                        "template<typename Reducer, typename Type, typename C1, typename C2>\n"
+                        "XINLINE ", clsname, "<Reducer, Type, C1, C2> ", base_kernel_name(), "(\n"
+                        "        C1 arg, C2 output) {\n"
+                        "    return ", clsname, "<Reducer, Type, C1, C2>(arg, output);\n"
+                        "}\n");
             }
 
             expression_ptr copy() const override {

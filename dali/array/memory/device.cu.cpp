@@ -5,16 +5,10 @@
 #include "dali/utils/make_message.h"
 
 namespace memory {
-#ifdef DALI_USE_CUDA
     std::map<DeviceT, std::string> device_type_to_name = {
         {DEVICE_T_CPU,    "cpu"},
         {DEVICE_T_GPU,    "gpu"},
     };
-#else
-    std::map<DeviceT, std::string> device_type_to_name = {
-        {DEVICE_T_CPU,    "cpu"},
-    };
-#endif
 
     Device::Device() :
             mType(DEVICE_T_ERROR), mNumber(-1) {
@@ -34,17 +28,13 @@ namespace memory {
     std::string Device::description(bool real_gpu_name) const {
         if (is_cpu()) {
             return "cpu";
-        }
-#ifdef DALI_USE_CUDA
-        else if(is_gpu()) {
+        } else if(is_gpu()) {
             std::string real_name;
             if (real_gpu_name) {
                 real_name = utils::make_message(" (", gpu_name(), ")");
             }
             return utils::make_message("gpu", mNumber, real_name);
-        }
-#endif
-        else if(is_fake()) {
+        } else if(is_fake()) {
             return utils::make_message("fake_device", mNumber);
         } else if(mType == DEVICE_T_ERROR) {
             return "device_of_doom";
@@ -87,18 +77,17 @@ namespace memory {
         std::vector<memory::Device> result;
         result.push_back(Device::cpu()); // the day this line will be iffed guared
                                          // I will know the future is here.
-#ifdef DALI_USE_CUDA
         for (int i=0; i < num_gpus(); ++i) {
             result.push_back(Device::gpu(i));
         }
-#endif
         return result;
     }
 
-#ifdef DALI_USE_CUDA
     void Device::set_cuda_device() const {
+#ifdef DALI_USE_CUDA
         ASSERT2(is_gpu(), "set_cuda_device must only be called for GPU devices.");
         cudaSetDevice(mNumber);
+#endif
     }
 
     bool Device::is_gpu() const {
@@ -112,20 +101,25 @@ namespace memory {
     }
 
     int Device::num_gpus() {
-        int devices;
-        cudaGetDeviceCount(&devices);
-        return devices;
+#ifdef DALI_USE_CUDA
+        int ndevices;
+        cudaGetDeviceCount(&ndevices);
+        return ndevices;
+#else
+        return 0;
+#endif  // DALI_USE_CUDA
     }
 
     std::string Device::gpu_name() const {
         ASSERT2(is_gpu(), "gpu_name must only be called for GPU devices.");
+#ifdef DALI_USE_CUDA
         cudaDeviceProp props;
         cudaGetDeviceProperties(&props, mNumber);
         return std::string(props.name);
-    }
-
+#else
+        return "GPU";
 #endif
-
+    }
 
     bool operator==(const Device& a, const Device& b) {
         return a.type() == b.type() && a.number() == b.number();

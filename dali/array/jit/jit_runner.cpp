@@ -692,9 +692,14 @@ std::string JITNode::assignment_code(hash_t hash,
         for (int i = 0; i < computation_ranks.size(); i++) {
             int computation_rank = computation_ranks[i];
             std::string indexing_nd = computation_rank == 1 ? "[i]" : "[" + generate_accessor_string(computation_rank) + "]";
-            std::string assign_line = assignment_code_nd(
-                operators[i], device_type, utils::make_message(dest_call_codes[i], indexing_nd),
-                utils::make_message(roots[i], indexing_nd));
+            std::string assign_line;
+            if (assignment[i]) {
+                assign_line = assignment_code_nd(
+                    operators[i], device_type, utils::make_message(dest_call_codes[i], indexing_nd),
+                    utils::make_message(roots[i], indexing_nd));
+            } else {
+                assign_line = utils::make_message(roots[i], indexing_nd);
+            }
             if (computation_rank == 1) {
                 ss << utils::make_message(
                     "    num_el = ", dest_call_codes[i], ".shape().numel();\n",

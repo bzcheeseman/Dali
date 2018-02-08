@@ -20,6 +20,7 @@ namespace memory {
         if (device.is_cpu()) {
             return cpu_memory;
         }
+
 #ifdef DALI_USE_CUDA
         else if (device.is_gpu()) {
             return gpu_memories[device.number()];
@@ -271,11 +272,12 @@ namespace memory {
         move_to(memory::Device::cpu());
     }
 
-#ifdef DALI_USE_CUDA
+
     void SynchronizedMemory::to_gpu(const int& gpu_number) const {
+#ifdef DALI_USE_CUDA
         move_to(memory::Device::gpu(gpu_number));
-    }
 #endif
+    }
 
     void* SynchronizedMemory::data(const Device& device, AM access_mode) {
         if (access_mode == AM_READONLY) {

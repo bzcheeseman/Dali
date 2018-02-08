@@ -110,10 +110,8 @@ namespace memory {
 
            // Ensure a fresh copy of the memory is on the device
            void move_to(const Device& device) const;
-#ifdef DALI_USE_CUDA
            // Ensure a fresh copy of the memory is on gpu[number]
            void to_gpu(const int& gpu_number) const;
-#endif
            // Ensure a fresh copy of the memory is on the cpu
            void to_cpu() const;
 

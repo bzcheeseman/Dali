@@ -92,7 +92,6 @@ T Array::scalar_value() const {
     ASSERT2(shape().size() == 0, utils::make_message("Attempting to cast array of "
         "shape ", shape(), " to a scalar, which is only allowed for a "
         "zero-dimensional array."));
-
     void* data = memory()->data(
         memory::Device::cpu());
     if (dtype() == DTYPE_FLOAT) {

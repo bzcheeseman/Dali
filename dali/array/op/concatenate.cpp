@@ -2,6 +2,9 @@
 #include "dali/utils/assert2.h"
 #include "dali/utils/make_message.h"
 #include "dali/utils/print_utils.h"
+#include "dali/array/expression/assignment.h"
+#include "dali/array/expression/control_flow.h"
+#include "dali/array/jit/reshape.h"
 
 namespace op {
     Array concatenate(const std::vector<Array>& arrays, int axis) {
@@ -13,6 +16,8 @@ namespace op {
         for (auto& array : arrays) {
             if (ndim == -1) {
                 ndim = array.ndim();
+                ASSERT2(ndim > 0, utils::make_message(
+                    "cannot concatenate scalar arrays (got ndim = ", ndim, ")."));
                 if (axis < 0) {
                     axis = axis + ndim;
                 }
@@ -41,8 +46,23 @@ namespace op {
                 total_concat_dim += array.shape()[axis];
             }
         }
-        common_shape[axis] = total_concat_dim;
-        return Array::zeros(common_shape, arrays[0].dtype());
+        auto concated_shape = common_shape;
+        concated_shape[axis] = total_concat_dim;
+        Array result(concated_shape, arrays[0].dtype());
+        std::vector<Array> assignments;
+        assignments.reserve(arrays.size());
+        int so_far = 0;
+        for (auto array : arrays) {
+            common_shape[axis] = array.shape()[axis];
+            if (array.shape() != common_shape) {
+                array = jit::broadcasted_reshape(array, common_shape);
+            }
+            assignments.emplace_back(op::assign(
+                result.pluck_axis(axis, Slice(so_far, so_far + array.shape()[axis])),
+                OPERATOR_T_EQL, array));
+            so_far += array.shape()[axis];
+        }
+        return Array(std::make_shared<ControlFlow>(result, assignments));
     }
     Array hstack(const std::vector<Array>& arrays) {
         return concatenate(arrays, -1);

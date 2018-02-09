@@ -135,7 +135,7 @@ class Array  {
     bool is_buffer() const;
     bool is_assignment() const;
     bool is_control_flow() const;
-    // returns a BufferView Array if the node is a buffer view,
+    // returns a Buffer Array if the node is a buffer view,
     // a control flow op, or an assignment, else returns a stateless Array
     // (e.g. falsy)
     Array buffer_arg() const;

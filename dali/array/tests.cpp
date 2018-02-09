@@ -23,7 +23,7 @@
 #include "dali/array/op/scan.h"
 #include "dali/array/jit/scalar_view.h"
 #include "dali/array/expression/assignment.h"
-#include "dali/array/expression/buffer_view.h"
+#include "dali/array/expression/buffer.h"
 #include "dali/array/expression/control_flow.h"
 #include "dali/array/functor.h"
 
@@ -311,7 +311,7 @@ TEST(ArrayTest, eye_init_composite) {
 
 bool spans_entire_memory(Array x) {
     x.eval();
-    return op::static_as_buffer_view(x)->spans_entire_memory();
+    return op::static_as_buffer(x)->spans_entire_memory();
 }
 
 TEST(ArrayTests, spans_entire_memory) {

@@ -3,7 +3,7 @@
 #include "dali/utils/make_message.h"
 #include "dali/utils/assert2.h"
 #include "dali/array/expression/computation.h"
-#include "dali/array/expression/buffer_view.h"
+#include "dali/array/expression/buffer.h"
 #include "dali/array/jit/array_view.h"
 #include "dali/utils/topn.h"
 
@@ -66,7 +66,7 @@ namespace {
 
         template<typename T>
         void run_dtype_contig() {
-            BufferView* right = op::static_as_buffer_view(right_.expression()->arguments()[0]);
+            Buffer* right = op::static_as_buffer(right_.expression()->arguments()[0]);
             auto right_arr = make_view<T, 2>(
                 static_cast<T*>(right->memory_->readonly_data(memory::Device::cpu())),
                 right->offset_,
@@ -76,7 +76,7 @@ namespace {
 
         template<typename T>
         void run_dtype_strided() {
-            BufferView* right = op::static_as_buffer_view(right_.expression()->arguments()[0]);
+            Buffer* right = op::static_as_buffer(right_.expression()->arguments()[0]);
             auto right_arr = make_strided_view<T, 2>(
                 static_cast<T*>(right->memory_->readonly_data(memory::Device::cpu())),
                 right->offset_,
@@ -87,7 +87,7 @@ namespace {
 
         template<typename T, typename Source>
         void compute(const Source& right_arr) {
-            BufferView* dest = op::static_as_buffer_view(left_);
+            Buffer* dest = op::static_as_buffer(left_);
             auto indices_arr = make_view<int, 2>(
                 static_cast<int*>(dest->memory_->overwrite_data(memory::Device::cpu())),
                 dest->offset_,

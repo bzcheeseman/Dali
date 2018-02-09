@@ -10,7 +10,7 @@
 #include "dali/array/jit/jit_runner.h"
 #include "dali/array/jit/reshape.h"
 #include "dali/array/jit/scalar_view.h"
-#include "dali/array/expression/buffer_view.h"
+#include "dali/array/expression/buffer.h"
 
 namespace {
     int compute_min_computation_rank(const std::vector<Array>& arguments) {

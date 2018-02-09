@@ -9,7 +9,7 @@
 
 #include "dali/utils/cnpy.h"
 #include "dali/array/debug.h"
-#include "dali/array/expression/buffer_view.h"
+#include "dali/array/expression/buffer.h"
 #include "dali/array/expression/control_flow.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/computation.h"
@@ -113,7 +113,7 @@ Array::Array(std::shared_ptr<Expression> new_expression) :
 }
 
 Array::Array(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) :
-        Array(std::make_shared<BufferView>(shape, dtype, preferred_device)) {
+        Array(std::make_shared<Buffer>(shape, dtype, preferred_device)) {
 }
 
 Array::Array(std::initializer_list<int> shape_, DType dtype, memory::Device preferred_device) :
@@ -125,7 +125,7 @@ Array::Array(const std::vector<int>& shape,
              const int& offset,
              const std::vector<int>& strides,
              DType dtype) {
-    set_expression(std::make_shared<BufferView>(
+    set_expression(std::make_shared<Buffer>(
         memory, shape, dtype, offset, strides));
 }
 
@@ -164,7 +164,7 @@ Array Array::empty_like(const Array& other) {
                 broadcasted_axes.emplace_back(i);
             }
         }
-        return Array(BufferView::create_with_shape(
+        return Array(Buffer::create_with_shape(
                 other.shape(), other.dtype(), other.preferred_device(),
                 broadcasted_axes));
     }
@@ -236,9 +236,7 @@ void Array::eval(bool wait) const {
         // TODO(jonathan): ensure this returns something
         // that it either a buffer, or an assignable location
         // such as a Gather, or GatherFromRows
-        // ASSERT2(is_buffer(), utils::make_message(
-        //     "After computation expression was not converted "
-        //     "back to a BufferView (expression = ", full_expression_name(), ")."));
+        // e.g. ASSERT2(is_buffer(), etc...)
     }
 }
 
@@ -463,7 +461,7 @@ std::shared_ptr<memory::SynchronizedMemory> Array::memory() const {
         return nullptr;
     } else {
         eval(/*wait=*/true);
-        return op::static_as_buffer_view(*this)->memory_;
+        return op::static_as_buffer(*this)->memory_;
     }
 }
 

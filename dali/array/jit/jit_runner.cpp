@@ -73,7 +73,7 @@ SymbolTable::SymbolTable(const Expression* root, OPERATOR_T operator_t, const Ex
     root_(root), dest_(dest), operator_t_(operator_t) {}
 
 void SymbolTable::declare_array(const Array& array) {
-    const BufferView* ptr = static_as_buffer_view(array);
+    const Buffer* ptr = static_as_buffer(array);
     auto pos = arrays_visited_.find(ptr);
     if (pos == arrays_visited_.end()) {
         arrays_.emplace_back(array);
@@ -91,7 +91,7 @@ void SymbolTable::notify_access_mode(const Array& array, memory::AM mode) {
         if (mode == memory::AM_OVERWRITE && !array.spans_entire_memory()) {
             mode = memory::AM_MUTABLE;
         }
-        auto ptr = static_as_buffer_view(array);
+        auto ptr = static_as_buffer(array);
         auto mode_setting = arrays_visited_.find(ptr);
         ASSERT2(mode_setting != arrays_visited_.end(), utils::make_message(
             "Attempting to set access_mode for an array that was not declared.\n"
@@ -106,7 +106,7 @@ void SymbolTable::notify_access_mode(const Array& array, memory::AM mode) {
     }
 }
 
-int SymbolTable::get_array_index(const BufferView* ptr) const {
+int SymbolTable::get_array_index(const Buffer* ptr) const {
     return arrays_visited_.at(ptr).index_;
 }
 
@@ -294,7 +294,7 @@ std::vector<memory::AM> SymbolTable::collect_access_modes() const {
                    arrays_.end(),
                    std::back_inserter(modes),
                    [this](const Array& op) {
-                        return arrays_visited_.at(static_as_buffer_view(op)).access_mode_;
+                        return arrays_visited_.at(static_as_buffer(op)).access_mode_;
                    });
     modes.insert(modes.end(), temporaries_.size(), memory::AM_OVERWRITE);
     return modes;
@@ -624,7 +624,7 @@ bool JITRunner::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return static_as_jit_node(root_)->is_axis_collapsible_with_axis_minus_one(axis);
 }
 
-static hash_t BUFFER_HASH = std::hash<std::string>()(typeid(BufferView).name());
+static hash_t BUFFER_HASH = std::hash<std::string>()(typeid(Buffer).name());
 
 
 void subexpression_elimination(const Array& root,
@@ -1260,7 +1260,7 @@ void compute_node_compilation_info(const Array& array,
                                    SymbolTable& symbol_table,
                                    node_to_info_t& node_to_info) {
     if (array.is_buffer()) {
-        const BufferView* buffer_ptr = static_cast<const BufferView*>(array.expression().get());
+        const Buffer* buffer_ptr = static_cast<const Buffer*>(array.expression().get());
         symbol_table.declare_array(array);
         node_to_info[buffer_ptr].hash = utils::Hasher().add(BUFFER_HASH)
                                                        .add(std::max(1, buffer_ptr->ndim()))
@@ -1305,7 +1305,7 @@ int registered_impl = register_implementation(
         return std::make_shared<JITRunnerImpl>(dest, operator_t, x, assignment);
    });
 int registered_buffer = register_implementation(
-    typeid(BufferView).name(),
+    typeid(Buffer).name(),
     [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         Array runner(std::make_shared<JITRunner>(
             op::identity(x), std::vector<Array>({x}), operator_t, dest

@@ -1,4 +1,4 @@
-#include "buffer_view.h"
+#include "buffer.h"
 
 #include <algorithm>
 
@@ -19,7 +19,7 @@ namespace {
     }
 }
 
-std::shared_ptr<memory::SynchronizedMemory> BufferView::create_memory(
+std::shared_ptr<memory::SynchronizedMemory> Buffer::create_memory(
         const std::vector<int>& shape,
         DType dtype,
         memory::Device preferred_device) {
@@ -32,7 +32,7 @@ std::shared_ptr<memory::SynchronizedMemory> BufferView::create_memory(
     );
 }
 
-BufferView::BufferView(std::shared_ptr<memory::SynchronizedMemory> memory,
+Buffer::Buffer(std::shared_ptr<memory::SynchronizedMemory> memory,
                        const std::vector<int>& shape,
                        DType dtype,
                        int offset,
@@ -43,7 +43,7 @@ BufferView::BufferView(std::shared_ptr<memory::SynchronizedMemory> memory,
         "elements must be strictly positive (got ", shape, ")."));
 }
 
-void BufferView::broadcast_axis_internal(const int& axis) {
+void Buffer::broadcast_axis_internal(const int& axis) {
     ASSERT2(0 <= axis && axis < ndim(), utils::make_message("broadcast dimension (",
         axis, ") must be lower than the dimensionality of the broadcasted tensor (",
         ndim(), ")."));
@@ -54,34 +54,34 @@ void BufferView::broadcast_axis_internal(const int& axis) {
     strides_ = new_strides;
 }
 
-BufferView::BufferView(const std::vector<int>& shape,
+Buffer::Buffer(const std::vector<int>& shape,
                        DType dtype,
                        memory::Device preferred_device,
                        int offset,
                        const std::vector<int>& strides) :
-        BufferView(create_memory(shape, dtype, preferred_device),
+        Buffer(create_memory(shape, dtype, preferred_device),
                    shape, dtype, offset, strides) {
 
 }
 
-BufferView::BufferView(const BufferView& other) :
+Buffer::Buffer(const Buffer& other) :
         Expression(other),
         memory_(other.memory_) {
 }
 
-expression_ptr BufferView::copy() const {
-    return std::make_shared<BufferView>(*this);
+expression_ptr Buffer::copy() const {
+    return std::make_shared<Buffer>(*this);
 }
 
-expression_ptr BufferView::buffer_arg() const {
+expression_ptr Buffer::buffer_arg() const {
     return copy();
 }
 
-memory::Device BufferView::preferred_device() const {
+memory::Device Buffer::preferred_device() const {
     return memory_->preferred_device;
 }
 
-bool BufferView::spans_entire_memory() const {
+bool Buffer::spans_entire_memory() const {
     int noe = number_of_elements();
     if (offset_ == 0 && noe * size_of_dtype(dtype_) == memory_->total_memory) {
         return true;
@@ -98,19 +98,19 @@ bool BufferView::spans_entire_memory() const {
     return false;
 }
 
-std::shared_ptr<BufferView> BufferView::create_with_shape(
+std::shared_ptr<Buffer> Buffer::create_with_shape(
         const std::vector<int>& shape,
         DType dtype,
         memory::Device preferred_device,
         const std::vector<int>& broadcasted_axes) {
-    auto ret = std::make_shared<BufferView>(shape, dtype, preferred_device);
+    auto ret = std::make_shared<Buffer>(shape, dtype, preferred_device);
     for (const auto& axis : broadcasted_axes) {
         ret->broadcast_axis_internal(axis);
     }
     return ret;
 }
 
-expression_ptr BufferView::dimshuffle(const std::vector<int>& pattern, const Array* owner) const {
+expression_ptr Buffer::dimshuffle(const std::vector<int>& pattern, const Array* owner) const {
     int dimensionality = ndim();
     ASSERT2(pattern.size() == dimensionality, utils::make_message("number of"
         " dimensions in dimshuffle does not correspond to the dimensionality "
@@ -143,7 +143,7 @@ expression_ptr BufferView::dimshuffle(const std::vector<int>& pattern, const Arr
     return copy(newshape, offset_, newstrides);
 }
 
-expression_ptr BufferView::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
+expression_ptr Buffer::_reshape(const std::vector<int>& new_shape, const Array* owner) const {
     if (contiguous_memory()) {
         return copy(new_shape, offset_, {});
     }
@@ -174,7 +174,7 @@ expression_ptr BufferView::_reshape(const std::vector<int>& new_shape, const Arr
     return op::to_assignment(copy()).reshape(new_shape).expression();
 }
 
-expression_ptr BufferView::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {
+expression_ptr Buffer::pluck_axis(int axis, const Slice& slice_unnormalized, const Array* owner) const {
     axis = normalize_axis(axis);
     ASSERT2(axis >= 0 && axis < shape_.size(), utils::make_message("pluck_axis"
         " dimension (", axis, ") must be positive and less the dimensionality "
@@ -208,7 +208,7 @@ expression_ptr BufferView::pluck_axis(int axis, const Slice& slice_unnormalized,
 }
 
 
-expression_ptr BufferView::_squeeze(int axis, const Array* owner) const {
+expression_ptr Buffer::_squeeze(int axis, const Array* owner) const {
     const std::vector<int>& old_shape = shape_;
     auto old_strides             = normalized_strides();
     std::vector<int> new_shape;
@@ -223,7 +223,7 @@ expression_ptr BufferView::_squeeze(int axis, const Array* owner) const {
     return copy(new_shape, offset_, new_strides);
 }
 
-expression_ptr BufferView::_expand_dims(int new_axis, const Array* owner) const {
+expression_ptr Buffer::_expand_dims(int new_axis, const Array* owner) const {
     std::vector<int> new_shape   = shape_;
     std::vector<int> new_strides = normalized_strides();
 
@@ -240,7 +240,7 @@ expression_ptr BufferView::_expand_dims(int new_axis, const Array* owner) const 
     return copy(new_shape, offset_, new_strides);
 }
 
-expression_ptr BufferView::broadcast_to_shape(const std::vector<int>& new_shape, const Array* owner) const {
+expression_ptr Buffer::broadcast_to_shape(const std::vector<int>& new_shape, const Array* owner) const {
     ASSERT2(new_shape.size() == shape_.size(), utils::make_message(
         "broadcast_to_shape's new_shape argument must be of the "
         "same dimensionality as the current dimensionality of the "
@@ -266,7 +266,7 @@ expression_ptr BufferView::broadcast_to_shape(const std::vector<int>& new_shape,
     }
 }
 
-expression_ptr BufferView::operator()(int idx, const Array* owner) const {
+expression_ptr Buffer::operator()(int idx, const Array* owner) const {
     ASSERT2(0 <= idx && idx < number_of_elements(), utils::make_message(
         "Index ", idx, " must be in [0,", number_of_elements(), ")."));
     int delta_offset;
@@ -285,7 +285,7 @@ expression_ptr BufferView::operator()(int idx, const Array* owner) const {
     return copy({}, offset_ + delta_offset, {});
 }
 
-expression_ptr BufferView::copy(const std::vector<int>& shape,
+expression_ptr Buffer::copy(const std::vector<int>& shape,
                                 int offset,
                                 const std::vector<int>& strides) const {
     auto ret      = copy();
@@ -296,24 +296,24 @@ expression_ptr BufferView::copy(const std::vector<int>& shape,
     return ret;
 }
 
-bool BufferView::supports_operator(OPERATOR_T operator_t) const {
+bool Buffer::supports_operator(OPERATOR_T operator_t) const {
     return true;
 }
 
-bool BufferView::is_assignable() const {
+bool Buffer::is_assignable() const {
     return true;
 }
 
-bool BufferView::is_buffer() const {
+bool Buffer::is_buffer() const {
     return true;
 }
 
-bool BufferView::is_axis_collapsible_with_axis_minus_one(int axis) const {
+bool Buffer::is_axis_collapsible_with_axis_minus_one(int axis) const {
     return contiguous_memory();
 }
 
 namespace op {
-BufferView* static_as_buffer_view(const Array& arr) {
-    return static_cast<BufferView*>(arr.expression().get());
+Buffer* static_as_buffer(const Array& arr) {
+    return static_cast<Buffer*>(arr.expression().get());
 }
 }

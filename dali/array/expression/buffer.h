@@ -1,5 +1,5 @@
-#ifndef DALI_ARRAY_EXPRESSION_BUFFER_VIEW_H
-#define DALI_ARRAY_EXPRESSION_BUFFER_VIEW_H
+#ifndef DALI_ARRAY_EXPRESSION_BUFFER_H
+#define DALI_ARRAY_EXPRESSION_BUFFER_H
 
 #include <memory>
 #include <vector>
@@ -7,7 +7,7 @@
 #include "dali/array/expression/expression.h"
 #include "dali/array/memory/synchronized_memory.h"
 
-struct BufferView : public Expression {
+struct Buffer : public Expression {
     std::shared_ptr<memory::SynchronizedMemory> memory_;
 
     static std::shared_ptr<memory::SynchronizedMemory> create_memory(
@@ -15,19 +15,19 @@ struct BufferView : public Expression {
             DType dtype,
             memory::Device preferred_device);
 
-    BufferView(std::shared_ptr<memory::SynchronizedMemory> memory,
+    Buffer(std::shared_ptr<memory::SynchronizedMemory> memory,
                const std::vector<int>& shape,
                DType dtype,
                int offset,
                const std::vector<int>& strides);
 
-    BufferView(const std::vector<int>& shape,
+    Buffer(const std::vector<int>& shape,
                DType dtype,
                memory::Device preferred_device,
                int offset=0,
                const std::vector<int>& strides={});
 
-    BufferView(const BufferView& other);
+    Buffer(const Buffer& other);
 
     virtual bool spans_entire_memory() const override;
     virtual bool is_assignable() const override;
@@ -35,7 +35,7 @@ struct BufferView : public Expression {
 
     virtual memory::Device preferred_device() const override;
 
-    static std::shared_ptr<BufferView> create_with_shape(
+    static std::shared_ptr<Buffer> create_with_shape(
             const std::vector<int>& shape,
             DType dtype,
             memory::Device preferred_device,
@@ -63,8 +63,8 @@ struct BufferView : public Expression {
 };
 
 namespace op {
-    BufferView* static_as_buffer_view(const Array& arr);
+    Buffer* static_as_buffer(const Array& arr);
 }  // namespace op
 
 
-#endif  // DALI_ARRAY_EXPRESSION_BUFFER_VIEW_H
+#endif  // DALI_ARRAY_EXPRESSION_BUFFER_H

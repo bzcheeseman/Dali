@@ -3,7 +3,7 @@
 
 #include "dali/array/array.h"
 #include "dali/array/expression/expression.h"
-#include "dali/array/expression/buffer_view.h"
+#include "dali/array/expression/buffer.h"
 #include "dali/utils/hash_utils.h"
 
 namespace op {
@@ -42,7 +42,7 @@ namespace op {
                 ArrayUsage(int index, int count, memory::AM access_mode);
             };
 
-            std::unordered_map<const BufferView*, ArrayUsage> arrays_visited_;
+            std::unordered_map<const Buffer*, ArrayUsage> arrays_visited_;
             // Arrays are by default readonly, but if an access mode is specified
             // you can upgrade it.
             utils::Hasher array_order_;
@@ -64,7 +64,7 @@ namespace op {
 
             void declare_array(const Array& array);
             // each unique array gets an index for its insertion time
-            int get_array_index(const BufferView*) const;
+            int get_array_index(const Buffer*) const;
             int get_scalar_index(const ScalarView*) const;
             void declare_scalar(const ScalarView*);
             void declare_shape(const Expression*);

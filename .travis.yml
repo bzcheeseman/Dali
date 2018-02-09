@@ -17,7 +17,6 @@ before_install:
     - sudo apt-get install -y cmake
     - sudo apt-get install -y gcc
     - sudo apt-get install -y zlib1g-dev
-    - sudo apt-get install -y libgflags2 libgflags-dev
     - sudo apt-get install -y build-essential
     - sudo apt-get install -y libblas-dev
     - sudo apt-get install -y gcc-4.9 g++-4.9 cpp-4.9

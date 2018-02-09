@@ -1,10 +1,8 @@
 # Developer Guide
 
-
-
 ## Installing from source
 
-Get **GFlags**, **HiRedis**, **Clang**, and **protobuf**, then head to the `build` folder and use `cmake` to configure and create the appropriate Makefiles.
+Get **Clang** then head to the `build` folder and use `cmake` to configure and create the appropriate Makefiles.
 
 You need the latest version of [Clang](http://llvm.org/releases/download.html) (>= 3.6.0).
 
@@ -17,10 +15,6 @@ brew install openblas
 brew link openblas --force
 brew brew install llvm --with-clang
 brew install cmake
-brew install gflags
-HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install protobuf
-brew install libev
-HOMEBREW_CC=clang HOMEBREW_CXX=clang++ brew install hiredis
 cmake ..
 ```
 
@@ -144,20 +138,6 @@ Here we generate zip with file contents and rb file that uses it to install the 
 
 Upload the zip file as a relase (make sure that version on github is consistent with cmake verison).
 Upload the rb file.
-
-
-
-
-### Future steps
-
-* Add ImageNet, Caffe loading, broader ConvNet support (currently have `conv2d` and `conv1d`, but no pooling)
-* Web interface for managing experiments (today [Dali-visualizer](https://github.com/JonathanRaiman/dali-visualizer) only shows progress and sample predictions).
-* Web interface for visualizing network activity.
-* Add some mathematical expressions from [Deepmind's Torch Cephes module](http://deepmind.github.io/torch-cephes/).
-* Distribute training over multiple machines.
-* Ensure feature parity with [**Python** extension](https://github.com/JonathanRaiman/dali-cython-stub)
-* Implement multigpu support with [Fast Asynchronous Parallel SGD](http://arxiv.org/abs/1508.05711)
-* Make it brew, yum/dnf and apt-get installable
 
 
 ### Debugging Assertion Failures

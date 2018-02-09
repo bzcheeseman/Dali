@@ -610,6 +610,6 @@ INSTANTIATE_TEST_CASE_P(with_cudnn,
                         ::testing::Values(true));
 #endif  // DALI_USE_CUDNN
 
-INSTANTIATE_TEST_CASE_P(with_mshadow,
+INSTANTIATE_TEST_CASE_P(with_blas,
                         ArraySpatialTests,
                         ::testing::Values(false));

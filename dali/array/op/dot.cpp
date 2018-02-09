@@ -102,11 +102,7 @@ namespace op {
         int a_ndim = a.ndim();
         int b_ndim = b.ndim();
         if (a_ndim == 0 || b_ndim == 0) {
-            if (a_ndim == 0) {
-                return a.broadcast_scalar_to_ndim(b_ndim) * b;
-            } else {
-                return a * b.broadcast_scalar_to_ndim(a_ndim);
-            }
+            return a * b;
         } else if (a_ndim > 2 || b_ndim > 2) {
             // a is reduced over the last dimension
             // b is reduced over second to last dimension if it exists,

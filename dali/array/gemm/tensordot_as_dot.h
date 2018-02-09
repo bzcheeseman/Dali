@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include "dali/utils/assert2.h"
+#include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
 
 void check_tensordot_reduce_axes(

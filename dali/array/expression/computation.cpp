@@ -2,8 +2,8 @@
 #include "dali/array/array.h"
 #include "dali/array/expression/assignment.h"
 #include "dali/array/expression/control_flow.h"
-
 #include "dali/utils/make_message.h"
+#include "dali/utils/scope.h"
 #include <unordered_map>
 #include <algorithm>
 
@@ -11,14 +11,20 @@ Computation::Computation(Array left, OPERATOR_T operator_t, Array right, Array a
     left_(left), operator_t_(operator_t), right_(right), assignment_(assignment) {}
 
 void Computation::run_and_cleanup() {
-    run();
+    {
+        std::string assign_name;
+        if (Scope::has_observers()) {
+            assign_name = right_.full_expression_name();
+        }
+        DALI_SCOPE(assign_name);
+        run();
+    }
     auto buffer_expression = left_.expression()->copy();
     auto assignment_expression = assignment_.expression();
     buffer_expression->strides_ = assignment_expression->strides_;
     buffer_expression->shape_ = assignment_expression->shape_;
     buffer_expression->offset_ = assignment_expression->offset_;
     assignment_.set_expression(buffer_expression);
-
 }
 
 struct Noop : public Computation {

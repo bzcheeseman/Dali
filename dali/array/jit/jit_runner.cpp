@@ -1212,12 +1212,6 @@ struct JITRunnerImpl : public Computation {
             array_strides.push_back(buffer.strides().data());
             buffer_idx++;
         }
-        // std::string assign_name;
-        // if (Scope::has_observers()) {
-        //     assign_name = ExpressionState::full_operation_name();
-        // }
-        // DALI_SCOPE(assign_name);
-        // std::cout << "running " << assign_name << std::endl;
         compiled_self(
             data_ptrs.data(),
             array_offsets.data(),

@@ -98,10 +98,6 @@ bool BufferView::spans_entire_memory() const {
     return false;
 }
 
-std::string BufferView::name() const {
-    return utils::make_message("Buffer[", shape_, "]");
-}
-
 std::shared_ptr<BufferView> BufferView::create_with_shape(
         const std::vector<int>& shape,
         DType dtype,

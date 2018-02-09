@@ -32,7 +32,6 @@ struct BufferView : public Expression {
     virtual bool spans_entire_memory() const override;
     virtual bool is_assignable() const override;
     virtual bool is_buffer() const override;
-    virtual std::string name() const override;
 
     virtual memory::Device preferred_device() const override;
 

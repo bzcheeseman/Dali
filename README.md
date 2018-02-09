@@ -10,7 +10,7 @@ The API mimics Numpy's naming and documentation conventions.
 
 <img src="https://raw.github.com/dali-ml/Dali/master/misc/salvador.jpg" width="25%" />
 
-@authors **Jonathan Raiman** and **Szymon Sidor**
+[![Jonathan Raiman, author](https://img.shields.io/badge/Author-Jonathan%20Raiman%20-blue.svg)](https://github.com/JonathanRaiman/) [![Szymon Sidor, author](https://img.shields.io/badge/Author-Szymon%20Sidor%20-blue.svg)](https://github.com/nivwusquorum)
 
 ## Installation
 

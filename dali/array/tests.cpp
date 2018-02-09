@@ -1813,7 +1813,6 @@ TEST(ArrayOpsTests, add_vector) {
 }
 
 
-
 TEST(ArrayOpsTests, log_exp) {
     Array x = op::uniform(0.1, 20.0, {50});
     // don't sample twice

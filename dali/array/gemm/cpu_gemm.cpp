@@ -22,11 +22,10 @@ void igemm(bool transpose_a, bool transpose_b,
 struct CpuGemmImpl : public Computation {
     using Computation::Computation;
     virtual void run() {
-        // TODO(szymon): make less brittle (please :)
-        Array dst = left_;
-        op::MatMul* mm = static_cast<op::MatMul*>(right_.expression().get());
-        Array lhs = mm->arguments_[0];
-        Array rhs = mm->arguments_[1];
+        Array lhs = right_.expression()->arguments_[0];
+        Array rhs = right_.expression()->arguments_[1];
+        // use a 2D view of the array:
+        Array dst = left_.reshape({lhs.shape()[0], rhs.shape()[1]});
         auto op_dtype = dst.dtype();
         auto device = memory::Device::cpu();
         double destination_multiplier_ = 0;

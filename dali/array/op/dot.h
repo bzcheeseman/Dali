@@ -5,11 +5,14 @@
 
 namespace op {
     struct MatMul : public Expression {
-        MatMul(Array left, Array right);
+        // matmul can be reshaped in-place
+        MatMul(Array left, Array right, const std::vector<int>& shape);
         using Expression::copy;
-        virtual expression_ptr copy() const;
-        memory::Device preferred_device() const;
-        virtual bool supports_operator(OPERATOR_T operator_t) const;
+        virtual expression_ptr copy() const override;
+        memory::Device preferred_device() const override;
+        virtual bool supports_operator(OPERATOR_T operator_t) const override;
+        virtual expression_ptr _reshape(const std::vector<int>& new_shape,
+                                        const Array* owner) const override;
     };
     Array matrix_multiply_with_reshape(const Array& a,
                                        const Array& b,

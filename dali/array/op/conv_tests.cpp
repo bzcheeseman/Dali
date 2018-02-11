@@ -7,6 +7,7 @@
 #include "dali/array/op/unary.h"
 #include "dali/array/op/spatial_utils.h"
 #include "dali/array/expression/assignment.h"
+#include "dali/array/expression/control_flow.h"
 
 namespace {
     int int_ceil(int numerator, int denominator) {
@@ -39,19 +40,14 @@ namespace {
         int c = in.shape()[1];
         int h = in.shape()[2];
         int w = in.shape()[3];
-        std::vector<int> padded_shape =
-                {n, c, h + prepad_h + postpad_h, w + prepad_w + postpad_w};
-        auto X_padded = Array::zeros(padded_shape, in.dtype(), in.preferred_device());
-
-        Array X_padded_content =
-                X_padded[Slice(0, n)]
-                        [Slice(0, c)]
-                        [Slice(prepad_h, h + prepad_h)]
-                        [Slice(prepad_w, w + prepad_w)];
-        X_padded_content = op::assign(X_padded_content, OPERATOR_T_EQL, in);
-        X_padded_content.eval();
-
-        return X_padded;
+        std::vector<int> shape = {n, c, h + prepad_h + postpad_h, w + prepad_w + postpad_w};
+        auto out = Array::zeros(shape, in.dtype(), in.preferred_device());
+        Array content = out[Slice(0, n)]
+                           [Slice(0, c)]
+                           [Slice(prepad_h, h + prepad_h)]
+                           [Slice(prepad_w, w + prepad_w)];
+        return op::control_dependency(
+            op::assign(content, OPERATOR_T_EQL, in), out);
     }
 
     Array reference_conv2d(Array X, Array W,
@@ -214,3 +210,178 @@ result = session.run(tf.nn.conv2d(x, filters, (1, 1, 1, 1), "SAME"))
     ASSERT_TRUE(Array::equals(expected, ref));
     ASSERT_TRUE(Array::equals(expected, filtered));
 }
+
+
+TEST(ConvTests, nchw_conv2d_backward) {
+    Array X = op::arange(64).reshape({1, 1, 8, 8}).astype(DTYPE_FLOAT);
+    Array W = Array::ones({1, 1, 2, 2}, DTYPE_FLOAT);
+    Array out = op::conv2d(
+        X, W,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        PADDING_T_VALID,
+        "NCHW");
+    out.eval();
+    Array out_dw = Array::ones_like(out);
+    Array W_dw = op::conv2d_backward_filters(
+        X,
+        out_dw,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        W.shape(),
+        PADDING_T_VALID,
+        "NCHW");
+    W_dw.eval();
+    Array in_dw = op::conv2d_backward_input(
+        W,
+        out_dw,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        X.shape(),
+        PADDING_T_VALID,
+        "NCHW");
+    in_dw.eval();
+}
+
+TEST(ConvTests, nhwc_conv2d_backward) {
+    Array X = op::arange(64).reshape({1, 8, 8, 1}).astype(DTYPE_FLOAT);
+    Array W = Array::ones({1, 2, 2, 1}, DTYPE_FLOAT);
+    Array out = op::conv2d(
+        X, W,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        PADDING_T_VALID,
+        "NHWC");
+    out.eval();
+    Array out_dw = Array::ones_like(out);
+    Array W_dw = op::conv2d_backward_filters(
+        X,
+        out_dw,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        W.shape(),
+        PADDING_T_VALID,
+        "NHWC");
+    W_dw.eval();
+    Array in_dw = op::conv2d_backward_input(
+        W,
+        out_dw,
+        /*stride_h=*/2,
+        /*stride_w=*/2,
+        X.shape(),
+        PADDING_T_VALID,
+        "NHWC");
+    in_dw.eval();
+}
+
+#ifdef DALI_USE_CUDNN
+TEST(ArraySpatialTests, small_cudnn_conv2d_forward) {
+    for (int stride_h = 1; stride_h <= 1; ++stride_h) {
+        for (int stride_w = 1; stride_w <= 1; ++stride_w) {
+            for (std::string data_format: {"NCHW", "NHWC"}) {
+                for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
+
+                    auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
+                    std::string scope_name = utils::make_message(
+                        "stride_h = ", stride_h, ", stride_w = ", stride_w, ", "
+                        "data_format = ", data_format, ", padding = ", padding_str);
+                    SCOPED_TRACE(scope_name);
+
+                    Array X, W;
+
+                    if (data_format == "NCHW") {
+                        X = Array({1, 2, 3, 2}, DTYPE_FLOAT);
+                        W = Array({2, 2, 3, 2}, DTYPE_FLOAT);
+                    } else {
+                        X = Array({1, 3, 2, 2}, DTYPE_FLOAT);
+                        W = Array({2, 3, 2, 2}, DTYPE_FLOAT);
+                    }
+
+                    X = initializer::uniform(-1.0, 1.0);
+                    W = initializer::uniform(-1.0, 1.0);
+
+                    Array actual = op::cudnn_conv2d(
+                        X,
+                        W,
+                        stride_h,
+                        stride_w,
+                        padding,
+                        data_format);
+
+                    // reference computation will be much faster on CPU, methinks.
+                    X.to_device(memory::Device::cpu());
+                    W.to_device(memory::Device::cpu());
+
+                    Array expected = reference_conv2d(
+                        X,
+                        W,
+                        stride_h,
+                        stride_w,
+                        padding,
+                        data_format);
+                    if (!Array::allclose(expected, actual, 1e-3)) {
+                        ELOG(data_format);
+                        expected.print(); actual.print();
+                    }
+                    ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
+                }
+            }
+        }
+    }
+}
+
+TEST(ArraySpatialTests, cudnn_conv2d_forward) {
+    for (int stride_h = 1; stride_h <= 3; ++stride_h) {
+        for (int stride_w = 1; stride_w <= 3; ++stride_w) {
+            for (std::string data_format: {"NCHW", "NHWC"}) {
+                for (PADDING_T padding : {PADDING_T_VALID, PADDING_T_SAME}) {
+
+                    auto padding_str = (padding == PADDING_T_VALID) ? "valid" : "same";
+                    std::string scope_name = utils::make_message(
+                        "stride_h = ", stride_h, ", stride_w = ", stride_w, ", "
+                        "data_format = ", data_format, ", padding = ", padding_str);
+                    SCOPED_TRACE(scope_name);
+
+                    Array X, W;
+
+                    if (data_format == "NCHW") {
+                        X = Array({5, 3, 6, 8}, DTYPE_FLOAT);
+                        W = Array({2, 3, 2, 4}, DTYPE_FLOAT);
+                    } else {
+                        X = Array({5, 6, 8, 3}, DTYPE_FLOAT);
+                        W = Array({2, 2, 4, 3}, DTYPE_FLOAT);
+                    }
+
+                    X = initializer::uniform(-1.0, 1.0);
+                    W = initializer::uniform(-1.0, 1.0);
+
+                    Array actual = op::conv2d(
+                            X,
+                            W,
+                            stride_h,
+                            stride_w,
+                            padding,
+                            data_format);
+
+                    // reference computation will be much faster on CPU, methinks.
+                    X.to_device(memory::Device::cpu());
+                    W.to_device(memory::Device::cpu());
+
+                    Array expected =
+                        reference_conv2d(
+                            X,
+                            W,
+                            stride_h,
+                            stride_w,
+                            padding,
+                            data_format);
+                    if (!Array::allclose(expected, actual, 1e-3)) {
+                        expected.print(); actual.print();
+                    }
+                    ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
+                }
+            }
+        }
+    }
+}
+#endif

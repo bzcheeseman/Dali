@@ -79,7 +79,7 @@ namespace op {
         if (arrays.size() == 1) {
             return arrays[0];
         }
-        if (single_op | arrays.size() < 6) {
+        if (single_op | (arrays.size() < 6)) {
             Array out = arrays[0];
             for (int i = 1; i < arrays.size(); i++) {
                 out = op::add(out, arrays[i]);

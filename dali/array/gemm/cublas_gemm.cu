@@ -110,16 +110,14 @@ void gemm_kernel(bool transpose_a, bool transpose_b, bool transpose_c,
 struct CublasGemmImpl : public Computation {
     using Computation::Computation;
     virtual void run() {
-        // TODO(szymon): make less brittle (please :)
-        Array dst = left_;
-        op::MatMul* mm = static_cast<op::MatMul*>(right_.expression().get());
-        Array lhs = mm->arguments_[0];
-        Array rhs = mm->arguments_[1];
+        Array lhs = right_.expression()->arguments_[0];
+        Array rhs = right_.expression()->arguments_[1];
+        Array dst = left_.reshape({lhs.shape()[0], rhs.shape()[1]});
         auto op_dtype = dst.dtype();
         auto device = dst.preferred_device();
         double destination_multiplier_ = 0;
         double result_multiplier_ = 1.0;
-        void* dst_ptr = destination_multiplier_ == 0 ?
+        void* dst_ptr = (destination_multiplier_ == 0 && dst.spans_entire_memory()) ?
             dst.memory()->overwrite_data(device) : dst.memory()->mutable_data(device);
         const void* rhs_ptr = rhs.memory()->readonly_data(device);
         const void* lhs_ptr = lhs.memory()->readonly_data(device);

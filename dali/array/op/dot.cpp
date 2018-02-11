@@ -23,11 +23,16 @@ namespace op {
         return matmul(a, b).reshape(out_shape);
     }
 
-    MatMul::MatMul(Array left, Array right) :
-        Expression({left.shape()[0], right.shape()[1]},
+    expression_ptr MatMul::_reshape(const std::vector<int>& new_shape,
+                                    const Array* owner) const {
+        return std::make_shared<MatMul>(arguments_[0], arguments_[1], new_shape);
+    }
+
+    MatMul::MatMul(Array left, Array right, const std::vector<int>& shape) :
+        Expression(shape,
                    type_promotion(left, right), {left, right}) {}
     expression_ptr MatMul::copy() const {
-        return std::make_shared<MatMul>(*this);
+        return std::make_shared<MatMul>(arguments_[0], arguments_[1], shape_);
     }
     memory::Device MatMul::preferred_device() const {
         return device_promotion(arguments_[0], arguments_[1]);
@@ -40,10 +45,10 @@ namespace op {
     }
 
     Array matmul(Array a, Array b) {
-        ASSERT2(a.ndim() == 2 && b.ndim() == 2, utils::make_message(
+        ASSERT2((a.ndim() == 2) && (b.ndim() == 2), utils::make_message(
             "matmul inputs must be both be 2-dimensional, but got a.ndim = ",
             a.ndim(), " and b.ndim = ", b.ndim(), "."));
-        ASSERT2(a.shape()[1] == b.shape()[0] | a.shape()[1] == 1 | b.shape()[0] == 1,
+        ASSERT2((a.shape()[1] == b.shape()[0]) | (a.shape()[1] == 1) | (b.shape()[0] == 1),
             utils::make_message("matmul shapes not aligned, with a.shape = ", a.shape(),
                 " and b.shape = ", b.shape(), ": expected a.shape[1] = ", a.shape()[1],
                 " to equal b.shape[0] = ", b.shape()[0], ", or for either to equal 1."));
@@ -56,15 +61,15 @@ namespace op {
         }
         a = ascontiguousarray_or_simple_transpose(a);
         b = ascontiguousarray_or_simple_transpose(b);
-        return Array(std::make_shared<MatMul>(a, b));
+        return Array(std::make_shared<MatMul>(a, b, std::vector<int>{a.shape()[0], b.shape()[1]}));
     }
 
     Array matrix_vector_dot(const Array& a, const Array& b) {
         // TODO(jonathan): use correct blas subroutine whenever possible (gemv)
-        ASSERT2((a.ndim() == 1 && b.ndim() == 2) || (a.ndim() == 2 && b.ndim() == 1),
+        ASSERT2(((a.ndim() == 1) && (b.ndim() == 2)) || ((a.ndim() == 2) && (b.ndim() == 1)),
             utils::make_message("matrix_vector_dot inputs must be a vector and a matrix,"
                 " but got a.ndim = ", a.ndim(), " and b.ndim = ", b.ndim(), "."));
-        if (a.ndim() == 1 && b.ndim() == 2) {
+        if ((a.ndim() == 1) && (b.ndim() == 2)) {
             ASSERT2(b.shape()[0] == a.shape()[0], utils::make_message(
                 "matrix_vector_dot shape mistmach between a.shape = ", a.shape(),
                 " and b.shape = ", b.shape(), ": a.shape[0] = ", a.shape()[0],

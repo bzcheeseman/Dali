@@ -611,7 +611,7 @@ TEST(ConvTests, pool2d_forward) {
     }
 }
 
-TEST(ConvTests, DISABLED_conv_backward_bias) {
+TEST(ConvTests, conv_backward_bias) {
     Array X = Array::ones({2, 3, 4, 5}, DTYPE_FLOAT);
     Array out = op::cudnn_conv2d_backward_bias(X, "NCHW");
     for (int i = 0; i < 3; ++i) {

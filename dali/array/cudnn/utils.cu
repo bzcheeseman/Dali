@@ -28,35 +28,33 @@ inline cudnnDataType_t cudnn_dtype(DType dtype) {
     }
 }
 
-DescriptorHolder<cudnnFilterDescriptor_t>::DescriptorHolder(const Array& array, bool nchw) {
+DescriptorHolder<cudnnFilterDescriptor_t>::DescriptorHolder(const std::vector<int>& shape, DType dtype, bool nchw) {
     CUDNN_CHECK_RESULT(cudnnCreateFilterDescriptor(&descriptor_),
                        "when creating filter descriptor ");
     cudnnTensorFormat_t tensor_format = nchw ? CUDNN_TENSOR_NCHW : CUDNN_TENSOR_NHWC;
     int n, c, h, w;
     if (nchw) {
-        n = array.shape()[0]; c = array.shape()[1]; h = array.shape()[2]; w = array.shape()[3];
+        n = shape[0]; c = shape[1]; h = shape[2]; w = shape[3];
     } else {
-        n = array.shape()[0]; c = array.shape()[3]; h = array.shape()[1]; w = array.shape()[2];
+        n = shape[0]; c = shape[3]; h = shape[1]; w = shape[2];
     }
     CUDNN_CHECK_RESULT(cudnnSetFilter4dDescriptor(
-        descriptor_, cudnn_dtype(array.dtype()), tensor_format,
-        n, c, h, w),
+        descriptor_, cudnn_dtype(dtype), tensor_format, n, c, h, w),
         "when setting filter descriptor ");
 }
 
-DescriptorHolder<cudnnTensorDescriptor_t>::DescriptorHolder(const Array& array, bool nchw) {
+DescriptorHolder<cudnnTensorDescriptor_t>::DescriptorHolder(const std::vector<int>& shape, DType dtype, bool nchw) {
     CUDNN_CHECK_RESULT(cudnnCreateTensorDescriptor(&descriptor_),
                        "when creating tensor descriptor ");
     cudnnTensorFormat_t tensor_format = nchw ? CUDNN_TENSOR_NCHW : CUDNN_TENSOR_NHWC;
     int n, c, h, w;
     if (nchw) {
-        n = array.shape()[0]; c = array.shape()[1]; h = array.shape()[2]; w = array.shape()[3];
+        n = shape[0]; c = shape[1]; h = shape[2]; w = shape[3];
     } else {
-        n = array.shape()[0]; c = array.shape()[3]; h = array.shape()[1]; w = array.shape()[2];
+        n = shape[0]; c = shape[3]; h = shape[1]; w = shape[2];
     }
     CUDNN_CHECK_RESULT(cudnnSetTensor4dDescriptor(
-        descriptor_, tensor_format, cudnn_dtype(array.dtype()),
-        n, c, h, w),
+        descriptor_, tensor_format, cudnn_dtype(dtype), n, c, h, w),
         "when setting tensor descriptor ");
 }
 

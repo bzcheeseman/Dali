@@ -195,19 +195,19 @@ namespace {
         void run() {
             run_internal(Operator(operator_t_, left_.dtype()),
                          static_cast<op::CudnnExpression*>(right_.expression().get())->nchw_,
-                         left_.preferred_device());
+                         left_.preferred_device(), left_.dtype());
         }
-        virtual void run_internal(const Operator&, bool nchw, const memory::Device&) = 0;
+        virtual void run_internal(const Operator&, bool nchw, const memory::Device&, DType dtype) = 0;
     };
 
     struct CudnnConv2dImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
-        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device, DType dtype) override {
             auto conv = static_cast<op::CudnnConv2d*>(right_.expression().get());
-            DescriptorHolder<cudnnTensorDescriptor_t> inputs_description(conv->arguments()[0], nchw);
-            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, nchw);
-            DescriptorHolder<cudnnFilterDescriptor_t> filters_description(conv->arguments()[1], nchw);
-            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(left_.dtype(),
+            DescriptorHolder<cudnnTensorDescriptor_t> inputs_description(conv->arguments()[0].shape(), dtype, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_.shape(), dtype, nchw);
+            DescriptorHolder<cudnnFilterDescriptor_t> filters_description(conv->arguments()[1].shape(), dtype, nchw);
+            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(dtype,
                                                                             conv->info_.padding_h,
                                                                             conv->info_.padding_w,
                                                                             conv->info_.stride_h,
@@ -246,12 +246,12 @@ namespace {
 
     struct CudnnConv2dBackwardInputImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
-        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device, DType dtype) override {
             auto conv = static_cast<op::CudnnConv2dBackwardInput*>(right_.expression().get());
-            DescriptorHolder<cudnnFilterDescriptor_t> filters_description(conv->arguments()[0], nchw);
-            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(conv->arguments()[1], nchw);
-            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, nchw);
-            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(left_.dtype(),
+            DescriptorHolder<cudnnFilterDescriptor_t> filters_description(conv->arguments()[0].shape(), dtype, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(conv->arguments()[1].shape(), dtype, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_.shape(), dtype, nchw);
+            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(dtype,
                                                                             conv->info_.padding_h,
                                                                             conv->info_.padding_w,
                                                                             conv->info_.stride_h,
@@ -286,12 +286,12 @@ namespace {
 
     struct CudnnConv2dBackwardFiltersImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
-        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device, DType dtype) override {
             auto conv = static_cast<op::CudnnConv2dBackwardFilters*>(right_.expression().get());
-            DescriptorHolder<cudnnTensorDescriptor_t> in_description(conv->arguments()[0], nchw);
-            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(conv->arguments()[1], nchw);
-            DescriptorHolder<cudnnFilterDescriptor_t> out_description(left_, nchw);
-            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(left_.dtype(),
+            DescriptorHolder<cudnnTensorDescriptor_t> in_description(conv->arguments()[0].shape(), dtype, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(conv->arguments()[1].shape(), dtype, nchw);
+            DescriptorHolder<cudnnFilterDescriptor_t> out_description(left_.shape(), dtype, nchw);
+            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(dtype,
                                                                             conv->info_.padding_h,
                                                                             conv->info_.padding_w,
                                                                             conv->info_.stride_h,
@@ -327,11 +327,12 @@ namespace {
 
     struct CudnnConv2dBackwardBiasImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
-        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
-            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, nchw);
-            ELOG(left_.shape());
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device, DType dtype) override {
+            std::vector<int> bias_shape = {1, 1, 1, 1};
+            bias_shape[nchw ? 1 : 3] = left_.shape()[0];
+            DescriptorHolder<cudnnTensorDescriptor_t> out_description(bias_shape, dtype, nchw);
             DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(
-                right_.expression()->arguments()[0], nchw);
+                right_.expression()->arguments()[0].shape(), dtype, nchw);
             CUDNN_CHECK_RESULT(cudnnConvolutionBackwardBias(
                 *get_handle(),
                 update_operator.alpha_ptr_,
@@ -353,7 +354,7 @@ namespace {
 
     struct CudnnPool2dImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
-        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device, DType dtype) override {
             auto pool = static_cast<op::CudnnPool2d*>(right_.expression().get());
             // choice of pooling mode follows what TensorFlow does:
             //   https://github.com/tensorflow/tensorflow/blob/
@@ -363,8 +364,8 @@ namespace {
                 pool->pooling_mode_ == POOLING_T_MAX ?
                 CUDNN_POOLING_MAX : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING);
 
-            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, nchw);
-            DescriptorHolder<cudnnTensorDescriptor_t> in_description(pool->arguments()[0], nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_.shape(), dtype, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> in_description(pool->arguments()[0].shape(), dtype, nchw);
             DescriptorHolder<cudnnPoolingDescriptor_t> pooling(cudnn_pooling_mode,
                 pool->info_.window_h, pool->info_.window_w, pool->info_.padding_h,
                 pool->info_.padding_w, pool->info_.stride_h, pool->info_.stride_w);

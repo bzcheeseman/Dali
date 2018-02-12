@@ -2,8 +2,9 @@
 #define DALI_ARRAY_OP_CUDNN_UTILS_H
 
 #include "dali/config.h"
-#include "dali/array/array.h"
 #include "dali/utils/assert2.h"
+#include "dali/array/dtype.h"
+#include <vector>
 
 #ifdef DALI_USE_CUDNN
 #include <cudnn.h>
@@ -15,14 +16,14 @@ struct DescriptorHolder {
 template<>
 struct DescriptorHolder<cudnnFilterDescriptor_t> {
     cudnnFilterDescriptor_t descriptor_;
-    DescriptorHolder(const Array& array, bool nchw);
+    DescriptorHolder(const std::vector<int>& shape, DType dtype, bool nchw);
     ~DescriptorHolder();
 };
 
 template<>
 struct DescriptorHolder<cudnnTensorDescriptor_t> {
     cudnnTensorDescriptor_t descriptor_;
-    DescriptorHolder(const Array& array, bool nchw);
+    DescriptorHolder(const std::vector<int>& shape, DType dtype, bool nchw);
     ~DescriptorHolder();
 };
 

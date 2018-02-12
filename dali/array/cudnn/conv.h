@@ -12,23 +12,43 @@ namespace op {
                        PADDING_T padding,
                        const std::string& data_format);
 
-    Array cudnn_conv2d_backward_input(
-        Array filters,
-        Array out_dw,
-        int stride_h,
-        int stride_w,
-        const std::vector<int>& input_shape,
-        PADDING_T padding,
-        const std::string& data_format);
+    Array cudnn_conv2d_backward_input(Array filters,
+                                      Array out_dw,
+                                      int stride_h,
+                                      int stride_w,
+                                      const std::vector<int>& input_shape,
+                                      PADDING_T padding,
+                                      const std::string& data_format);
 
-    Array cudnn_conv2d_backward_filters(
-        Array input,
-        Array out_dw,
-        int stride_h,
-        int stride_w,
-        const std::vector<int>& filters_shape,
-        PADDING_T padding,
-        const std::string& data_format);
+    Array cudnn_conv2d_backward_filters(Array input,
+                                        Array out_dw,
+                                        int stride_h,
+                                        int stride_w,
+                                        const std::vector<int>& filters_shape,
+                                        PADDING_T padding,
+                                        const std::string& data_format);
+
+    Array cudnn_conv2d_backward_bias(Array out_dw,
+                                     const std::string& data_format);
+
+    Array cudnn_pool2d(const Array& input,
+                       int window_h,
+                       int window_w,
+                       int stride_h,
+                       int stride_w,
+                       POOLING_T pooling_mode,
+                       PADDING_T padding,
+                       const std::string& data_format);
+    Array cudnn_pool2d_backward(const Array& out,
+                                const Array& out_dw,
+                                const Array& in,
+                                int window_h,
+                                int window_w,
+                                int stride_h,
+                                int stride_w,
+                                POOLING_T pooling_mode,
+                                PADDING_T padding,
+                                const std::string& data_format);
 }
 
 #endif  // DALI_ARRAY_OP_CUDNN_CONV_H

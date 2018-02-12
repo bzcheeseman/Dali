@@ -14,6 +14,7 @@
 include(FindPackageHandleStandardArgs)
 
 set(CUDNN_ROOT_DIR "" CACHE PATH "Folder contains NVIDIA cuDNN")
+message(STATUS "CUDA_TOOLKIT_ROOT_DIR ${CUDA_TOOLKIT_ROOT_DIR}")
 
 find_path(CUDNN_INCLUDE_DIR cudnn.h
     HINTS ${CUDNN_ROOT_DIR} ${CUDA_TOOLKIT_ROOT_DIR}

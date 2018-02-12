@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "dali/utils/make_message.h"
 
 #include <atomic>
 #ifdef DALI_USE_CUDNN
@@ -12,6 +13,15 @@ cudnnHandle_t* get_handle() {
        cudnnCreate(&handle);
     }
     return &handle;
+}
+
+inline cudnnDataType_t cudnn_dtype(DType dtype) {
+    if (dtype == DTYPE_FLOAT) {
+        return CUDNN_DATA_FLOAT;
+    } else if (dtype == DTYPE_DOUBLE) {
+        return CUDNN_DATA_DOUBLE;
+    }
+
 }
 
 template<>
@@ -38,11 +48,13 @@ DescriptorHolder<cudnnTensorDescriptor_t>::DescriptorHolder(const Array& array, 
         "when setting tensor descriptor ");
 }
 
+template<>
 ~DescriptorHolder<cudnnFilterDescriptor_t>::DescriptorHolder() {
     CUDNN_CHECK_RESULT(cudnnDestroyFilterDescriptor(&descriptor_),
                        "when destroying filter descriptor ");
 }
 
+template<>
 ~DescriptorHolder<cudnnTensorDescriptor_t>::DescriptorHolder() {
     CUDNN_CHECK_RESULT(cudnnDestroyTensorDescriptor(&descriptor_),
                        "when destroying tensor descriptor ");
@@ -67,10 +79,38 @@ DescriptorHolder<cudnnConvolutionDescriptor_t>::DescriptorHolder(int padding_h,
             ), "when setting convolution descriptor ");
 }
 
+template<>
 ~DescriptorHolder<cudnnConvolutionDescriptor_t>::DescriptorHolder() {
     CUDNN_CHECK_RESULT(cudnnDestroyConvolutionDescriptor(&descriptor_),
                        "when destroying convolution descriptor ");
 }
 
+template<>
+DescriptorHolder<cudnnPoolingDescriptor_t>::DescriptorHolder(cudnnPoolingMode_t pooling_mode,
+                                                             int window_h,
+                                                             int window_w,
+                                                             int padding_h,
+                                                             int padding_w,
+                                                             int stride_h,
+                                                             int stride_w) {
+    CUDNN_CHECK_RESULT(cudnnCreatePooling2dDescriptor(&descriptor_),
+                       "when creating pooling descriptor ");
+    CUDNN_CHECK_RESULT(cudnnSetPooling2dDescriptor(descriptor_,
+                pooling_mode,
+                CUDNN_PROPAGATE_NAN,
+                /*windowHeight=*/ window_h,
+                /*windowWidth=*/  window_w,
+                /*pad_h=*/        padding_h,
+                /*pad_w=*/        padding_w,
+                /*stride_h=*/     stride_h,
+                /*stride_w=*/     stride_w
+            ), "when setting pooling descriptor ");
+}
+
+template<>
+~DescriptorHolder<cudnnPoolingDescriptor_t>::DescriptorHolder() {
+    CUDNN_CHECK_RESULT(cudnnDestroyPooling2dDescriptor(&descriptor_),
+                       "when destroying pooling descriptor ");
+}
 
 #endif

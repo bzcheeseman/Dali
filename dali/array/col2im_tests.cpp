@@ -6,7 +6,6 @@
 #include "dali/array/expression/assignment.h"
 
 // TODO(jonathan): add reference col2im
-
 TEST(JITTests, col2im_without_channels) {
     Array image_nchw({2, 1, 3, 4}, DTYPE_INT32);
     Array image_nhwc = image_nchw.transpose({0, 2, 3, 1});

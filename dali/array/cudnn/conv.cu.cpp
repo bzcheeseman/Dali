@@ -1,27 +1,34 @@
 #include "conv.h"
 #include "dali/config.h"
 #include "dali/array/cudnn/utils.h"
+#include "dali/utils/print_utils.h"
 #include "dali/utils/make_message.h"
 #include "dali/utils/assert2.h"
 #include "dali/array/op/spatial_utils.h"
 #include "dali/array/op/elementwise_operation.h"
 #include "dali/array/expression/computation.h"
+#include "dali/array/expression/assignment.h"
+#include "dali/array/expression/control_flow.h"
+
 namespace op {
     struct CudnnExpression : public Expression {
-        using Expression::Expression;
         using Expression::copy;
+        const bool nchw_;
         virtual bool supports_operator(OPERATOR_T operator_t) const {
             return (operator_t == OPERATOR_T_EQL ||
                     operator_t == OPERATOR_T_ADD ||
                     operator_t == OPERATOR_T_SUB);
         }
+        CudnnExpression(const std::vector<int>& shape, DType dtype,
+                        const std::vector<Array>& arguments, bool nchw) :
+            Expression(shape, dtype, arguments), nchw_(nchw) {}
     };
 
     struct CudnnConv2dBackwardBias : public CudnnExpression {
-        const bool nchw_;
         CudnnConv2dBackwardBias(const Array& input, bool nchw)
-            : CudnnExpression(nchw ? std::vector<int>{input.shape()[1]} : std::vector<int>{input.shape()[3]}, input.dtype(), {input}),
-              nchw_(nchw) {}
+            : CudnnExpression(nchw ? std::vector<int>{input.shape()[1]} :
+                              std::vector<int>{input.shape()[3]},
+                              input.dtype(), {input}, nchw) {}
         memory::Device preferred_device() const override {
             return arguments_[0].preferred_device();
         }
@@ -32,10 +39,9 @@ namespace op {
 
     struct CudnnConvExpression : public CudnnExpression {
         const ConvFunctionInfo info_;
-        const bool nchw_;
         CudnnConvExpression(const std::vector<int>& shape, DType dtype,
                             const std::vector<Array>& arguments, ConvFunctionInfo info, bool nchw)
-            : CudnnExpression(shape, dtype, arguments), info_(info), nchw_(nchw) {}
+            : CudnnExpression(shape, dtype, arguments, nchw), info_(info) {}
         memory::Device preferred_device() const override {
             return device_promotion(arguments_[0], arguments_[1]);
         }
@@ -70,11 +76,11 @@ namespace op {
     struct CudnnPoolExpression : public CudnnExpression {
         const PoolFunctionInfo info_;
         const POOLING_T pooling_mode_;
-        const bool nchw_;
         CudnnPoolExpression(const std::vector<int>& shape, DType dtype,
                             const std::vector<Array>& arguments, PoolFunctionInfo info,
                             POOLING_T pooling_mode, bool nchw)
-            : CudnnExpression(shape, dtype, arguments), info_(info), pooling_mode_(pooling_mode), nchw_(nchw) {}
+            : CudnnExpression(shape, dtype, arguments, nchw),
+              info_(info), pooling_mode_(pooling_mode) {}
     };
 
     struct CudnnPool2d : public CudnnPoolExpression {
@@ -106,6 +112,33 @@ namespace op {
     };
 }
 #ifdef DALI_USE_CUDNN
+
+#define FatalError(s) do {                                             \
+    std::stringstream _where, _message;                                \
+    _where << __FILE__ << ':' << __LINE__;                             \
+    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;  \
+    std::cerr << _message.str() << "\nAborting...\n";                  \
+    cudaDeviceReset();                                                 \
+    exit(1);                                                           \
+} while(0)
+
+#define checkCUDNN(status) do {                                        \
+    std::stringstream _error;                                          \
+    if (status != CUDNN_STATUS_SUCCESS) {                              \
+      _error << "CUDNN failure: " << cudnnGetErrorString(status);      \
+      FatalError(_error.str());                                        \
+    }                                                                  \
+} while(0)
+
+#define checkCudaErrors(status) do {                                   \
+    std::stringstream _error;                                          \
+    if (status != 0) {                                                 \
+      _error << "Cuda failure: " << status;                            \
+      FatalError(_error.str());                                        \
+    }                                                                  \
+} while(0)
+
+
 namespace {
     struct Operator {
         float alpha_f_, beta_f_;
@@ -151,42 +184,44 @@ namespace {
         void* destination_data(memory::Device device) {
             memory::AM access_mode = operator_t_ == OPERATOR_T_EQL && left_.spans_entire_memory() ?
                 memory::AM_OVERWRITE : memory::AM_MUTABLE;
-            return left_.memory().data(device, access_mode) + left_.offset();
+            return (void*)(((char*)left_.memory()->data(device, access_mode)) + left_.offset() * size_of_dtype(left_.dtype()));
         }
 
         void* argument_data(memory::Device device, int idx) {
-            const auto& arg = right_.expression()->arguments_()[idx];
-            return arg.memory().readonly_data(device) + arg.offset();
+            const auto& arg = right_.expression()->arguments()[idx];
+            return (void*)(((char*)arg.memory()->readonly_data(device)) + arg.offset() * size_of_dtype(arg.dtype()));
         }
 
         void run() {
-            Operator update_operator(operator_t_, left_.dtype());
-            run_internal(update_operator);
+            run_internal(Operator(operator_t_, left_.dtype()),
+                         static_cast<op::CudnnExpression*>(right_.expression().get())->nchw_,
+                         left_.preferred_device());
         }
+        virtual void run_internal(const Operator&, bool nchw, const memory::Device&) = 0;
     };
 
-    struct CudnnConv2dImpl : public CudnnComputation {
+    struct CudnnConv2dImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
-        void run_internal(Operator& update_operator) {
-            auto conv = static_cast<CudnnConv2d>(right_.expression().get());
-            DescriptorHolder<cudnnTensorDescriptor_t> inputs_description(conv->arguments_()[0], conv->nchw_);
-            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, conv->nchw_);
-            DescriptorHolder<cudnnFilterDescriptor_t> filters_description(conv->arguments_()[1], conv->nchw_);
-            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(conv->info.padding_h,
-                                                                            conv->info.padding_w,
-                                                                            conv->info.stride_h,
-                                                                            conv->info.stride_w);
-            auto device = left_.preferred_device();
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+            auto conv = static_cast<op::CudnnConv2d*>(right_.expression().get());
+            DescriptorHolder<cudnnTensorDescriptor_t> inputs_description(conv->arguments()[0], nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, nchw);
+            DescriptorHolder<cudnnFilterDescriptor_t> filters_description(conv->arguments()[1], nchw);
+            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(left_.dtype(),
+                                                                            conv->info_.padding_h,
+                                                                            conv->info_.padding_w,
+                                                                            conv->info_.stride_h,
+                                                                            conv->info_.stride_w);
             // TODO(jonathan) autotune algo and working space selection
             // (See: SuperNeurons: Dynamic GPU Memory Management for Training
             // Deep Neural Networks, Wang et al.)
             cudnnConvolutionFwdAlgo_t conv_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
-            void* working_memory    = NULL;
+            void* working_memory = NULL;
             int working_memory_size = 0;
             auto status = cudnnConvolutionForward(
                 *get_handle(),
                 update_operator.alpha_ptr_,
-                in_description.descriptor_,
+                inputs_description.descriptor_,
                 argument_data(device, 0),
                 filters_description.descriptor_,
                 argument_data(device, 1),
@@ -198,12 +233,7 @@ namespace {
                 out_description.descriptor_,
                 destination_data(device));
             CUDNN_CHECK_RESULT(status, utils::make_message(
-                "Error when running cudnnConvolutionForward with \n"
-                "CONVOLUTION: ", *conv, "\n"
-                "OUTPUT:      ", *out, "\n"
-                "INPUT:       ", *in, "\n"
-                "FILTERS:     ", *filters, "\n"
-                ": "));
+                "Error when running cudnnConvolutionForward with ", conv->info_, " "));
         }
     };
 
@@ -214,18 +244,18 @@ namespace {
         }
     );
 
-    struct CudnnConv2dBackwardInputImpl : public CudnnComputation {
-        using Computation::Computation;
-        void run_internal(Operator& update_operator) {
-            auto conv = static_cast<CudnnConv2dBackwardInput>(right_.expression().get());
-            DescriptorHolder<cudnnFilterDescriptor_t> filters_description(conv->arguments_()[0], conv->nchw_);
-            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(conv->arguments_()[1], conv->nchw_);
-            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, conv->nchw_);
-            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(conv->info.padding_h,
-                                                                            conv->info.padding_w,
-                                                                            conv->info.stride_h,
-                                                                            conv->info.stride_w);
-            auto device = left_.preferred_device();
+    struct CudnnConv2dBackwardInputImpl : public CudnnComputation {
+        using CudnnComputation::CudnnComputation;
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+            auto conv = static_cast<op::CudnnConv2dBackwardInput*>(right_.expression().get());
+            DescriptorHolder<cudnnFilterDescriptor_t> filters_description(conv->arguments()[0], nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(conv->arguments()[1], nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, nchw);
+            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(left_.dtype(),
+                                                                            conv->info_.padding_h,
+                                                                            conv->info_.padding_w,
+                                                                            conv->info_.stride_h,
+                                                                            conv->info_.stride_w);
             cudnnConvolutionBwdDataAlgo_t conv_bwd_data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
             void* working_memory    = NULL;
             int working_memory_size = 0;
@@ -243,13 +273,7 @@ namespace {
                 update_operator.beta_ptr_,
                 out_description.descriptor_,
                 destination_data(device));
-            CUDNN_CHECK_RESULT(status, utils::make_message(
-                "Error when running cudnnConvolutionBackwardData with \n"
-                "CONVOLUTION: ", *conv, "\n"
-                "OUTPUT:      ", *out, "\n"
-                "INPUT:       ", *in, "\n"
-                "FILTERS:     ", *filters, "\n"
-                ": "));
+            CUDNN_CHECK_RESULT(status, "Error when running cudnnConvolutionBackwardData ");
         }
     };
 
@@ -260,18 +284,18 @@ namespace {
         }
     );
 
-    struct CudnnConv2dBackwardInputImpl : public CudnnComputation {
-        using Computation::Computation;
-        void run_internal(Operator& update_operator) {
-            auto conv = static_cast<CudnnConv2dBackwardInput>(right_.expression().get());
-            DescriptorHolder<cudnnTensorDescriptor_t> in_description(conv->arguments_()[0], conv->nchw_);
-            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(conv->arguments_()[1], conv->nchw_);
-            DescriptorHolder<cudnnFilterDescriptor_t> out_description(left_, conv->nchw_);
-            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(conv->info.padding_h,
-                                                                            conv->info.padding_w,
-                                                                            conv->info.stride_h,
-                                                                            conv->info.stride_w);
-            auto device = left_.preferred_device();
+    struct CudnnConv2dBackwardFiltersImpl : public CudnnComputation {
+        using CudnnComputation::CudnnComputation;
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+            auto conv = static_cast<op::CudnnConv2dBackwardFilters*>(right_.expression().get());
+            DescriptorHolder<cudnnTensorDescriptor_t> in_description(conv->arguments()[0], nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(conv->arguments()[1], nchw);
+            DescriptorHolder<cudnnFilterDescriptor_t> out_description(left_, nchw);
+            DescriptorHolder<cudnnConvolutionDescriptor_t> conv_description(left_.dtype(),
+                                                                            conv->info_.padding_h,
+                                                                            conv->info_.padding_w,
+                                                                            conv->info_.stride_h,
+                                                                            conv->info_.stride_w);
             cudnnConvolutionBwdFilterAlgo_t conv_bwd_filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
             void* working_memory    = NULL;
             int working_memory_size = 0;
@@ -290,12 +314,7 @@ namespace {
                 out_description.descriptor_,
                 destination_data(device));
             CUDNN_CHECK_RESULT(status, utils::make_message(
-                "Error when running cudnnConvolutionBackwardFilter with \n"
-                "CONVOLUTION: ", *conv, "\n"
-                "OUTPUT:      ", *out, "\n"
-                "INPUT:       ", *in, "\n"
-                "FILTERS:     ", *filters, "\n"
-                ": "));
+                "Error when running cudnnConvolutionBackwardFilter "));
         }
     };
 
@@ -307,8 +326,12 @@ namespace {
     );
 
     struct CudnnConv2dBackwardBiasImpl : public CudnnComputation {
-        using Computation::Computation;
-        void run_internal(Operator& update_operator) {
+        using CudnnComputation::CudnnComputation;
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, nchw);
+            ELOG(left_.shape());
+            DescriptorHolder<cudnnTensorDescriptor_t> out_dw_description(
+                right_.expression()->arguments()[0], nchw);
             CUDNN_CHECK_RESULT(cudnnConvolutionBackwardBias(
                 *get_handle(),
                 update_operator.alpha_ptr_,
@@ -321,22 +344,35 @@ namespace {
         }
     };
 
+    int conv2d_backward_bias_impl = register_implementation(
+        typeid(op::CudnnConv2dBackwardBias).name(),
+        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+            return std::make_shared<CudnnConv2dBackwardBiasImpl>(dest, operator_t, x, assignment);
+        }
+    );
+
     struct CudnnPool2dImpl : public CudnnComputation {
-        using Computation::Computation;
-        void run_internal(Operator& update_operator) {
-            // convert pooling mode to these:
-            // CUDNN_POOLING_MAX
+        using CudnnComputation::CudnnComputation;
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device) override {
+            auto pool = static_cast<op::CudnnPool2d*>(right_.expression().get());
             // choice of pooling mode follows what TensorFlow does:
             //   https://github.com/tensorflow/tensorflow/blob/
             //   6431560b7ec3565154cb9cdc9c827db78ccfebe7/
             //   tensorflow/stream_executor/cuda/cuda_dnn.cc
-            // CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING
+            auto cudnn_pooling_mode = (
+                pool->pooling_mode_ == POOLING_T_MAX ?
+                CUDNN_POOLING_MAX : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING);
 
-
-            CUDNN_CHECK_RESULT(cudnnConvolutionBackwardBias(
+            DescriptorHolder<cudnnTensorDescriptor_t> out_description(left_, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> in_description(pool->arguments()[0], nchw);
+            DescriptorHolder<cudnnPoolingDescriptor_t> pooling(cudnn_pooling_mode,
+                pool->info_.window_h, pool->info_.window_w, pool->info_.padding_h,
+                pool->info_.padding_w, pool->info_.stride_h, pool->info_.stride_w);
+            CUDNN_CHECK_RESULT(cudnnPoolingForward(
                 *get_handle(),
+                pooling.descriptor_,
                 update_operator.alpha_ptr_,
-                out_dw_description.descriptor_,
+                in_description.descriptor_,
                 argument_data(device, 0),
                 update_operator.beta_ptr_,
                 out_description.descriptor_,
@@ -344,45 +380,15 @@ namespace {
                 "Error when computing pooling ");
         }
     };
+
+    int conv2d_pool2d_impl = register_implementation(
+        typeid(op::CudnnPool2d).name(),
+        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+            return std::make_shared<CudnnPool2dImpl>(dest, operator_t, x, assignment);
+        }
+    );
 }
 #endif
-
-// ODD PADDING SUPPORT
-// This whole shenanigans is needed because
-// cudnn does not support odd padding.
-// If it is any consolation TF does it as well.
-// if (info.odd_padding_h || info.odd_padding_w) {
-//     // compute padded shape
-//     DataFormatDimMapping mapping(data_format);
-
-//     auto padded_shape = input.array.shape();
-//     if (info.odd_padding_h) padded_shape[mapping.h_dim] += 1;
-//     if (info.odd_padding_w) padded_shape[mapping.w_dim] += 1;
-
-//     // create temporary storage for padded array.
-//     auto padded_input_arr = Array::zeros(padded_shape,
-//                                          input.array.dtype(),
-//                                          input.device);
-//     TypedArray<devT,T> padded_input(padded_input_arr, input.device, padded_shape);
-//     maybe_copied_input = padded_input;
-
-//     // copy values from source array over
-//     Array padded_input_slice_arr = padded_input_arr;
-//     if (info.odd_padding_h) {
-//         padded_input_slice_arr = padded_input_slice_arr.pluck_axis(
-//                 mapping.h_dim, Slice(0, padded_shape[mapping.h_dim] -1));
-//     }
-//     if (info.odd_padding_w) {
-//         padded_input_slice_arr = padded_input_slice_arr.pluck_axis(
-//                 mapping.w_dim, Slice(0, padded_shape[mapping.w_dim] -1));
-//     }
-
-//     TypedArray<devT,T> padded_input_slice(padded_input_slice_arr,
-//                                           padded_input.device,
-//                                           input.array.shape());
-//     padded_input_slice.d2(memory::AM_MUTABLE) =
-//             mshadow::expr::F<mshadow::op::identity>(input.d2());
-// }
 
 namespace {
     #define CUDNN_CHECK_DATA_FORMAT(name, data_format)\
@@ -430,7 +436,28 @@ namespace op {
                                             stride_w,
                                             padding,
                                             data_format);
-        return Array(std::make_shared<CudnnConv2d>(input, filters, info, data_format == "NCHW"));
+        bool nchw = data_format == "NCHW";
+        if (info.odd_padding_h || info.odd_padding_w) {
+            // ODD PADDING SUPPORT (no odd padding support in cudnn)
+            auto padded_shape = input.shape();
+            if (info.odd_padding_h) padded_shape[nchw ? 2 : 1] += 1;
+            if (info.odd_padding_w) padded_shape[nchw ? 3 : 2] += 1;
+            auto padded = Array::zeros(
+                padded_shape, input.dtype(), input.preferred_device());
+            // copy values from source array over
+            Array padded_slice = padded;
+            if (info.odd_padding_h) {
+                padded_slice = padded_slice.pluck_axis(
+                    nchw ? 2 : 1, Slice(0, padded_shape[nchw ? 2 : 1] - 1));
+            }
+            if (info.odd_padding_w) {
+                padded_slice = padded_slice.pluck_axis(
+                    nchw ? 3 : 2, Slice(0, padded_shape[nchw ? 3 : 2] - 1));
+            }
+            input = op::control_dependency(
+                op::assign(padded_slice, OPERATOR_T_EQL, input), padded);
+        }
+        return Array(std::make_shared<CudnnConv2d>(input, filters, info, nchw));
     }
 
     Array cudnn_conv2d_backward_input(Array filters,

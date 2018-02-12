@@ -280,6 +280,7 @@ endif()
 
 list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/data_processing;dali/array/deprecated/")
 
+set(ARRAY_ONLY 1)
 if (ARRAY_ONLY)
     list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/tensor;dali/layers;dali/execution")
     list(APPEND DALI_SOURCE_DIRS_EXCLUDE "")

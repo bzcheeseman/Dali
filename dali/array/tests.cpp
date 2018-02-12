@@ -1933,3 +1933,11 @@ TEST(ArrayOpsTests, arange) {
     }
 }
 
+TEST(ArrayOpsTests, strided_equals) {
+    Array left = op::arange(75).reshape({1, 5, 3, 5});
+    left.eval();
+    Array right = Array::zeros({75}, DTYPE_INT32);
+    right = right.reshape({3, 5, 1, 5}).transpose({2, 1, 0, 3});
+    op::assign(right, OPERATOR_T_EQL, op::arange(75).reshape({1, 5, 3, 5})).eval();
+    EXPECT_TRUE(Array::equals(left, right));
+}

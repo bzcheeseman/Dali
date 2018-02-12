@@ -20,48 +20,58 @@ inline cudnnDataType_t cudnn_dtype(DType dtype) {
         return CUDNN_DATA_FLOAT;
     } else if (dtype == DTYPE_DOUBLE) {
         return CUDNN_DATA_DOUBLE;
+    } else {
+        ASSERT2(false, utils::make_message(
+            "CuDNN dtypes are only availabe for float and double but got ",
+            dtype, "."));
+        return CUDNN_DATA_FLOAT;
     }
-
 }
 
-template<>
 DescriptorHolder<cudnnFilterDescriptor_t>::DescriptorHolder(const Array& array, bool nchw) {
     CUDNN_CHECK_RESULT(cudnnCreateFilterDescriptor(&descriptor_),
                        "when creating filter descriptor ");
     cudnnTensorFormat_t tensor_format = nchw ? CUDNN_TENSOR_NCHW : CUDNN_TENSOR_NHWC;
+    int n, c, h, w;
+    if (nchw) {
+        n = array.shape()[0]; c = array.shape()[1]; h = array.shape()[2]; w = array.shape()[3];
+    } else {
+        n = array.shape()[0]; c = array.shape()[3]; h = array.shape()[1]; w = array.shape()[2];
+    }
     CUDNN_CHECK_RESULT(cudnnSetFilter4dDescriptor(
-        descriptor_, tensor_format, cudnn_dtype(array.dtype()),
-        array.shape()[nchw ? 0 : 1], array.shape()[nchw ? 1 : 3],
-        array.shape()[nchw ? 2 : 1], array.shape()[nchw ? 3 : 2]),
+        descriptor_, cudnn_dtype(array.dtype()), tensor_format,
+        n, c, h, w),
         "when setting filter descriptor ");
 }
 
-template<>
 DescriptorHolder<cudnnTensorDescriptor_t>::DescriptorHolder(const Array& array, bool nchw) {
     CUDNN_CHECK_RESULT(cudnnCreateTensorDescriptor(&descriptor_),
                        "when creating tensor descriptor ");
     cudnnTensorFormat_t tensor_format = nchw ? CUDNN_TENSOR_NCHW : CUDNN_TENSOR_NHWC;
+    int n, c, h, w;
+    if (nchw) {
+        n = array.shape()[0]; c = array.shape()[1]; h = array.shape()[2]; w = array.shape()[3];
+    } else {
+        n = array.shape()[0]; c = array.shape()[3]; h = array.shape()[1]; w = array.shape()[2];
+    }
     CUDNN_CHECK_RESULT(cudnnSetTensor4dDescriptor(
         descriptor_, tensor_format, cudnn_dtype(array.dtype()),
-        array.shape()[nchw ? 0 : 1], array.shape()[nchw ? 1 : 3],
-        array.shape()[nchw ? 2 : 1], array.shape()[nchw ? 3 : 2]),
+        n, c, h, w),
         "when setting tensor descriptor ");
 }
 
-template<>
-~DescriptorHolder<cudnnFilterDescriptor_t>::DescriptorHolder() {
-    CUDNN_CHECK_RESULT(cudnnDestroyFilterDescriptor(&descriptor_),
+DescriptorHolder<cudnnFilterDescriptor_t>::~DescriptorHolder() {
+    CUDNN_CHECK_RESULT(cudnnDestroyFilterDescriptor(descriptor_),
                        "when destroying filter descriptor ");
 }
 
-template<>
-~DescriptorHolder<cudnnTensorDescriptor_t>::DescriptorHolder() {
-    CUDNN_CHECK_RESULT(cudnnDestroyTensorDescriptor(&descriptor_),
+DescriptorHolder<cudnnTensorDescriptor_t>::~DescriptorHolder() {
+    CUDNN_CHECK_RESULT(cudnnDestroyTensorDescriptor(descriptor_),
                        "when destroying tensor descriptor ");
 }
 
-template<>
-DescriptorHolder<cudnnConvolutionDescriptor_t>::DescriptorHolder(int padding_h,
+DescriptorHolder<cudnnConvolutionDescriptor_t>::DescriptorHolder(DType dtype,
+                                                                 int padding_h,
                                                                  int padding_w,
                                                                  int stride_h,
                                                                  int stride_w) {
@@ -72,20 +82,17 @@ DescriptorHolder<cudnnConvolutionDescriptor_t>::DescriptorHolder(int padding_h,
                 /*pad_w=*/padding_w,
                 /*u=*/stride_h,
                 /*v=*/stride_w,
-                /*upscalex=*/1,
-                /*upscaley=*/1,
-                CUDNN_CROSS_CORRELATION // Theano issue author claims its twice as fast:
-                                        // https://github.com/Theano/Theano/issues/3632
-            ), "when setting convolution descriptor ");
+                /*dilation_h=*/1,
+                /*dilation_w=*/1,
+                CUDNN_CROSS_CORRELATION,
+                cudnn_dtype(dtype)), "when setting convolution descriptor ");
 }
 
-template<>
-~DescriptorHolder<cudnnConvolutionDescriptor_t>::DescriptorHolder() {
-    CUDNN_CHECK_RESULT(cudnnDestroyConvolutionDescriptor(&descriptor_),
+DescriptorHolder<cudnnConvolutionDescriptor_t>::~DescriptorHolder() {
+    CUDNN_CHECK_RESULT(cudnnDestroyConvolutionDescriptor(descriptor_),
                        "when destroying convolution descriptor ");
 }
 
-template<>
 DescriptorHolder<cudnnPoolingDescriptor_t>::DescriptorHolder(cudnnPoolingMode_t pooling_mode,
                                                              int window_h,
                                                              int window_w,
@@ -93,7 +100,7 @@ DescriptorHolder<cudnnPoolingDescriptor_t>::DescriptorHolder(cudnnPoolingMode_t 
                                                              int padding_w,
                                                              int stride_h,
                                                              int stride_w) {
-    CUDNN_CHECK_RESULT(cudnnCreatePooling2dDescriptor(&descriptor_),
+    CUDNN_CHECK_RESULT(cudnnCreatePoolingDescriptor(&descriptor_),
                        "when creating pooling descriptor ");
     CUDNN_CHECK_RESULT(cudnnSetPooling2dDescriptor(descriptor_,
                 pooling_mode,
@@ -107,9 +114,8 @@ DescriptorHolder<cudnnPoolingDescriptor_t>::DescriptorHolder(cudnnPoolingMode_t 
             ), "when setting pooling descriptor ");
 }
 
-template<>
-~DescriptorHolder<cudnnPoolingDescriptor_t>::DescriptorHolder() {
-    CUDNN_CHECK_RESULT(cudnnDestroyPooling2dDescriptor(&descriptor_),
+DescriptorHolder<cudnnPoolingDescriptor_t>::~DescriptorHolder() {
+    CUDNN_CHECK_RESULT(cudnnDestroyPoolingDescriptor(descriptor_),
                        "when destroying pooling descriptor ");
 }
 

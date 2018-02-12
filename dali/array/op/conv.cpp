@@ -50,10 +50,9 @@ namespace op {
             /*postpad_h=*/info.padding_h + info.odd_padding_h,
             /*postpad_w=*/info.padding_w + info.odd_padding_w,
             data_format);
-
         if (data_format == "NCHW") {
-            return op::dot(filters_nX, im2col_image).transpose().reshape(
-                {info.batch_size, info.out_channels, info.out_h, info.out_w});
+            return op::dot(filters_nX, im2col_image).reshape(
+                {info.out_channels, info.batch_size, info.out_h, info.out_w}).swapaxes(0, 1);
         } else if (data_format == "NHWC") {
             return op::dot(im2col_image.transpose(),
                            filters_nX.transpose()).reshape(

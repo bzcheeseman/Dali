@@ -10,25 +10,40 @@
 
 template<typename T>
 struct DescriptorHolder {
-    T descriptor_;
+};
+
+template<>
+struct DescriptorHolder<cudnnFilterDescriptor_t> {
+    cudnnFilterDescriptor_t descriptor_;
+    DescriptorHolder(const Array& array, bool nchw);
+    ~DescriptorHolder();
+};
+
+template<>
+struct DescriptorHolder<cudnnTensorDescriptor_t> {
+    cudnnTensorDescriptor_t descriptor_;
     DescriptorHolder(const Array& array, bool nchw);
     ~DescriptorHolder();
 };
 
 template<>
 struct DescriptorHolder<cudnnConvolutionDescriptor_t> {
-    DescriptorHolder(int padding_h, int padding_w, int stride_h, int stride_w);
+    cudnnConvolutionDescriptor_t descriptor_;
+    DescriptorHolder(DType dtype, int padding_h, int padding_w, int stride_h, int stride_w);
     ~DescriptorHolder();
 };
 
 template<>
 struct DescriptorHolder<cudnnPoolingDescriptor_t> {
-    DescriptorHolder(int window_h, int window_w, int padding_h,
+    cudnnPoolingDescriptor_t descriptor_;
+    DescriptorHolder(cudnnPoolingMode_t pooling_mode,
+                     int window_h, int window_w, int padding_h,
                      int padding_w, int stride_h, int stride_w);
     ~DescriptorHolder();
 };
 
 cudnnHandle_t* get_handle();
+
 #define CUDNN_CHECK_RESULT(status, MESSAGE)\
     ASSERT2(status == CUDNN_STATUS_SUCCESS,\
         utils::make_message( ( MESSAGE ), cudnnGetErrorString(status), "."));

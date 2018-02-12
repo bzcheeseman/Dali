@@ -197,17 +197,18 @@ class Array  {
     Array& operator=(const float& other);
     Array& operator=(const double& other);
 
-    template<typename T>
-    Array& operator=(const std::vector<T>& values) {
-        ASSERT2(values.size() == shape()[0],
-                utils::MS() << "mismatch when assigning to Array from vector, expected dim size "
-                            << shape()[0] << " got " << values.size() << ".");
-        for (int i = 0; i < values.size(); ++i) {
-            Array subarray = (*this)[i];
-            subarray = values[i];
-        }
-        return *this;
-    }
+    // TODO(jonathan): bring back ability to assign from a vector
+    // template<typename T>
+    // Array& operator=(const std::vector<T>& values) {
+    //     ASSERT2(values.size() == shape()[0], utils::make_message(
+    //         "mismatch when assigning to Array from vector, expected dim size "
+    //         shape()[0], " but got ", values.size(), "."));
+    //     for (int i = 0; i < values.size(); ++i) {
+    //         Array subarray = (*this)[i];
+    //         subarray = values[i];
+    //     }
+    //     return *this;
+    // }
 
     /* Debugging */
     void print(std::basic_ostream<char>& stream = std::cout, const int& indent=0, const bool& add_newlines=true, const bool& print_comma=false) const;

@@ -84,6 +84,8 @@ namespace op {
         info.odd_padding_w = info.padding_w % 2;
         info.padding_h /= 2;
         info.padding_w /= 2;
+        info.stride_h = stride_h;
+        info.stride_w = stride_w;
         return info;
     }
 
@@ -96,8 +98,11 @@ namespace op {
             const PADDING_T& padding,
             const std::string& data_format) {
         DataFormatDimMapping mapping(data_format);
-        return function_info_helper<PoolFunctionInfo>(
+        auto ret = function_info_helper<PoolFunctionInfo>(
                 input_shape, window_h, window_w, stride_h, stride_w, padding, mapping);
+        ret.window_h = window_h;
+        ret.window_w = window_w;
+        return ret;
     }
 
     ConvFunctionInfo compute_conv2d_info(
@@ -121,5 +126,43 @@ namespace op {
         ret.filter_w     = filter_w;
         ret.out_channels = filters_shape[mapping.n_dim];
         return ret;
+    }
+
+    std::ostream& operator<<(std::ostream& os, const PoolFunctionInfo& info) {
+        os << utils::make_message("Pooling("
+            "batch_size = ", info.batch_size, "\n"
+            "in_channels = ", info.in_channels, "\n"
+            "in_h = ", info.in_h, "\n"
+            "in_w = ", info.in_w, "\n"
+            "out_h = ", info.out_h, "\n"
+            "out_w = ", info.out_w, "\n"
+            "padding_h = ", info.padding_h, "\n"
+            "padding_w = ", info.padding_w, "\n"
+            "odd_padding_h = ", info.odd_padding_h, "\n"
+            "odd_padding_w = ", info.odd_padding_w, "\n"
+            "stride_h = ", info.stride_h, "\n"
+            "stride_w = ", info.stride_w, "\n"
+            "window_h = ", info.window_h, "\n"
+            "window_w = ", info.window_w, ")");
+        return os;
+    }
+    std::ostream& operator<<(std::ostream& os, const ConvFunctionInfo& info) {
+        os << utils::make_message("Convolution("
+            "batch_size=", info.batch_size, ",\n"
+            "in_channels=", info.in_channels, ",\n"
+            "in_h=", info.in_h, ",\n"
+            "in_w=", info.in_w, ",\n"
+            "out_h=", info.out_h, ",\n"
+            "out_w=", info.out_w, ",\n"
+            "padding_h=", info.padding_h, ",\n"
+            "padding_w=", info.padding_w, ",\n"
+            "odd_padding_h=", info.odd_padding_h, ",\n"
+            "odd_padding_w=", info.odd_padding_w, ",\n"
+            "stride_h=", info.stride_h, ",\n"
+            "stride_w=", info.stride_w, ",\n"
+            "filter_h=", info.filter_h, ",\n"
+            "filter_w=", info.filter_w, ",\n"
+            "out_channels=", info.out_channels, ")");
+        return os;
     }
 }

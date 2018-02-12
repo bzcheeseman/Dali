@@ -2,6 +2,7 @@
 #include "dali/utils/make_message.h"
 #include "dali/array/op/reducers.h"
 #include "dali/array/expression/control_flow.h"
+#include "dali/array/jit/reshape.h"
 
 Assignment::Assignment(Array left, OPERATOR_T operator_t, Array right) :
         Expression(left.shape(),
@@ -152,11 +153,12 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
             "Incompatible dimensions for assignment between left.ndim = ",
             left.ndim(), "(", left.full_expression_name(), ", and right.ndim = ", right.ndim(),
             " (", right.full_expression_name(), ")."));
-    ASSERT2((right.ndim() == 0) | (right.shape() == left.shape()), utils::make_message(
+    bool shapes_agree = (right.ndim() == 0) | (right.shape() == left.shape());
+    if (operator_t == OPERATOR_T_EQL) {
+        ASSERT2(shapes_agree, utils::make_message(
             "Incompatible shapes for assignment between left.shape = ",
             left.shape(), "(", left.full_expression_name(), ", and right.shape = ", right.shape(),
             " (", right.full_expression_name(), ")."));
-    if (operator_t == OPERATOR_T_EQL) {
         if (left.is_buffer() || left.spans_entire_memory()) {
             return Array(std::make_shared<Assignment>(left.buffer_arg(), operator_t, right));
         } else {
@@ -167,6 +169,9 @@ Array assign(const Array& left, OPERATOR_T operator_t, const Array& right) {
     } else {
         Array assigned_right = right;
         Array assigned_left = left;
+        if (!shapes_agree) {
+            assigned_right = op::jit::broadcasted_reshape(right, left.shape());
+        }
         if (!right.expression()->supports_operator(operator_t)) {
             assigned_right = to_assignment(right);
         }

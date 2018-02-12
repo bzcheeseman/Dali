@@ -23,9 +23,13 @@ namespace op {
         int padding_w;
         int odd_padding_h;
         int odd_padding_w;
+        int stride_h;
+        int stride_w;
     };
 
     struct PoolFunctionInfo : SlidingWindowFunctionInfo {
+        int window_h;
+        int window_w;
     };
 
     struct ConvFunctionInfo : SlidingWindowFunctionInfo {
@@ -50,6 +54,9 @@ namespace op {
         const int& stride_w,
         const PADDING_T& padding,
         const std::string& data_format);
+
+    std::ostream& operator<<(std::ostream& stream, const PoolFunctionInfo& info);
+    std::ostream& operator<<(std::ostream& stream, const ConvFunctionInfo& info);
 }  // namespace op
 
 #endif

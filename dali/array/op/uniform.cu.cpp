@@ -65,9 +65,9 @@ namespace op {
             Array high = uni->high();
             auto op_dtype = dst.dtype();
             auto device = memory::Device::cpu();
-            void* dst_ptr = dst.memory()->overwrite_data(device);
-            const void* low_ptr = low.memory()->readonly_data(device);
-            const void* high_ptr = high.memory()->readonly_data(device);
+            void* dst_ptr = left_data(device);
+            const void* low_ptr = argument_data(device, 0);
+            const void* high_ptr = argument_data(device, 1);
 
             if (dst.dtype() == DTYPE_FLOAT) {
                 cpu_uniform(static_cast<float*>(dst_ptr), static_cast<const float*>(low_ptr), static_cast<const float*>(high_ptr), dst.number_of_elements());
@@ -159,9 +159,9 @@ namespace op {
             Array high = uni->high();
             auto op_dtype = dst.dtype();
             auto device = dst.preferred_device();
-            void* dst_ptr = dst.memory()->overwrite_data(device);
-            const void* low_ptr = low.memory()->readonly_data(memory::Device::cpu());
-            const void* high_ptr = high.memory()->readonly_data(memory::Device::cpu());
+            void* dst_ptr = left_data(device);
+            const void* low_ptr = argument_data(memory::Device::cpu(), 0);
+            const void* high_ptr = argument_data(memory::Device::cpu(), 1);
             if (dst.dtype() == DTYPE_FLOAT) {
                 thrust_uniform(static_cast<float*>(dst_ptr), static_cast<const float*>(low_ptr), static_cast<const float*>(high_ptr), dst.number_of_elements());
             } else if (dst.dtype() == DTYPE_DOUBLE) {

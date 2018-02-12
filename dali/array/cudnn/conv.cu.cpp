@@ -181,17 +181,6 @@ namespace {
 
     struct CudnnComputation : public Computation {
         using Computation::Computation;
-        void* destination_data(memory::Device device) {
-            memory::AM access_mode = operator_t_ == OPERATOR_T_EQL && left_.spans_entire_memory() ?
-                memory::AM_OVERWRITE : memory::AM_MUTABLE;
-            return (void*)(((char*)left_.memory()->data(device, access_mode)) + left_.offset() * size_of_dtype(left_.dtype()));
-        }
-
-        void* argument_data(memory::Device device, int idx) {
-            const auto& arg = right_.expression()->arguments()[idx];
-            return (void*)(((char*)arg.memory()->readonly_data(device)) + arg.offset() * size_of_dtype(arg.dtype()));
-        }
-
         void run() {
             run_internal(Operator(operator_t_, left_.dtype()),
                          static_cast<op::CudnnExpression*>(right_.expression().get())->nchw_,
@@ -231,7 +220,7 @@ namespace {
                 working_memory_size,
                 update_operator.beta_ptr_,
                 out_description.descriptor_,
-                destination_data(device));
+                left_data(device));
             CUDNN_CHECK_RESULT(status, utils::make_message(
                 "Error when running cudnnConvolutionForward with ", conv->info_, " "));
         }
@@ -272,7 +261,7 @@ namespace {
                 working_memory_size,
                 update_operator.beta_ptr_,
                 out_description.descriptor_,
-                destination_data(device));
+                left_data(device));
             CUDNN_CHECK_RESULT(status, "Error when running cudnnConvolutionBackwardData ");
         }
     };
@@ -312,7 +301,7 @@ namespace {
                 working_memory_size,
                 update_operator.beta_ptr_,
                 out_description.descriptor_,
-                destination_data(device));
+                left_data(device));
             CUDNN_CHECK_RESULT(status, utils::make_message(
                 "Error when running cudnnConvolutionBackwardFilter "));
         }
@@ -340,7 +329,7 @@ namespace {
                 argument_data(device, 0),
                 update_operator.beta_ptr_,
                 out_description.descriptor_,
-                destination_data(device)),
+                left_data(device)),
                 "Error when computing convolution bias gradient ");
         }
     };
@@ -377,7 +366,7 @@ namespace {
                 argument_data(device, 0),
                 update_operator.beta_ptr_,
                 out_description.descriptor_,
-                destination_data(device)),
+                left_data(device)),
                 "Error when computing pooling ");
         }
     };

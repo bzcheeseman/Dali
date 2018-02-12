@@ -85,6 +85,18 @@ void convert_array_to_ops(const Array& element,
     }
 }
 
+void* Computation::left_data(memory::Device device) {
+    if (operator_t_ == OPERATOR_T_EQL && left_.spans_entire_memory()) {
+        return (void*)((char*)left_.memory()->overwrite_data(device) + left_.offset() * size_of_dtype(left_.dtype()));
+    }
+    return (void*)((char*)left_.memory()->mutable_data(device) + left_.offset() * size_of_dtype(left_.dtype()));
+}
+
+const void* Computation::argument_data(memory::Device device, int idx) const {
+    auto& arg = right_.expression()->arguments()[idx];
+    return (const void*)(((const char*)arg.memory()->readonly_data(device)) + arg.offset() * size_of_dtype(arg.dtype()));
+}
+
 std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
     std::vector<std::shared_ptr<Computation>> steps;
     std::vector<Array> elements({root});

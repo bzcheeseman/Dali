@@ -13,6 +13,8 @@ struct Computation {
     Computation(Array left, OPERATOR_T operator_t, Array right, Array assignment);
     virtual void run() = 0;
     void run_and_cleanup();
+    void* left_data(memory::Device);
+    const void* argument_data(memory::Device device, int idx) const;
 };
 
 typedef std::function<std::shared_ptr<Computation>(Array, OPERATOR_T, Array, Array) > to_computation_t;

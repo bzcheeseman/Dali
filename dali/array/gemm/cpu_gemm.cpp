@@ -30,10 +30,9 @@ struct CpuGemmImpl : public Computation {
         auto device = memory::Device::cpu();
         double destination_multiplier_ = 0;
         double result_multiplier_ = 1.0;
-        void* dst_ptr = destination_multiplier_ == 0 ?
-            dst.memory()->overwrite_data(device) : dst.memory()->mutable_data(device);
-        const void* rhs_ptr = rhs.memory()->readonly_data(device);
-        const void* lhs_ptr = lhs.memory()->readonly_data(device);
+        void* dst_ptr = left_data(device);
+        const void* lhs_ptr = argument_data(device, 0);
+        const void* rhs_ptr = argument_data(device, 1);
         bool rhs_transpose, lhs_transpose, dst_transpose;
         int rhs_stride, lhs_stride, dst_stride;
         std::tie(rhs_transpose, rhs_stride) = gemm_stride_transpose(rhs);

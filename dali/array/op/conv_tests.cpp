@@ -276,8 +276,15 @@ TEST(ConvTests, nhwc_conv2d_backward) {
     in_dw.eval();
 }
 
-#ifdef DALI_USE_CUDNN
-TEST(ConvTests, small_cudnn_conv2d_forward) {
+class ConvTests : public ::testing::TestWithParam<bool> {
+  // You can implement all the usual fixture class members here.
+  // To access the test parameter, call GetParam() from class
+  // TestWithParam<T>.
+    public:
+        bool use_cudnn() const {return GetParam();}
+};
+
+TEST_P(ConvTests, small_conv2d_forward) {
     for (int stride_h = 1; stride_h <= 1; ++stride_h) {
         for (int stride_w = 1; stride_w <= 1; ++stride_w) {
             for (std::string data_format: {"NCHW", "NHWC"}) {
@@ -300,21 +307,23 @@ TEST(ConvTests, small_cudnn_conv2d_forward) {
                     // TODO(jonathan) don't resample:
                     X.eval();
                     W.eval();
-                    Array actual = op::cudnn_conv2d(
-                        X,
+                    Array actual;
+                    if (use_cudnn()) {
+                        actual = op::cudnn_conv2d(X,
                         W,
                         stride_h,
                         stride_w,
                         padding,
                         data_format);
-
-                    Array actual_blas = op::conv2d(
-                        X,
+                    } else {
+                        actual = op::conv2d(X,
                         W,
                         stride_h,
                         stride_w,
                         padding,
                         data_format);
+                    }
+                        
 
                     // reference computation will be much faster on CPU, methinks.
                     X.to_device(memory::Device::cpu());
@@ -332,14 +341,13 @@ TEST(ConvTests, small_cudnn_conv2d_forward) {
                         expected.print(); actual.print();
                     }
                     ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
-                    ASSERT_TRUE(Array::allclose(actual_blas, actual, 1e-3));
                 }
             }
         }
     }
 }
 
-TEST(ConvTests, cudnn_conv2d_forward) {
+TEST_P(ConvTests, conv2d_forward) {
     for (int stride_h = 1; stride_h <= 3; ++stride_h) {
         for (int stride_w = 1; stride_w <= 3; ++stride_w) {
             for (std::string data_format: {"NCHW", "NHWC"}) {
@@ -360,13 +368,22 @@ TEST(ConvTests, cudnn_conv2d_forward) {
                         X = op::uniform(-1.0f, 1.0f, {5, 6, 8, 3});
                         W = op::uniform(-1.0f, 1.0f, {2, 2, 4, 3});
                     }
-
-                    Array actual = op::cudnn_conv2d(X,
-                                                    W,
-                                                    stride_h,
-                                                    stride_w,
-                                                    padding,
-                                                    data_format);
+                    Array actual;
+                    if (use_cudnn()) {
+                        actual = op::cudnn_conv2d(X,
+                        W,
+                        stride_h,
+                        stride_w,
+                        padding,
+                        data_format);
+                    } else {
+                        actual = op::conv2d(X,
+                        W,
+                        stride_h,
+                        stride_w,
+                        padding,
+                        data_format);
+                    }
 
                     // reference computation could be much faster on CPU.
                     X.to_device(memory::Device::cpu());
@@ -554,7 +571,7 @@ namespace {
     }
 }
 
-TEST(ConvTests, pool2d_forward) {
+TEST_P(ConvTests, cudnn_pool2d_forward) {
     for (int window_h = 1; window_h <= 3; ++window_h) {
         for (int window_w = 1; window_w <= 3; ++window_w) {
             for (int stride_h = 1; stride_h <= 2; ++stride_h) {
@@ -580,8 +597,9 @@ TEST(ConvTests, pool2d_forward) {
                                 }
                                 X.eval();
 
-                                Array out = op::cudnn_pool2d(
-                                    X,
+                                Array out;
+                                if (use_cudnn()) {
+                                    out = op::cudnn_pool2d(X,
                                     /*window_h=*/window_h,
                                     /*window_w=*/window_w,
                                     /*stride_h=*/stride_h,
@@ -589,6 +607,16 @@ TEST(ConvTests, pool2d_forward) {
                                     pooling,
                                     padding,
                                     data_format);
+                                } else {
+                                    out = op::pool2d(X,
+                                    /*window_h=*/window_h,
+                                    /*window_w=*/window_w,
+                                    /*stride_h=*/stride_h,
+                                    /*stride_w=*/stride_w,
+                                    pooling,
+                                    padding,
+                                    data_format);
+                                }
 
                                 X.to_device(memory::Device::cpu());
 
@@ -612,15 +640,20 @@ TEST(ConvTests, pool2d_forward) {
     }
 }
 
-TEST(ConvTests, conv_backward_bias) {
+TEST_P(ConvTests, conv_backward_bias) {
     Array X = Array::ones({2, 3, 4, 5}, DTYPE_FLOAT);
-    Array out = op::cudnn_conv2d_backward_bias(X, "NCHW");
+    Array out;
+    if (use_cudnn()) {
+        out = op::cudnn_conv2d_backward_bias(X, "NCHW");
+    } else {
+        out = op::cudnn_conv2d_backward_bias(X, "NCHW");
+    }
     for (int i = 0; i < 3; ++i) {
         EXPECT_EQ(2 * 4 * 5, (float)out[i]);
     }
 }
 
-TEST(ConvTests, unpool2d_forward) {
+TEST_P(ConvTests, unpool2d_forward) {
     for (int window_h = 1; window_h <= 3; ++window_h) {
         for (int window_w = 1; window_w <= 3; ++window_w) {
             for (int stride_h = 1; stride_h <= 2; ++stride_h) {
@@ -645,7 +678,9 @@ TEST(ConvTests, unpool2d_forward) {
                                 }
                                 X.eval();
 
-                                Array out = op::cudnn_pool2d(
+                                Array out;
+                                if (use_cudnn()) {
+                                    out = op::cudnn_pool2d(
                                     X,
                                     /*window_h=*/window_h,
                                     /*window_w=*/window_w,
@@ -654,10 +689,24 @@ TEST(ConvTests, unpool2d_forward) {
                                     pooling,
                                     padding,
                                     data_format);
+                                } else {
+                                    out = op::pool2d(
+                                    X,
+                                    /*window_h=*/window_h,
+                                    /*window_w=*/window_w,
+                                    /*stride_h=*/stride_h,
+                                    /*stride_w=*/stride_w,
+                                    pooling,
+                                    padding,
+                                    data_format);
+                                }
+
 
                                 Array out_dw = Array::ones_like(out);
 
-                                Array in_dw = op::cudnn_pool2d_backward(
+                                Array in_dw;
+                                if (use_cudnn()) {
+                                    in_dw = op::cudnn_pool2d_backward(
                                     out,
                                     out_dw,
                                     X,
@@ -668,6 +717,19 @@ TEST(ConvTests, unpool2d_forward) {
                                     pooling,
                                     padding,
                                     data_format);
+                                } else {
+                                    in_dw = op::pool2d_backward(
+                                    out,
+                                    out_dw,
+                                    X,
+                                    /*window_h=*/window_h,
+                                    /*window_w=*/window_w,
+                                    /*stride_h=*/stride_h,
+                                    /*stride_w=*/stride_w,
+                                    pooling,
+                                    padding,
+                                    data_format);
+                                }
 
                                 X.to_device(memory::Device::cpu());
 
@@ -693,9 +755,14 @@ TEST(ConvTests, unpool2d_forward) {
     }
 }
 
-TEST(ConvTests, pool2d_simple) {
+TEST_P(ConvTests, pool2d_simple) {
     auto X = op::arange(25).reshape({1,1, 5, 5}).astype(DTYPE_FLOAT);
-    Array O = op::cudnn_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    Array O;
+    if (use_cudnn()) {
+        O = op::cudnn_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    } else {
+        O = op::pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    }
     Array O2 = reference_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
 
 
@@ -709,7 +776,12 @@ TEST(ConvTests, pool2d_simple) {
     });
     ASSERT_TRUE(Array::allclose(correct_O, O, 1e-3));
     ASSERT_TRUE(Array::allclose(correct_O, O2, 1e-3));
-    Array G  = op::cudnn_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    Array G;
+    if (use_cudnn()) {
+        G = op::cudnn_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    } else {
+        G = op::pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    }
     Array G2 = reference_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
     Array correct_G({1,1,5,5}, DTYPE_FLOAT);
     assign_from_vec(correct_G[0][0], std::vector<std::vector<float>> {
@@ -722,4 +794,12 @@ TEST(ConvTests, pool2d_simple) {
     ASSERT_TRUE(Array::allclose(correct_G, G, 1e-3));
     ASSERT_TRUE(Array::allclose(correct_G, G2, 1e-3));
 }
+
+#ifdef DALI_USE_CUDNN
+INSTANTIATE_TEST_CASE_P(Cudnn,
+                        ConvTests,
+                        ::testing::Values(true));
 #endif
+INSTANTIATE_TEST_CASE_P(Blas,
+                        ConvTests,
+                        ::testing::Values(false));

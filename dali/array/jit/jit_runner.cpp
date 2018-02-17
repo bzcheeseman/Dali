@@ -1139,7 +1139,6 @@ Array jit_merge(const Array& root) {
     );
 }
 
-// JIT RUNNER-IMPL //
 struct JITRunnerImpl : public Computation {
     using Computation::Computation;
     void run() {

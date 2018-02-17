@@ -1299,11 +1299,7 @@ std::string get_call_code_nd(const Array& a,
 }
 
 int registered_opt = register_optimization(is_jit_assignment, jit_merge, "jit_merge");
-int registered_impl = register_implementation(
-   typeid(JITRunner).name(),
-   [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
-        return std::make_shared<JITRunnerImpl>(dest, operator_t, x, assignment);
-   });
+int registered_impl = register_implementation_default<JITRunner, JITRunnerImpl>();
 int registered_buffer = register_implementation(
     typeid(Buffer).name(),
     [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {

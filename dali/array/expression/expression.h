@@ -67,14 +67,13 @@ struct Expression : public std::enable_shared_from_this<Expression> {
     expression_ptr right_fit_ndim(int dimensionality, const Array* owner) const;
     expression_ptr expand_dims(int new_axis, const Array* owner) const;
     expression_ptr squeeze(int axis, const Array* owner) const;
+    expression_ptr pluck_axis(const int& axis, const int& idx, const Array* owner) const;
 
     virtual expression_ptr operator()(int idx, const Array* owner) const;
     virtual expression_ptr buffer_arg() const;
     virtual expression_ptr broadcast_to_shape(const std::vector<int>& shape, const Array* owner) const;
     virtual expression_ptr dimshuffle(const std::vector<int>& pattern, const Array* owner) const;
     virtual expression_ptr pluck_axis(int axis, const Slice& slice, const Array* owner) const;
-    virtual expression_ptr pluck_axis(const int& axis, const int& idx, const Array* owner) const;
-
     virtual expression_ptr collapse_axis_with_axis_minus_one(int axis, const Array* owner) const;
 
     virtual expression_ptr _reshape(const std::vector<int>& shape, const Array* owner) const;

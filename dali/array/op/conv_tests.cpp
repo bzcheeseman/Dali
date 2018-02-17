@@ -539,6 +539,7 @@ Array reference_pool2d_backward(Array out,
                 window += max_locations *
                         out_dw_swapped[Slice(0, in_n)][Slice(0, in_c)][h][w][Broadcast()][Broadcast()];
             }
+            window.eval();
         }
     }
     return in_dw;
@@ -619,7 +620,7 @@ TEST(ConvTests, conv_backward_bias) {
     }
 }
 
-TEST(ConvTests, DISABLED_unpool2d_forward) {
+TEST(ConvTests, unpool2d_forward) {
     for (int window_h = 1; window_h <= 3; ++window_h) {
         for (int window_w = 1; window_w <= 3; ++window_w) {
             for (int stride_h = 1; stride_h <= 2; ++stride_h) {
@@ -692,7 +693,7 @@ TEST(ConvTests, DISABLED_unpool2d_forward) {
     }
 }
 
-TEST(ConvTests, DISABLED_pool2d_simple) {
+TEST(ConvTests, pool2d_simple) {
     auto X = op::arange(25).reshape({1,1, 5, 5}).astype(DTYPE_FLOAT);
     Array O = op::cudnn_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
     Array O2 = reference_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
@@ -710,7 +711,6 @@ TEST(ConvTests, DISABLED_pool2d_simple) {
     ASSERT_TRUE(Array::allclose(correct_O, O2, 1e-3));
     Array G  = op::cudnn_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
     Array G2 = reference_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
-
     Array correct_G({1,1,5,5}, DTYPE_FLOAT);
     assign_from_vec(correct_G[0][0], std::vector<std::vector<float>> {
         {0.69444448, 0.97222227, 0.83333331,  0.97222227,  0.69444448},

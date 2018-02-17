@@ -22,5 +22,14 @@ typedef std::function<std::shared_ptr<Computation>(Array, OPERATOR_T, Array, Arr
 int register_implementation(const char*, to_computation_t impl);
 std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root);
 
+template<typename Expression, typename Comp>
+int register_implementation_default() {
+	return register_implementation(
+        typeid(Expression).name(),
+        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+            return std::make_shared<Comp>(dest, operator_t, x, assignment);
+        }
+    );
+}
 
 #endif // DALI_ARRAY_EXPRESSION_COMPUTATION_H

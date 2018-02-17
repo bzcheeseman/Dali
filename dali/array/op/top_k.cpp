@@ -191,13 +191,7 @@ namespace {
         shape.back() = k;
         return shape;
     }
-
-    int cpu_top_k_impl = register_implementation(
-        typeid(op::TopK).name(),
-        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
-            return std::make_shared<CpuTopKImpl>(dest, operator_t, x, assignment);
-        }
-    );
+    int cpu_top_k_impl = register_implementation_default<op::TopK, CpuTopKImpl>();
 }
 
 namespace op {

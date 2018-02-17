@@ -99,9 +99,9 @@ namespace op {
 
     struct CudnnPool2dBackward : public CudnnPoolExpression {
         using Expression::copy;
-        CudnnPool2dBackward(const Array& out, const Array& out_dw, const Array& in,
+        CudnnPool2dBackward(const Array& y, const Array& dy, const Array& x,
                             PoolFunctionInfo info, POOLING_T pooling_mode, bool nchw)
-            : CudnnPoolExpression(in.shape(), out.dtype(), {out, out_dw, in}, info, pooling_mode, nchw) {}
+            : CudnnPoolExpression(x.shape(), y.dtype(), {y, dy, x}, info, pooling_mode, nchw) {}
         virtual expression_ptr copy() const override {
             return std::make_shared<CudnnPool2dBackward>(
                 arguments_[0], arguments_[1], arguments_[2], info_, pooling_mode_, nchw_);
@@ -112,33 +112,6 @@ namespace op {
     };
 }
 #ifdef DALI_USE_CUDNN
-
-#define FatalError(s) do {                                             \
-    std::stringstream _where, _message;                                \
-    _where << __FILE__ << ':' << __LINE__;                             \
-    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;  \
-    std::cerr << _message.str() << "\nAborting...\n";                  \
-    cudaDeviceReset();                                                 \
-    exit(1);                                                           \
-} while(0)
-
-#define checkCUDNN(status) do {                                        \
-    std::stringstream _error;                                          \
-    if (status != CUDNN_STATUS_SUCCESS) {                              \
-      _error << "CUDNN failure: " << cudnnGetErrorString(status);      \
-      FatalError(_error.str());                                        \
-    }                                                                  \
-} while(0)
-
-#define checkCudaErrors(status) do {                                   \
-    std::stringstream _error;                                          \
-    if (status != 0) {                                                 \
-      _error << "Cuda failure: " << status;                            \
-      FatalError(_error.str());                                        \
-    }                                                                  \
-} while(0)
-
-
 namespace {
     struct Operator {
         float alpha_f_, beta_f_;
@@ -225,13 +198,7 @@ namespace {
                 "Error when running cudnnConvolutionForward with ", conv->info_, " "));
         }
     };
-
-    int conv2d_impl = register_implementation(
-        typeid(op::CudnnConv2d).name(),
-        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
-            return std::make_shared<CudnnConv2dImpl>(dest, operator_t, x, assignment);
-        }
-    );
+    int conv2d_impl = register_implementation_default<op::CudnnConv2d, CudnnConv2dImpl>();
 
     struct CudnnConv2dBackwardInputImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
@@ -265,13 +232,7 @@ namespace {
             CUDNN_CHECK_RESULT(status, "Error when running cudnnConvolutionBackwardData ");
         }
     };
-
-    int conv2d_backward_input_impl = register_implementation(
-        typeid(op::CudnnConv2dBackwardInput).name(),
-        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
-            return std::make_shared<CudnnConv2dBackwardInputImpl>(dest, operator_t, x, assignment);
-        }
-    );
+    int conv2d_backward_input_impl = register_implementation_default<op::CudnnConv2dBackwardInput, CudnnConv2dBackwardInputImpl>();
 
     struct CudnnConv2dBackwardFiltersImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
@@ -306,13 +267,7 @@ namespace {
                 "Error when running cudnnConvolutionBackwardFilter "));
         }
     };
-
-    int conv2d_backward_filters_impl = register_implementation(
-        typeid(op::CudnnConv2dBackwardFilters).name(),
-        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
-            return std::make_shared<CudnnConv2dBackwardFiltersImpl>(dest, operator_t, x, assignment);
-        }
-    );
+    int conv2d_backward_filters_impl = register_implementation_default<op::CudnnConv2dBackwardFilters, CudnnConv2dBackwardFiltersImpl>();
 
     struct CudnnConv2dBackwardBiasImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
@@ -333,13 +288,7 @@ namespace {
                 "Error when computing convolution bias gradient ");
         }
     };
-
-    int conv2d_backward_bias_impl = register_implementation(
-        typeid(op::CudnnConv2dBackwardBias).name(),
-        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
-            return std::make_shared<CudnnConv2dBackwardBiasImpl>(dest, operator_t, x, assignment);
-        }
-    );
+    int conv2d_backward_bias_impl = register_implementation_default<op::CudnnConv2dBackwardBias, CudnnConv2dBackwardBiasImpl>();
 
     struct CudnnPool2dImpl : public CudnnComputation {
         using CudnnComputation::CudnnComputation;
@@ -370,13 +319,45 @@ namespace {
                 "Error when computing pooling ");
         }
     };
+    int conv2d_pool2d_impl = register_implementation_default<op::CudnnPool2d, CudnnPool2dImpl>();
 
-    int conv2d_pool2d_impl = register_implementation(
-        typeid(op::CudnnPool2d).name(),
-        [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
-            return std::make_shared<CudnnPool2dImpl>(dest, operator_t, x, assignment);
+    struct CudnnPool2dBackwardImpl : public CudnnComputation {
+        using CudnnComputation::CudnnComputation;
+        void run_internal(const Operator& update_operator, bool nchw, const memory::Device& device, DType dtype) override {
+            auto pool_bwd = static_cast<op::CudnnPool2dBackward*>(right_.expression().get());
+            // choice of pooling mode follows what TensorFlow does:
+            //   https://github.com/tensorflow/tensorflow/blob/
+            //   6431560b7ec3565154cb9cdc9c827db78ccfebe7/
+            //   tensorflow/stream_executor/cuda/cuda_dnn.cc
+            auto cudnn_pooling_mode = (
+                pool_bwd->pooling_mode_ == POOLING_T_MAX ?
+                CUDNN_POOLING_MAX : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING);
+
+            DescriptorHolder<cudnnTensorDescriptor_t> dx_description(left_.shape(), dtype, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> y_description(pool_bwd->arguments()[0].shape(), dtype, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> dy_description(pool_bwd->arguments()[1].shape(), dtype, nchw);
+            DescriptorHolder<cudnnTensorDescriptor_t> x_description(pool_bwd->arguments()[2].shape(), dtype, nchw);
+            DescriptorHolder<cudnnPoolingDescriptor_t> pooling(cudnn_pooling_mode,
+                pool_bwd->info_.window_h, pool_bwd->info_.window_w, pool_bwd->info_.padding_h,
+                pool_bwd->info_.padding_w, pool_bwd->info_.stride_h, pool_bwd->info_.stride_w);
+            CUDNN_CHECK_RESULT(cudnnPoolingBackward(
+                *get_handle(),
+                pooling.descriptor_,
+                update_operator.alpha_ptr_,
+                y_description.descriptor_,
+                argument_data(device, 0),
+                dy_description.descriptor_,
+                argument_data(device, 1),
+                x_description.descriptor_,
+                argument_data(device, 2),
+                update_operator.beta_ptr_,
+                dx_description.descriptor_,
+                left_data(device)),
+                "Error when computing pooling ");
         }
-    );
+    };
+
+    int conv2d_pool2dbwd_impl = register_implementation_default<op::CudnnPool2dBackward, CudnnPool2dBackwardImpl>();
 }
 #endif
 
@@ -527,9 +508,9 @@ namespace op {
             input, info, pooling_mode, data_format == "NCHW"));
     }
 
-    Array cudnn_pool2d_backward(const Array& out,
-                                const Array& out_dw,
-                                const Array& in,
+    Array cudnn_pool2d_backward(const Array& y,
+                                const Array& dy,
+                                const Array& x,
                                 int window_h,
                                 int window_w,
                                 int stride_h,
@@ -537,11 +518,11 @@ namespace op {
                                 POOLING_T pooling_mode,
                                 PADDING_T padding,
                                 const std::string& data_format) {
-        CUDNN_CHECK_NDIM("cudnn_pool2d_backward", "out", out);
-        CUDNN_CHECK_NDIM("cudnn_pool2d_backward", "out_dw", out_dw);
-        CUDNN_CHECK_NDIM("cudnn_pool2d_backward", "in", in);
+        CUDNN_CHECK_NDIM("cudnn_pool2d_backward", "y", y);
+        CUDNN_CHECK_NDIM("cudnn_pool2d_backward", "dy", dy);
+        CUDNN_CHECK_NDIM("cudnn_pool2d_backward", "x", x);
         CUDNN_CHECK_DATA_FORMAT("cudnn_pool2d_backward", data_format);
-        auto info = op::compute_pool_info(in.shape(),
+        auto info = op::compute_pool_info(x.shape(),
                                           window_h,
                                           window_w,
                                           stride_h,
@@ -549,6 +530,6 @@ namespace op {
                                           padding,
                                           data_format);
         return Array(std::make_shared<CudnnPool2dBackward>(
-            out, out_dw, in, info, pooling_mode, data_format == "NCHW"));
+            y, dy, x, info, pooling_mode, data_format == "NCHW"));
     }
 }  // namespace op

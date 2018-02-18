@@ -147,6 +147,14 @@ namespace functor {
     };
 
     template<typename R>
+    struct ceil {
+        template<typename OtherType>
+        XINLINE static R Map(const OtherType& a) {
+            return ceil(a);
+        }
+    };
+
+    template<typename R>
     struct sigmoid {
         XINLINE static R Map(const R& a) {
             return 1.0 / (1.0 + EXP_F(-a));

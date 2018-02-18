@@ -39,6 +39,7 @@ namespace op {
     // Perform rounding on a value to nearest integer.
     // Note: equivalent to floor(x + 0.5).
     Array round(Array x);
+    Array ceil(Array x);
 
     // type-promote arguments if necessary and check whether their
     // ranks are compatible (equal or one is a scalar)

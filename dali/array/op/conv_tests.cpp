@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "dali/array/op/conv.h"
-#include "dali/array/op/uniform.h"
+#include "dali/array/op/random.h"
 #include "dali/array/op/arange.h"
 #include "dali/array/op/binary.h"
 #include "dali/array/op/unary.h"

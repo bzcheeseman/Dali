@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "dali/array/op/uniform.h"
+#include "dali/array/op/random.h"
 #include "dali/array/op/top_k.h"
 #include "dali/array/op/arange.h"
 

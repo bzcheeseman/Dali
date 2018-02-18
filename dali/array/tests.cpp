@@ -15,7 +15,7 @@
 #include "dali/array/op/reducers.h"
 #include "dali/array/op/arange.h"
 #include "dali/array/op/eye.h"
-#include "dali/array/op/uniform.h"
+#include "dali/array/op/random.h"
 #include "dali/array/op/outer.h"
 #include "dali/array/op/one_hot.h"
 #include "dali/array/op/gather.h"
@@ -1940,4 +1940,22 @@ TEST(ArrayOpsTests, strided_equals) {
     right = right.reshape({3, 5, 1, 5}).transpose({2, 1, 0, 3});
     op::assign(right, OPERATOR_T_EQL, op::arange(75).reshape({1, 5, 3, 5})).eval();
     EXPECT_TRUE(Array::equals(left, right));
+}
+
+TEST(ArrayRandomTests, uniform_bounds_check) {
+    Array x = op::uniform(-1.0f, 1.0f, {1, 1});
+    EXPECT_EQ(x.dtype(), DTYPE_FLOAT);
+    Array norm = op::normal(0.0, 1.0, {5});
+    EXPECT_EQ(x.dtype(), DTYPE_FLOAT);
+}
+
+TEST(ArrayRandomTests, arange) {
+    Array x = op::arange(0.5, 0.5 + 3.14 * 2 * 3 * 4, 3.14).reshape({2,3,4}).astype(DTYPE_DOUBLE);
+    for (int i = 0; i < x.number_of_elements(); i++) {
+        EXPECT_NEAR(0.5 + i * 3.14, (double)x(i), 1e-7);
+    }
+    x += op::arange(2.5, 2.5 - 1.0 * 2 * 3 * 4, -1.0).reshape({2,3,4});
+    for (int i = 0; i < x.number_of_elements(); i++) {
+        EXPECT_NEAR(0.5 + 2.5 + i * (3.14 - 1.0), (double)x(i), 1e-7);
+    }
 }

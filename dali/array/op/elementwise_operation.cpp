@@ -152,6 +152,13 @@ namespace jit {
         return Array(std::make_shared<jit::ElementwiseExpression>("functor::round", std::vector<Array>({a}), DTYPE_INT32));
     }
 
+    Array ceil(Array a) {
+        if (a.dtype() == DTYPE_INT32) {
+            return a;
+        }
+        return Array(std::make_shared<jit::ElementwiseExpression>("functor::ceiling", std::vector<Array>({a}), DTYPE_INT32));
+    }
+
     std::tuple<Array, Array> ensure_arguments_compatible(
             Array a, Array b, const std::string& functor_name,
             bool update_shape) {

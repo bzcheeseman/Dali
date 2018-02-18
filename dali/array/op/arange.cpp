@@ -1,6 +1,7 @@
 #include "arange.h"
 #include "dali/array/jit/jit_runner.h"
 #include "dali/array/jit/jit_utils.h"
+#include "dali/array/op/elementwise_operation.h"
 #include "dali/utils/make_message.h"
 
 namespace op {
@@ -54,15 +55,15 @@ Array arange(int start, int stop) {
     return arange(start, stop, 1);
 }
 
-Array arange(int start, int stop, int step) {
-    ASSERT2(start != stop, utils::make_message(
-        "arange's start and stop must be different "
-        "(got start = ", start, ", stop = ", stop, ")."));
-    int size = std::max((stop - start) / step, 1);
+Array arange(Array start, Array stop, Array step) {
+    ASSERT2(start.ndim() == 0, utils::make_message("arange's start argument must be a scalar but got start.shape = ", start.shape(), "."));
+    ASSERT2(stop.ndim() == 0, utils::make_message("arange's stop argument must be a scalar but got stop.shape = ", stop.shape(), "."));
+    ASSERT2(step.ndim() == 0, utils::make_message("arange's step argument must be a scalar but got step.shape = ", step.shape(), "."));
+    int size = (int)op::ceil((stop - start) / step);
     ASSERT2(size > 0, utils::make_message(
         "arange's size must be strictly positive "
-        "(got start = ", start, ", stop = ", stop,
-        ", step = ", step, ")."));
+        "(got start = ", (double)start, ", stop = ", (double)stop,
+        ", step = ", (double)step, ")."));
     return Array(std::make_shared<jit::Arange>(start, step, size));
 }
 

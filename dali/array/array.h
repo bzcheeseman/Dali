@@ -172,6 +172,9 @@ class Array  {
     Array min() const;
     Array max() const;
     Array L2_norm() const;
+    Array abs() const;
+    Array tanh() const;
+    Array sigmoid() const;
 
     // reduce over one axis
     Array sum(const int& axis) const;

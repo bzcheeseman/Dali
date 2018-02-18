@@ -111,6 +111,15 @@ std::string Compiler::header_file_includes() const {
     return ss.str();
 }
 
+
+void Compiler::set_output_path(const std::string& path) {
+    outpath_ = path;
+}
+
+std::string Compiler::get_output_path() const {
+    return outpath_;
+}
+
 std::string Compiler::compiler_command(const std::string& source,
                                        const std::string& dest,
                                        const std::string& logfile,

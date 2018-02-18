@@ -107,6 +107,8 @@ class Compiler {
     static std::string kCompilerId;
 
     std::string header_file_includes() const;
+    void set_output_path(const std::string& path);
+    std::string get_output_path() const;
 
     bool load(hash_t hash);
     bool is_loaded(hash_t hash) const;

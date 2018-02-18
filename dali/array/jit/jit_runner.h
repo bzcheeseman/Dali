@@ -8,6 +8,7 @@
 
 namespace op {
     namespace jit {
+        extern bool should_always_recompile_cache;
 
         enum PARALLELISM_T {
             INDEPENDENT_BLOCK_WARP = 0,

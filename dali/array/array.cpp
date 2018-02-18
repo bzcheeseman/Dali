@@ -662,6 +662,18 @@ DALI_ARRAY_DEFINE_REDUCER(min, min);
 DALI_ARRAY_DEFINE_REDUCER(argmin, argmin);
 DALI_ARRAY_DEFINE_REDUCER(argmax, argmax);
 
+Array Array::abs() const {
+    return op::abs(*this);
+}
+
+Array Array::tanh() const {
+    return op::tanh(*this);
+}
+
+Array Array::sigmoid() const {
+    return op::sigmoid(*this);
+}
+
 Array Array::argsort() const {
     auto raveled = ravel();
     return op::bottom_k(raveled, raveled.number_of_elements(), true);

@@ -12,6 +12,11 @@
 #include "dali/array/expression/control_flow.h"
 #include "dali/utils/make_message.h"
 
+
+#include "dali/array/jit/jit_runner.h"
+#include "dali/utils/compiler.h"
+#include "dali/utils/core_utils.h"
+
 namespace {
     int int_ceil(int numerator, int denominator) {
         return (numerator + denominator - 1) / denominator;
@@ -337,7 +342,6 @@ TEST_P(ConvTests, small_conv2d_forward) {
                         padding,
                         data_format);
                     if (!Array::allclose(expected, actual, 1e-3)) {
-                        ELOG(data_format);
                         expected.print(); actual.print();
                     }
                     ASSERT_TRUE(Array::allclose(expected, actual, 1e-3));
@@ -368,6 +372,8 @@ TEST_P(ConvTests, conv2d_forward) {
                         X = op::uniform(-1.0f, 1.0f, {5, 6, 8, 3});
                         W = op::uniform(-1.0f, 1.0f, {2, 2, 4, 3});
                     }
+                    X.eval();
+                    W.eval();
                     Array actual;
                     if (use_cudnn()) {
                         actual = op::cudnn_conv2d(X,
@@ -636,7 +642,7 @@ namespace {
     }
 }
 
-TEST_P(ConvTests, cudnn_pool2d_forward) {
+TEST_P(ConvTests, pool2d_forward) {
     for (int window_h = 1; window_h <= 3; ++window_h) {
         for (int window_w = 1; window_w <= 3; ++window_w) {
             for (int stride_h = 1; stride_h <= 2; ++stride_h) {
@@ -695,7 +701,14 @@ TEST_P(ConvTests, cudnn_pool2d_forward) {
                                     padding,
                                     data_format);
 
-                                EXPECT_TRUE(Array::allclose(expected_out, out, 1e-3));
+                                if (!Array::allclose(expected_out, out, 1e-3)) {
+                                    X.print();
+                                    expected_out.print();
+                                    out.print();
+                                }
+
+
+                                ASSERT_TRUE(Array::allclose(expected_out, out, 1e-3));
                             }
                         }
                     }
@@ -797,7 +810,6 @@ TEST_P(ConvTests, unpool2d_forward) {
                                 }
 
                                 X.to_device(memory::Device::cpu());
-
                                 Array expected_in_dw = reference_pool2d_backward(
                                     out,
                                     out_dw,
@@ -809,8 +821,7 @@ TEST_P(ConvTests, unpool2d_forward) {
                                     pooling,
                                     padding,
                                     data_format);
-
-                                EXPECT_TRUE(Array::allclose(expected_in_dw, in_dw, 1e-3));
+                                ASSERT_TRUE(Array::allclose(expected_in_dw, in_dw, 1e-3));
                             }
                         }
                     }

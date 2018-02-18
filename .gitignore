@@ -37,6 +37,7 @@ cpp/mygreatfolder
 cpp/examples/sentiment_models
 
 .ipynb_checkpoints/
+dali_generated/
 
 # Saves #
 #########

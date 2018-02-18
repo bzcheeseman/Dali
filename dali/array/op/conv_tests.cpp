@@ -423,49 +423,33 @@ Array reference_pool2d(Array X,
             stride_w,
             padding_mode,
             data_format);
-
-    int n_dim;
-    int c_dim;
-    int h_dim;
-    int w_dim;
-    op::check_data_format(data_format,
-                      &n_dim,
-                      &c_dim,
-                      &h_dim,
-                      &w_dim);
+    int n_dim, c_dim, h_dim, w_dim;
+    op::check_data_format(data_format, &n_dim, &c_dim, &h_dim, &w_dim);
     X = X.transpose({n_dim, c_dim, h_dim, w_dim});
-
     int unpadded_x_h = X.shape()[2], unpadded_x_w = X.shape()[3];
-    int prepad_h = info.padding_h;
-    int prepad_w = info.padding_w;
+    int prepad_h = info.padding_h, prepad_w = info.padding_w;
 
     auto out_shape = permute_shape({info.batch_size,
                                     info.in_channels,
                                     info.out_h,
-                                     info.out_w},
+                                    info.out_w},
                                     data_format);
 
     auto out_orig_data_format = Array(out_shape, X.dtype(), X.preferred_device());
-    Array out = out_orig_data_format.transpose(
-            {n_dim, c_dim, h_dim, w_dim});
-
+    Array out = out_orig_data_format.transpose({n_dim, c_dim, h_dim, w_dim});
 
     int in_c = info.in_channels, in_n = info.batch_size;
 
     for (int i = 0; i < info.out_h; i++) {
         int h_start = i * stride_h;
         int h_end = h_start + window_h;
-
         h_start = std::max(h_start - prepad_h, 0);
         h_end   = std::min(h_end - prepad_h, unpadded_x_h);
-
         for (int j = 0; j < info.out_w; j++) {
             int w_start = j * stride_w;
             int w_end = w_start + window_w;
-
             w_start = std::max(w_start - prepad_w, 0);
             w_end   = std::min(w_end - prepad_w, unpadded_x_w);
-
             Array window = X[Slice(0, in_n)][Slice(0, in_c)][Slice(h_start, h_end)][Slice(w_start, w_end)];
             window = window.reshape({in_n, in_c, -1});
             if (pooling_mode == POOLING_T_MAX) {
@@ -557,6 +541,87 @@ Array reference_pool2d_backward(Array out,
                         out_dw_swapped[Slice(0, in_n)][Slice(0, in_c)][h][w][Broadcast()][Broadcast()];
             }
             window.eval();
+        }
+    }
+    return in_dw;
+}
+
+Array reference_pool2d_backward_result_view(Array out,
+                                            Array out_dw,
+                                            Array X,
+                                            int window_h,
+                                            int window_w,
+                                            int stride_h,
+                                            int stride_w,
+                                            POOLING_T pooling_mode,
+                                            PADDING_T padding_mode,
+                                            const std::string& data_format) {
+    ASSERT2(out.shape().size() == 4,    "must be a 4D array");
+    ASSERT2(out_dw.shape().size() == 4, "must be a 4D array");
+    ASSERT2(X.shape().size() == 4,      "must be a 4D array");
+
+    auto info = op::compute_pool_info(
+            X.shape(),
+            window_h,
+            window_w,
+            stride_h,
+            stride_w,
+            padding_mode,
+            data_format);
+
+    int n_dim;
+    int c_dim;
+    int h_dim;
+    int w_dim;
+    op::check_data_format(data_format,
+                      &n_dim,
+                      &c_dim,
+                      &h_dim,
+                      &w_dim);
+    Array in_dw = Array::zeros_like(X);
+
+    auto x_swapped      =      X.transpose({n_dim, c_dim, h_dim, w_dim});
+    auto out_swapped    =    out.transpose({n_dim, c_dim, h_dim, w_dim});
+    auto out_dw_swapped = out_dw.transpose({n_dim, c_dim, h_dim, w_dim});
+    auto in_dw_swapped  =  in_dw.transpose({n_dim, c_dim, h_dim, w_dim});
+
+    int out_h = out_swapped.shape()[2];
+    int out_w = out_swapped.shape()[3];
+
+    int in_n  = in_dw_swapped.shape()[0];
+    int in_c  = in_dw_swapped.shape()[1];
+    int in_h  = in_dw_swapped.shape()[2];
+    int in_w  = in_dw_swapped.shape()[3];
+
+    int prepad_h = info.padding_h;
+    int prepad_w = info.padding_w;
+    
+
+    for (int h = 0; h < in_h; h++) {
+        for (int w = 0; w < in_w; w++) {
+            Array gradient = in_dw_swapped[Slice(0, in_n)][Slice(0, in_c)][h][w];
+
+            const int phstart = (h + info.padding_h < window_h) ? 0 : (h + info.padding_h - window_h) / stride_h + 1;
+            const int pwstart = (w + info.padding_w < window_w) ? 0 : (w + info.padding_w - window_w) / stride_w + 1;
+
+            const int phend = std::min((h + info.padding_h) / stride_h + 1, out_h);
+            const int pwend = std::min((w + info.padding_w) / stride_w + 1, out_w);
+            
+            // for all batch and channel for this gradient element find relevant chunks
+            for (int ph = phstart; ph < phend; ++ph) {
+              for (int pw = pwstart; pw < pwend; ++pw) {
+                // figure out the pooling size
+                int hstart = ph * stride_h - info.padding_h;
+                int wstart = pw * stride_w - info.padding_w;
+                int hend = std::min(hstart + window_h, out_h);
+                int wend = std::min(wstart + window_w, out_w);
+                hstart = std::max(hstart, 0);
+                wstart = std::max(wstart, 0);
+                int pool_size = (hend - hstart) * (wend - wstart);
+                gradient += out_dw_swapped[Slice(0, in_n)][Slice(0, in_c)][ph][pw] / pool_size;
+              }
+            }
+            gradient.eval();
         }
     }
     return in_dw;
@@ -756,14 +821,15 @@ TEST_P(ConvTests, unpool2d_forward) {
 }
 
 TEST_P(ConvTests, pool2d_simple) {
+    POOLING_T pooling_mode = POOLING_T_AVG;
     auto X = op::arange(25).reshape({1,1, 5, 5}).astype(DTYPE_FLOAT);
     Array O;
     if (use_cudnn()) {
-        O = op::cudnn_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+        O = op::cudnn_pool2d(X, 3, 3, 1, 1, pooling_mode, PADDING_T_SAME, "NCHW");
     } else {
-        O = op::pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+        O = op::pool2d(X, 3, 3, 1, 1, pooling_mode, PADDING_T_SAME, "NCHW");
     }
-    Array O2 = reference_pool2d(X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    Array O2 = reference_pool2d(X, 3, 3, 1, 1, pooling_mode, PADDING_T_SAME, "NCHW");
 
 
     Array correct_O({1,1,5,5}, DTYPE_FLOAT);
@@ -778,11 +844,11 @@ TEST_P(ConvTests, pool2d_simple) {
     ASSERT_TRUE(Array::allclose(correct_O, O2, 1e-3));
     Array G;
     if (use_cudnn()) {
-        G = op::cudnn_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+        G = op::cudnn_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, pooling_mode, PADDING_T_SAME, "NCHW");
     } else {
-        G = op::pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+        G = op::pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, pooling_mode, PADDING_T_SAME, "NCHW");
     }
-    Array G2 = reference_pool2d_backward(O, Array::ones_like(O), X, 3, 3, 1, 1, POOLING_T_AVG, PADDING_T_SAME, "NCHW");
+    Array G2 = reference_pool2d_backward_result_view(O, Array::ones_like(O), X, 3, 3, 1, 1, pooling_mode, PADDING_T_SAME, "NCHW");
     Array correct_G({1,1,5,5}, DTYPE_FLOAT);
     assign_from_vec(correct_G[0][0], std::vector<std::vector<float>> {
         {0.69444448, 0.97222227, 0.83333331,  0.97222227,  0.69444448},

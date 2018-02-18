@@ -6,6 +6,9 @@
 XINLINE int int_min(const int& left, const int& right) {
     return left < right ? left : right;
 }
+XINLINE int int_max(const int& left, const int& right) {
+    return left > right ? left : right;
+}
 
 #ifdef __CUDACC__
 #if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600

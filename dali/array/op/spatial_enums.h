@@ -8,7 +8,7 @@ enum PADDING_T {
 
 enum POOLING_T {
     POOLING_T_MAX = 0,
-    POOLING_T_AVG = 1,
+    POOLING_T_AVG = 1
 };
 
 #endif  // DALI_ARRAY_OP_SPATIAL_ENUMS_H

@@ -10,60 +10,87 @@
 namespace op {
     namespace jit {
         struct Pool2d : public JITNode {
-            const PADDING_T padding_;
             const std::string functor_name_;
             const bool nchw_;
+            const bool average_;
 
-            // MUST IMPLEMENT
             std::string kernel_name() const {
                 return utils::make_message("pool2d_", nchw_ ? "nchw" : "nhwc");
             }
 
-            // DO NOT REIMPLEMENT
             Pool2d(const Array& argument,
                    const Array& window_h, const Array& window_w,
                    const Array& stride_h, const Array& stride_w,
-                   PADDING_T padding,
-                   const std::string& functor_name, bool nchw, const std::vector<int>& shape) :
-                JITNode(shape, argument.dtype(), {argument, window_h, window_w, stride_h, stride_w}),
-                padding_(padding), functor_name_(functor_name), nchw_(nchw) {
+                   const Array& prepad_h, const Array& prepad_w,
+                   const std::string& functor_name, bool nchw, bool average, const std::vector<int>& shape) :
+                JITNode(shape, argument.dtype(), {argument, window_h, window_w, stride_h, stride_w, prepad_h, prepad_w}),
+                functor_name_(functor_name), nchw_(nchw), average_(average) {
             }
 
             expression_ptr copy() const override {
-                return std::make_shared<Pool2d>(arguments_[0], arguments_[1], arguments_[2], arguments_[3], arguments_[4], padding_, functor_name_, nchw_, shape_);
+                return std::make_shared<Pool2d>(arguments_[0], arguments_[1], arguments_[2], arguments_[3],
+                                                arguments_[4], arguments_[5], arguments_[6], functor_name_, nchw_, average_, shape_);
             }
 
             virtual void compilation_parameters(utils::Hasher& hasher) const override {
-                hasher.add(int(padding_)).add(functor_name_).add(nchw_);
+                hasher.add(functor_name_).add(nchw_).add(average_);
             }
 
             void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
                 std::string clsname = utils::make_message("Pool2D", nchw_ ? "NCHW" : "NHWC");
+                int h_dim = nchw_ ? 2 : 1;
+                int w_dim = nchw_ ? 3 : 2;
                 // TODO(jonathan): generalize to ND-pooling & any ordering of channels/spatial
+                // TODO(jonathan): make padding optional
+                // TODO(jonathan): for average pooling, forward pass is not needed
+                // TODO(jonathan): kernel gen can adopt a factory model:
+                // e.g. Kernel("....")
+                //          .shape_defined_by_argument(0)
+                //          .template_by("Reducer")
+                //          .arguments(arguments());
                 insert(utils::make_message(
-                    "template<typename Reducer, typename Type, typename C1, typename C2, typename C3, typename C4, typename C5>\n"
+                    "template<typename Reducer, typename Type, typename C1, typename C2, typename C3, typename C4, typename C5, typename C6, typename C7>\n"
                     "struct ", clsname, " {\n"
                     "    C1 arg_;\n"
                     "    C2 window_h_;\n"
                     "    C3 window_w_;\n"
                     "    C4 stride_h_;\n"
                     "    C5 stride_w_;\n"
+                    "    C6 prepad_h_;\n"
+                    "    C7 prepad_w_;\n"
                     "    static const int ndim = C1::ndim;\n"
                     "    typedef Type T;\n"
                     "    XINLINE Shape<ndim> shape() const {\n"
                     "        return arg_.shape();\n"
                     "    }\n"
-                    "    XINLINE ", clsname, "(C1 arg, C2 window_h, C3 window_w, C4 stride_h, C5 stride_w) :\n"
-                    "        arg_(arg), window_h_(window_h), window_w_(window_w), stride_h_(stride_h), stride_w_(stride_w) {}\n"
-                    "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
-                    "        T src = arg_[query];\n"
-                    "        return 0;\n"
+                    "    XINLINE ", clsname, "(C1 arg, C2 window_h, C3 window_w, C4 stride_h, C5 stride_w, C6 prepad_h, C7 prepad_w) :\n"
+                    "        arg_(arg), window_h_(window_h), window_w_(window_w), stride_h_(stride_h), stride_w_(stride_w), prepad_h_(prepad_h), prepad_w_(prepad_w) {}\n"
+                    "    XINLINE T operator[](Shape<ndim> query) const {\n"
+                    "        int w_start = query[", w_dim, "] * stride_w_[0];\n"
+                    "        int w_end = w_start + window_w_[0];\n"
+                    "        w_start = int_max(query[", w_dim, "] - prepad_w_[0], 0);\n"
+                    "        w_end = int_min(w_end - prepad_w_[0],  arg_.shape()[", w_dim, "]);\n"
+                    "\n"
+                    "        int h_start = query[", h_dim, "] * stride_h_[0];\n"
+                    "        int h_end = h_start + window_h_[0];\n"
+                    "        h_start = int_max(query[", h_dim, "] - prepad_h_[0], 0);\n"
+                    "        h_end = int_min(h_end - prepad_h_[0],  arg_.shape()[", h_dim, "]);\n"
+                    "\n"
+                    "        T res; Reducer::SetInitValue(res);\n"
+                    "        int& w = query[", w_dim, "];\n"
+                    "        int& h = query[", h_dim, "];\n"
+                    "        for (w = w_start; w < w_end; ++w) {\n"
+                    "            for (h = h_start; h < h_end; ++h) {\n"
+                    "                Reducer::Reduce(res, arg_[query]);\n"
+                    "            }\n"
+                    "        }\n"
+                    "        return ", average_ ? "res / ((h_end - h_start) * (w_end - w_start))" : "res", ";\n"
                     "    }\n"
                     "};\n"));
                 insert(utils::make_message(
-                    "template<typename Reducer, typename Type, typename C1, typename C2, typename C3, typename C4, typename C5>\n"
-                    "XINLINE ", clsname, "<Reducer, Type, C1, C2, C3, C4, C5> ", kernel_name(), "(C1 arg, C2 window_h, C3 window_w, C4 stride_h, C5 stride_w) {\n"
-                    "    return ", clsname, "<Reducer, Type, C1, C2, C3, C4, C5>(arg, window_h, window_w, stride_h, stride_w);\n"
+                    "template<typename Reducer, typename Type, typename C1, typename C2, typename C3, typename C4, typename C5, typename C6, typename C7>\n"
+                    "XINLINE ", clsname, "<Reducer, Type, C1, C2, C3, C4, C5, C6, C7> ", kernel_name(), "(C1 arg, C2 window_h, C3 window_w, C4 stride_h, C5 stride_w, C6 prepad_h, C7 prepad_w) {\n"
+                    "    return ", clsname, "<Reducer, Type, C1, C2, C3, C4, C5, C6, C7>(arg, window_h, window_w, stride_h, stride_w, prepad_h, prepad_w);\n"
                     "}\n"));
             }
 
@@ -71,33 +98,35 @@ namespace op {
                                                  memory::DeviceT device_type) const override {
                 return utils::make_message(
                     kernel_name(), "<", functor_name_, ", " , dtype_to_cpp_name(dtype_), ">(",
-                    op::jit::get_call_code_nd(arguments_[0], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[1], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[2], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[3], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[4], symbol_table, device_type), ")");
+                    op::jit::get_call_code_nd(arguments_[0], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[1], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[2], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[3], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[4], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[5], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[6], symbol_table, device_type), ")");
             }
         };
         struct Pool2dBackward : public JITNode {
-            const PADDING_T padding_;
             const std::string functor_name_;
             const bool nchw_;
+            const bool average_;
 
             Pool2dBackward(const Array& y, const Array& dy, const Array& x,
                            const Array& window_h, const Array& window_w,
                            const Array& stride_h, const Array& stride_w,
-                           PADDING_T padding,
-                           const std::string& functor_name, bool nchw) :
-                JITNode(x.shape(), y.dtype(), {y, dy, x, window_h, window_w, stride_h, stride_w}),
-                padding_(padding), functor_name_(functor_name), nchw_(nchw) {
+                           const Array& prepad_h, const Array& prepad_w,
+                           const std::string& functor_name, bool nchw, bool average) :
+                JITNode(x.shape(), y.dtype(), {y, dy, x, window_h, window_w, stride_h, stride_w, prepad_h, prepad_w}),
+                functor_name_(functor_name), nchw_(nchw), average_(average) {
             }
 
             virtual void compilation_parameters(utils::Hasher& hasher) const override {
-                hasher.add(int(padding_)).add(functor_name_).add(nchw_);
+                hasher.add(functor_name_).add(nchw_).add(average_);
             }
 
             expression_ptr copy() const override {
-                return std::make_shared<Pool2dBackward>(arguments_[0], arguments_[1], arguments_[2], arguments_[3], arguments_[4], arguments_[5], arguments_[6], padding_, functor_name_, nchw_);
+                return std::make_shared<Pool2dBackward>(arguments_[0], arguments_[1], arguments_[2], arguments_[3], arguments_[4], arguments_[5], arguments_[6], arguments_[7], arguments_[8], functor_name_, nchw_, average_);
             }
 
             std::string kernel_name() const {
@@ -106,14 +135,22 @@ namespace op {
 
             void prefix_code(memory::DeviceT device_type, insert_t insert) const override {
                 std::string clsname = utils::make_message("Pool2DBackward", nchw_ ? "NCHW" : "NHWC");
-                // TODO(jonathan): generalize to ND-pooling & any ordering of channels/spatial
-                // "        for (int py = py_min; py < py_max; ++py) {\n"
-                //     "             for (int px = px_min; px < px_max; ++px) {\n"
-                //     "                 val += Reducer::PartialGrad(vsrc, y_[query_shifted], dy_[query_shifted]);\n"
-                //     "             }\n"
-                //     "        }\n"
+                int h_dim = nchw_ ? 2 : 1;
+                int w_dim = nchw_ ? 3 : 2;
+
+                std::string compute_pool_size = "";
+                if (average_) {
+                    compute_pool_size = utils::make_message(
+                        "                int hstart = h * stride_h_[0] - prepad_h_[0];\n"
+                        "                int wstart = w * stride_w_[0] - prepad_w_[0];\n"
+                        "                int hend = int_min(hstart + window_h_[0], x_.shape()[", h_dim, "]);\n"
+                        "                int wend = int_min(wstart + window_w_[0], x_.shape()[", w_dim, "]);\n"
+                        "                hstart = int_max(hstart, 0);\n"
+                        "                wstart = int_max(wstart, 0);\n"
+                        "                int pool_size = (hend - hstart) * (wend - wstart);\n");
+                }
                 insert(utils::make_message(
-                    "template<typename Reducer, typename Type, typename C1, typename C2, typename C3, typename C4, typename C5, typename C6, typename C7>\n"
+                    "template<typename Reducer, typename Type, typename C1, typename C2, typename C3, typename C4, typename C5, typename C6, typename C7, typename C8, typename C9>\n"
                     "struct ", clsname, " {\n"
                     "    C1 y_;\n"
                     "    C2 dy_;\n"
@@ -122,22 +159,37 @@ namespace op {
                     "    C5 window_w_;\n"
                     "    C6 stride_h_;\n"
                     "    C7 stride_w_;\n"
+                    "    C6 prepad_h_;\n"
+                    "    C7 prepad_w_;\n"
                     "    static const int ndim = C3::ndim;\n"
                     "    typedef Type T;\n"
                     "    XINLINE Shape<ndim> shape() const {\n"
                     "        return x_.shape();\n"
                     "    }\n"
-                    "    XINLINE ", clsname, "(C1 y, C2 dy, C3 x, C4 window_h, C5 window_w, C6 stride_h, C7 stride_w)\n"
-                    "        : y_(y), dy_(dy), x_(x), window_h_(window_h), window_w_(window_w), stride_h_(stride_h), stride_w_(stride_w) {}\n"
-                    "    XINLINE T operator[](const Shape<ndim>& query) const {\n"
+                    "    XINLINE ", clsname, "(C1 y, C2 dy, C3 x, C4 window_h, C5 window_w, C6 stride_h, C7 stride_w, C8 prepad_h, C9 prepad_w)\n"
+                    "        : y_(y), dy_(dy), x_(x), window_h_(window_h), window_w_(window_w), stride_h_(stride_h), stride_w_(stride_w), prepad_h_(prepad_h), prepad_w_(prepad_w) {}\n"
+                    "    XINLINE T operator[](Shape<ndim> query) const {\n"
                     "        T src = x_[query];\n"
-                    "        return 0;\n"
+                    "        int& w = query[", w_dim, "];\n"
+                    "        int& h = query[", h_dim, "];\n"
+                    "        const int ph_start = ((h + prepad_h_[0]) < window_h_[0]) ? 0 : ((h + prepad_h_[0] - window_h_[0]) / stride_h_[0] + 1);\n"
+                    "        const int pw_start = ((w + prepad_w_[0]) < window_w_[0]) ? 0 : ((w + prepad_w_[0] - window_w_[0]) / stride_w_[0] + 1);\n"
+                    "\n"
+                    "        const int ph_end = int_min((h + prepad_h_[0]) / stride_h_[0] + 1, dy_.shape()[", h_dim, "]);\n"
+                    "        const int pw_end = int_min((w + prepad_w_[0]) / stride_w_[0] + 1, dy_.shape()[", w_dim, "]);\n"
+                    "        T grad = static_cast<T>(0);\n"
+                    "        for (h = ph_start; h < ph_end; ++h) {\n"
+                    "            for (w = pw_start; w < pw_end; ++w) {\n", compute_pool_size,
+                    "                grad += (Reducer::PartialGrad(src, y_[query]) * dy_[query])", average_ ? "/ pool_size" : "", ";\n"
+                    "            }\n"
+                    "        }\n"
+                    "        return grad;\n"
                     "    }\n"
                     "};\n"));
                 insert(utils::make_message(
-                    "template<typename Reducer, typename Type, typename C1, typename C2, typename C3, typename C4, typename C5, typename C6, typename C7>\n"
-                    "XINLINE ", clsname, "<Reducer, Type, C1, C2, C3, C4, C5, C6, C7> ", kernel_name(), "(C1 y, C2 dy, C3 x, C4 window_h, C5 window_w, C6 stride_h, C7 stride_w) {\n"
-                    "    return ", clsname, "<Reducer, Type, C1, C2, C3, C4, C5, C6, C7>(y, dy, x, window_h, window_w, stride_h, stride_w);\n"
+                    "template<typename Reducer, typename Type, typename C1, typename C2, typename C3, typename C4, typename C5, typename C6, typename C7, typename C8, typename C9>\n"
+                    "XINLINE ", clsname, "<Reducer, Type, C1, C2, C3, C4, C5, C6, C7, C8, C9> ", kernel_name(), "(C1 y, C2 dy, C3 x, C4 window_h, C5 window_w, C6 stride_h, C7 stride_w, C8 prepad_h, C9 prepad_w) {\n"
+                    "    return ", clsname, "<Reducer, Type, C1, C2, C3, C4, C5, C6, C7, C8, C9>(y, dy, x, window_h, window_w, stride_h, stride_w, prepad_h, prepad_w);\n"
                     "}\n"));
             }
 
@@ -145,13 +197,15 @@ namespace op {
                                                  memory::DeviceT device_type) const override {
                 return utils::make_message(
                     kernel_name(), "<", functor_name_, ", " , dtype_to_cpp_name(dtype_), ">(",
-                    op::jit::get_call_code_nd(arguments_[0], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[1], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[2], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[3], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[4], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[5], symbol_table, device_type), ",",
-                    op::jit::get_call_code_nd(arguments_[6], symbol_table, device_type), ")");
+                    op::jit::get_call_code_nd(arguments_[0], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[1], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[2], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[3], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[4], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[5], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[6], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[7], symbol_table, device_type), ", ",
+                    op::jit::get_call_code_nd(arguments_[8], symbol_table, device_type), ")");
             }
         };
     }
@@ -358,7 +412,8 @@ namespace op {
         bool nchw = data_format == "NCHW";
         return Array(std::make_shared<op::jit::Pool2d>(
             input, info.window_h, info.window_w, info.stride_h, info.stride_w,
-            padding, pooling_mode == POOLING_T_MAX ? "reducers::maximum" : "reducers::avg", nchw,
+            info.padding_h, info.padding_w, pooling_mode == POOLING_T_MAX ? "reducers::maximum" : "reducers::avg", nchw,
+            pooling_mode == POOLING_T_AVG,
             nchw ? std::vector<int>({info.batch_size, info.in_channels, info.out_h, info.out_w}) :
             std::vector<int>({info.batch_size, info.out_h, info.out_w, info.in_channels})));
     }
@@ -387,6 +442,8 @@ namespace op {
         bool nchw = data_format == "NCHW";
         return Array(std::make_shared<op::jit::Pool2dBackward>(
             y, dy, x, info.window_h, info.window_w, info.stride_h, info.stride_w,
-            padding, pooling_mode == POOLING_T_MAX ? "reducers::maximum" : "reducers::avg", nchw));
+            info.padding_h, info.padding_w,
+            pooling_mode == POOLING_T_MAX ? "reducers::maximum" : "reducers::avg", nchw,
+            pooling_mode == POOLING_T_AVG));
     }
 }  // namespace op

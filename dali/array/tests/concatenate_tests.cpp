@@ -3,7 +3,7 @@
 
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
-#include "dali/array/test_utils.h"
+#include "dali/array/tests/test_utils.h"
 #include "dali/array/op/concatenate.h"
 #include "dali/array/op/arange.h"
 

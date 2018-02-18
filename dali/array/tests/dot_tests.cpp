@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include "dali/array/array.h"
-#include "dali/array/test_utils.h"
+#include "dali/array/tests/test_utils.h"
 #include "dali/array/op/arange.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/random.h"

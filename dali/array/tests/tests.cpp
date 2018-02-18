@@ -6,7 +6,7 @@
 
 #include "dali/utils/print_utils.h"
 #include "dali/runtime_config.h"
-#include "dali/array/test_utils.h"
+#include "dali/array/tests/test_utils.h"
 #include "dali/utils/core_utils.h"
 #include "dali/utils/make_message.h"
 #include "dali/array/op/dot.h"

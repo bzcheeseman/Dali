@@ -12,11 +12,6 @@
 #include "dali/array/expression/control_flow.h"
 #include "dali/utils/make_message.h"
 
-
-#include "dali/array/jit/jit_runner.h"
-#include "dali/utils/compiler.h"
-#include "dali/utils/core_utils.h"
-
 namespace {
     int int_ceil(int numerator, int denominator) {
         return (numerator + denominator - 1) / denominator;

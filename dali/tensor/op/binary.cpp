@@ -1,10 +1,8 @@
 #include "binary.h"
 
-#include "dali/array/op2/binary.h"
-#include "dali/array/op2/unary.h"
-#include "dali/array/op2/spatial/circular_convolution.h"
-#include "dali/array/op_overload/common.h"
-#include "dali/array/op_overload/nonlazy.h"
+#include "dali/array/op/binary.h"
+#include "dali/array/op/unary.h"
+#include "dali/array/op/circular_convolution.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 
@@ -51,8 +49,8 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor sub(const Tensor& a, const Tensor& b) {
-        Tensor out(op::sub(a.w, b.w));
+    Tensor subtract(const Tensor& a, const Tensor& b) {
+        Tensor out(a.w - b.w);
         if (graph::backprop_enabled()) {
             auto out_dw = out.dw;
             if (!a.constant) {

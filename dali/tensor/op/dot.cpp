@@ -1,23 +1,21 @@
 #include "dot.h"
 
-#include "dali/array/op/tensordot_as_dot.h"
-#include "dali/tensor/op/operators.h"
+#include "dali/array/gemm/tensordot_as_dot.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 #include "dali/array/op.h"
-#include "dali/array/op2/outer.h"
 
-Tensor matrixdot_with_custom_shape(const Tensor& a,
+Tensor matmul_with_custom_shape(const Tensor& a,
                                    const Tensor& b,
                                    std::vector<int> new_shape) {
     auto out = Tensor::empty(new_shape, a.dtype(), a.preferred_device());
-    out.w = op::matrixdot(a.w, b.w);
+    out.w = op::matmul(a.w, b.w);
 
     if (graph::backprop_enabled()) {
         auto out_dw = out.dw;
         graph::emplace_back([a, b, out_dw]() mutable {
-            MAYBE_GRAD(a) <<= op::matrixdot(out_dw, b.w.transpose());
-            MAYBE_GRAD(b) <<= op::matrixdot(a.w.transpose(), out_dw);
+            MAYBE_GRAD(a) <<= op::matmul(out_dw, b.w.transpose());
+            MAYBE_GRAD(b) <<= op::matmul(a.w.transpose(), out_dw);
         });
     }
     return out;
@@ -29,7 +27,7 @@ namespace op {
                                         const Tensor& b,
                                         const std::vector<int>& out_shape,
                                         const std::vector<int>& out_shape_2d) {
-        return matrixdot_with_custom_shape(a, b, out_shape_2d).reshape(out_shape);
+        return matmul_with_custom_shape(a, b, out_shape_2d).reshape(out_shape);
     }
 }  // namespace op
 
@@ -53,7 +51,7 @@ namespace tensor_ops {
         } else if (a_ndim == 1 && b_ndim == 1) {
             return inner(a, b);
         } else if (a_ndim == 2 && b_ndim == 2) {
-            return matrixdot(a, b);
+            return matmul(a, b);
         } else {
             return matrix_vector_dot(a, b);
         }
@@ -84,14 +82,14 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor matrixdot(const Tensor& a, const Tensor& b) {
-        Tensor out(op::matrixdot(a.w, b.w));
+    Tensor matmul(const Tensor& a, const Tensor& b) {
+        Tensor out(op::matmul(a.w, b.w));
 
         if (graph::backprop_enabled()) {
             auto out_dw = out.dw;
             graph::emplace_back([a, b, out_dw]() mutable {
-                MAYBE_GRAD(a) <<= op::matrixdot(out_dw, b.w.transpose());
-                MAYBE_GRAD(b) <<= op::matrixdot(a.w.transpose(), out_dw);
+                MAYBE_GRAD(a) <<= op::matmul(out_dw, b.w.transpose());
+                MAYBE_GRAD(b) <<= op::matmul(a.w.transpose(), out_dw);
             });
         }
         return out;

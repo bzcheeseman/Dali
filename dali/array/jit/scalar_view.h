@@ -25,6 +25,9 @@ struct ScalarView : public JITNode {
 Array wrap_scalar(int value);
 Array wrap_scalar(float value);
 Array wrap_scalar(double value);
+Array wrap_scalar(int value, DType dtype);
+Array wrap_scalar(float value, DType dtype);
+Array wrap_scalar(double value, DType dtype);
 Array tile_scalar(Array scalar, const std::vector<int>& shape);
 }
 }

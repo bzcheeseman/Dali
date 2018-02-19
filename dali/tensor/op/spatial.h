@@ -2,7 +2,7 @@
 #define DALI_TENSOR_OP_SPATIAL_H
 
 #include "dali/tensor/tensor.h"
-#include "dali/array/op/spatial.h"
+#include "dali/array/op/spatial_enums.h"
 
 namespace tensor_ops {
     Tensor conv2d(Tensor input,

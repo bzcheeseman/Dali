@@ -1,11 +1,9 @@
 #include "reducers.h"
 #include "dali/tensor/tape.h"
-#include "dali/array/op2/binary.h"
-#include "dali/array/op2/unary.h"
-#include "dali/array/op2/reducers.h"
-#include "dali/array/op/other.h"
-#include "dali/array/op_overload/common.h"
-#include "dali/array/op_overload/nonlazy.h"
+#include "dali/array/op/binary.h"
+#include "dali/array/op/unary.h"
+#include "dali/array/op/reducers.h"
+#include "dali/array/op/top_k.h"
 #include "dali/tensor/tensor_macros.h"
 #include "dali/utils/print_utils.h"
 
@@ -17,11 +15,7 @@ namespace tensor_ops {
             out.dw = tensor.dw.reshape({});
             return out;
         } else {
-            // TODO(jonathan, szymon) also makes sure that device
-            // of input tensor is also used here
-
             Tensor out(tensor.w.sum());
-
             if (graph::backprop_enabled() && !tensor.constant) {
                 auto out_dw = out.dw;
                 auto tensor_dw = tensor.dw;
@@ -69,49 +63,46 @@ namespace tensor_ops {
         return out;
     }
 
-    Tensor L2_norm(const Tensor& tensor, int axis) {
-        if (axis < 0) axis = axis + tensor.ndim();
-        Tensor out(tensor.w.L2_norm(axis));
+    Tensor L2_norm(const Tensor& tensor, const std::vector<int>& axes, bool keepdims) {
+        Tensor out(tensor.w.L2_norm(axes, keepdims));
         if (graph::backprop_enabled() && !tensor.constant)
-            graph::emplace_back([tensor, out, axis]() mutable {
-                MAYBE_GRAD(tensor) <<= (
-                    tensor.w * (
-                        out.dw.insert_broadcast_axis(axis) /
-                        out.w.insert_broadcast_axis(axis)
-                    )
-                );
+            graph::emplace_back([tensor, out, axes, keepdims]() mutable {
+                // MAYBE_GRAD(tensor) <<= (
+                //     tensor.w * (
+                //         out.dw.insert_broadcast_axis(axis) /
+                //         out.w.insert_broadcast_axis(axis)
+                //     )
+                // );
             });
         return out;
     }
 
-    Tensor sum(const Tensor& tensor, int axis) {
-        if (axis < 0) axis = axis + tensor.ndim();
-        Tensor out(op::sum(tensor.w, {axis}));
+    Tensor sum(const Tensor& tensor, const std::vector<int>& axes, bool keepdims) {
+        Tensor out(op::sum(tensor.w, axes, keepdims));
         if (graph::backprop_enabled() && !tensor.constant) {
             auto tensor_dw = tensor.dw;
             auto out_dw = out.dw;
-            graph::emplace_back([tensor_dw, out_dw, axis]() mutable {
+            graph::emplace_back([tensor_dw, out_dw, axes, keepdims]() mutable {
                 // make sure output has same shape as input
                 // with the reduced dimension returned as
                 // broadcasted
-                auto reshaped_gradient = out_dw.insert_broadcast_axis(axis);
-                tensor_dw <<= reshaped_gradient;
+                // auto reshaped_gradient = out_dw.insert_broadcast_axis(axis);
+                // tensor_dw <<= reshaped_gradient;
             });
         }
         return out;
     }
 
-    Tensor mean(const Tensor& tensor, int axis) {
-        if (axis < 0) axis = axis + tensor.ndim();
-        Tensor out(op::mean(tensor.w, {axis}));
+    Tensor mean(const Tensor& tensor, const std::vector<int>& axes, bool keepdims) {
+        Tensor out(op::mean(tensor.w, axes, keepdims));
         if (graph::backprop_enabled() && !tensor.constant) {
             auto tensor_dw = tensor.dw;
             auto out_dw = out.dw;
-            graph::emplace_back([tensor_dw, out_dw, axis]() mutable {
-                if (axis < 0) axis = axis + tensor_dw.ndim();
-                int axis_size = tensor_dw.shape()[axis];
-                auto reshaped_gradient = out_dw.insert_broadcast_axis(axis);
-                tensor_dw <<= reshaped_gradient / axis_size;
+            graph::emplace_back([tensor_dw, out_dw, axes, keepdims]() mutable {
+                // if (axis < 0) axis = axis + tensor_dw.ndim();
+                // int axis_size = tensor_dw.shape()[axis];
+                // auto reshaped_gradient = out_dw.insert_broadcast_axis(axis);
+                // tensor_dw <<= reshaped_gradient / axis_size;
             });
         }
         return out;
@@ -141,23 +132,22 @@ namespace tensor_ops {
     DALI_TENSOR_SUBSAMPLE_ALL_REDUCTION(min);
     DALI_TENSOR_SUBSAMPLE_ALL_REDUCTION(max);
 
+    // tensor.dw <<= op::equals(\
+    //         out.w.insert_broadcast_axis(axis),\
+    //         tensor.w\
+    //     ) * out.dw.insert_broadcast_axis(axis);\
+
     #define DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(FUNCTION_NAME, OPNAME)\
-        Tensor FUNCTION_NAME(const Tensor& tensor, int axis) {\
-            if (axis < 0) axis = axis + tensor.ndim();\
-            Tensor out(OPNAME(tensor.w, {axis}));\
+        Tensor FUNCTION_NAME(const Tensor& tensor, const std::vector<int>& axes, bool keepdims) {\
+            Tensor out(OPNAME(tensor.w, axes, keepdims));\
             if (graph::backprop_enabled() && !tensor.constant)\
-                graph::emplace_back([tensor, out, axis]() mutable {\
-                    tensor.dw <<= op::equals(\
-                            out.w.insert_broadcast_axis(axis),\
-                            tensor.w\
-                        ) * out.dw.insert_broadcast_axis(axis);\
+                graph::emplace_back([tensor, out, axes]() mutable {\
                 });\
             return out;\
         }\
 
     DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(min, op::min);
     DALI_TENSOR_SUBSAMPLE_AXIS_REDUCTION(max, op::max);
-
 
     #define DALI_TENSOR_SUBSAMPLE_ALL_REDUCTION(FUNCTION_NAME)\
         Tensor FUNCTION_NAME(const Tensor& tensor) {\
@@ -187,8 +177,15 @@ namespace tensor_ops {
     DALI_TENSOR_GETINDICES_ALL_REDUCTION(argmin);
     DALI_TENSOR_GETINDICES_ALL_REDUCTION(argmax);
 
+    Tensor top_k(const Tensor& tensor, int k, bool sorted) {
+        return Tensor(op::top_k(tensor.w, k, sorted));
+    }
+    Tensor bottom_k(const Tensor& tensor, int k, bool sorted) {
+        return Tensor(op::bottom_k(tensor.w, k, sorted));
+    }
+
     Tensor argsort(const Tensor& tensor) {
-        return Tensor(op::argsort(tensor.w.ravel(), 0));
+        return Tensor(op::argsort(tensor.w, 0));
     }
 
     #define DALI_TENSOR_GETINDICES_AXIS_REDUCTION(FUNCTION_NAME)\

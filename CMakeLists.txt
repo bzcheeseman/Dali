@@ -122,6 +122,7 @@ endif(NOT GPERFTOOLS_FOUND)
 # CLEANING UP AFTER FINDERS
 # some library list variables are FALSE by default if libs are not found,
 # but it is much more useful to keep it empty.
+message(STATUS "GPERFTOOLS_TCMALLOC_AND_PROFILER ${GPERFTOOLS_TCMALLOC_AND_PROFILER}")
 set(LIBVARS_TO_FIX MKL_LIBRARIES BLAS_LIBRARIES GPERFTOOLS_TCMALLOC_AND_PROFILER OpenBLAS_LIB)
 foreach(libvar ${LIBVARS_TO_FIX})
     if (NOT ${libvar})
@@ -264,10 +265,6 @@ if (NOT DALI_USE_CUDA)
     set(DALI_MAX_GPU_DEVICES 0)
 endif()
 
-if (NOT DEFINED DALI_MAX_STRIDED_DIMENSION)
-    set(DALI_MAX_STRIDED_DIMENSION 9)
-endif()
-
 ################################################################################
 ##                               DALI SETUP                                   ##
 ##                                   ---                                      ##
@@ -278,11 +275,9 @@ if (NOT DEFINED DALI_SOURCE_DIRS)
     set(DALI_SOURCE_DIRS "dali")
 endif()
 
-list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/data_processing;dali/array/deprecated/")
-
 set(ARRAY_ONLY 1)
 if (ARRAY_ONLY)
-    list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/tensor;dali/layers;dali/execution")
+    list(APPEND DALI_SOURCE_DIRS_EXCLUDE "dali/layers;dali/execution")
     list(APPEND DALI_SOURCE_DIRS_EXCLUDE "")
 endif()
 

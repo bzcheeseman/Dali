@@ -59,13 +59,13 @@ namespace op {
     Array greaterthanequal(Array a, Array b) {
         return elementwise(a, b, "functor::greaterthanequal");
     }
-    Array eltmax(Array a, Array b) {
+    Array maximum(Array a, Array b) {
         return elementwise(a, b, "functor::max_scalar");
     }
     Array clip(Array a, Array b) {
         return elementwise(a, b, "functor::clip");
     }
-    Array eltmin(Array a, Array b) {
+    Array minimum(Array a, Array b) {
         return elementwise(a, b, "functor::min_scalar");
     }
     Array binary_cross_entropy(Array a, Array b) {

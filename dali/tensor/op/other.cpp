@@ -1,8 +1,6 @@
 #include "other.h"
 
-#include "dali/array/op2/elementwise_operation.h"
-#include "dali/array/op_overload/common.h"
-#include "dali/array/op_overload/nonlazy.h"
+#include "dali/array/op/elementwise_operation.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
 

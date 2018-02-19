@@ -217,4 +217,17 @@ namespace op {
         return Array(std::make_shared<TopK>(array.reshape({-1, array.shape().back()}), k, sorted, true)
         ).reshape(top_k_shape(array.shape(), k));
     }
+
+    Array argsort(const Array& array) {
+        auto raveled = array.ravel();
+        return op::bottom_k(raveled, raveled.number_of_elements(), true);
+    }
+
+    Array argsort(const Array& array, int axis) {
+        if (array.ndim() == 0) return Array::zeros({}, DTYPE_INT32);
+        if (axis < 0) axis += array.ndim();
+        ASSERT2(axis >= 0 && axis < array.ndim(), utils::make_message(
+            "argsort axis must >= 0 and < ndim (", array.ndim(), "), got axis = ", axis, "."));
+        return op::bottom_k(array.swapaxes(axis, -1), array.shape()[axis], true).swapaxes(axis, -1);
+    }
 }

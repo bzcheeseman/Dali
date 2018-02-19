@@ -1,8 +1,11 @@
 #include "binary.h"
 
-#include "dali/array/op.h"
+#include "dali/array/op/conv.h"
+#include "dali/array/op/im2col.h"
+#include "dali/array/op/col2im.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
+#include "dali/utils/make_message.h"
 
 namespace tensor_ops {
     Tensor conv2d(Tensor input,
@@ -59,6 +62,8 @@ namespace tensor_ops {
                 stride_w,
                 0,
                 0,
+                0,
+                0,
                 data_format
             )
         );
@@ -68,7 +73,7 @@ namespace tensor_ops {
             auto input_dw = input.dw;
             graph::emplace_back([out_dw, input_dw, data_format,
                                  filter_h, filter_w, stride_h, stride_w]() mutable {
-                input_dw <<= old_op::col2im(
+                input_dw <<= op::col2im(
                     out_dw,
                     input_dw.shape(),
                     filter_h,
@@ -90,7 +95,7 @@ namespace tensor_ops {
                   int stride_w,
                   const std::string& data_format) {
         Tensor out(
-            old_op::col2im(
+            op::col2im(
                 input.w,
                 image_shape,
                 filter_h,
@@ -112,6 +117,8 @@ namespace tensor_ops {
                     filter_w,
                     stride_h,
                     stride_w,
+                    0,
+                    0,
                     0,
                     0,
                     data_format

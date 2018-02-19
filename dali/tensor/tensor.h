@@ -12,7 +12,6 @@
 #include <unordered_map>
 
 #include "dali/array/array.h"
-#include "dali/array/function/lazy_evaluator.h"
 #include "dali/array/slice.h"
 
 /**
@@ -36,10 +35,6 @@ Automatic Differentiation in Dali.
 class Tensor {
     private:
         Tensor(const Array& w, const Array& dw, bool constant);
-        Tensor(const std::vector<int>& shape,
-               Assignable<Array> weights_initialization,
-               DType dtype_=DTYPE_FLOAT,
-               memory::Device preferred_device=memory::default_preferred_device);
     public:
         typedef Array storage_t;
 
@@ -59,12 +54,6 @@ class Tensor {
                memory::Device preferred_device=memory::default_preferred_device);
 
         Tensor(const Array& other, bool copy=false);
-
-        template<typename ExprT>
-        Tensor(const LazyExp<ExprT>& expr) :
-                Tensor(lazy::Eval<Array>::eval_no_autoreduce(expr.self())) {
-        }
-
         /*
         A copy constructor that perform shallow and deep
         copies of a Tensor.
@@ -77,7 +66,6 @@ class Tensor {
         but `w` buffers are shared amongst threads.
         */
         Tensor(const Tensor& other, bool copy_w=false, bool copy_d=false);
-
         ~Tensor();
 
         void copy_from(const Tensor& source);
@@ -97,6 +85,7 @@ class Tensor {
         void clear();
 
         const std::vector<int>& shape() const;
+        const std::vector<int>& strides() const;
         DType dtype() const;
         Tensor astype(const DType& dtype) const;
         memory::Device preferred_device() const;
@@ -120,23 +109,21 @@ class Tensor {
         The gradients are kept in separate `dw` memory buffers
         but `w` buffers are shared amongst threads. */
         Tensor shallow_copy();
-
-        // void resize(dim_t rows, dim_t cols);
-
+        
         bool is_nan() const;
         bool is_grad_nan() const;
 
         // Reducers
         Tensor sum() const;
-        Tensor sum(const int& axis) const;
+        Tensor sum(const std::vector<int>& axes, bool keepdims=false) const;
         Tensor mean() const;
-        Tensor mean(const int& axis) const;
+        Tensor mean(const std::vector<int>& axes, bool keepdims=false) const;
         Tensor max() const;
-        Tensor max(const int& axis) const;
+        Tensor max(const std::vector<int>& axes, bool keepdims=false) const;
         Tensor min() const;
-        Tensor min(const int& axis) const;
+        Tensor min(const std::vector<int>& axes, bool keepdims=false) const;
         Tensor L2_norm() const;
-        Tensor L2_norm(const int& axis) const;
+        Tensor L2_norm(const std::vector<int>& axes, bool keepdims=false) const;
         // Returns the indices of the maximum values along an axis.
         Tensor argmax() const;
         Tensor argmax(const int& axis) const;
@@ -167,13 +154,10 @@ class Tensor {
         Tensor cube() const;
         Tensor eltinv() const;
         Tensor sigmoid() const;
-        Tensor steep_sigmoid(const double& aggressiveness = 3.75) const;
 
         // Shape transformations
         Tensor reshape(const std::vector<int>&) const;
-        Tensor copyless_reshape(const std::vector<int>&) const;
         Tensor right_fit_ndim(const int& dimensionality) const;
-        Tensor copyless_right_fit_ndim(const int& dimensionality) const;
         Tensor pluck_axis(int axis, const Slice& slice) const;
         Tensor pluck_axis(int axis, int idx) const;
         Tensor squeeze(int axis) const;
@@ -203,40 +187,14 @@ class Tensor {
         static Tensor empty(const std::vector<int>& shape,
                             const DType& dtype=DTYPE_FLOAT,
                             const memory::Device& preferred_device=memory::default_preferred_device);
-        static Tensor arange(const std::vector<int>& shape,
-                             const DType& dtype=DTYPE_FLOAT,
-                             const memory::Device& preferred_device=memory::default_preferred_device);
-        static Tensor arange(const double& start, const double& stop, const double& step,
-                             const DType& dtype=DTYPE_FLOAT,
-                             const memory::Device& preferred_device=memory::default_preferred_device);
-
-        static Tensor gaussian(const double& mean,
-                               const double& std,
-                               const std::vector<int>& shape,
-                               const DType& dtype=DTYPE_FLOAT,
-                               const memory::Device& preferred_device=memory::default_preferred_device);
-        static Tensor uniform(const double& lower,
-                              const double& upper,
-                              const std::vector<int>& shape,
-                              const DType& dtype=DTYPE_FLOAT,
-                              const memory::Device& preferred_device=memory::default_preferred_device);
-        static Tensor uniform(const double& limit,
-                              const std::vector<int>& shape,
-                              const DType& dtype=DTYPE_FLOAT,
-                              const memory::Device&   preferred_device=memory::default_preferred_device);
-        static Tensor bernoulli(const double& prob,
-                                const std::vector<int>& shape,
-                                const DType& dtype=DTYPE_FLOAT,
-                                const memory::Device& preferred_device=memory::default_preferred_device);
-        static Tensor bernoulli_normalized(const double& prob,
-                                           const std::vector<int>& shape,
-                                           const DType& dtype=DTYPE_FLOAT,
-                                           const memory::Device& preferred_device=memory::default_preferred_device);
+        static Tensor normal(const Array& loc, const Array& scale, const std::vector<int>& shape);
+        static Tensor uniform(const Array& low, const Array& high, const std::vector<int>& shape);
+        static Tensor bernoulli(const Array& prob, const std::vector<int>& shape);
+        static Tensor bernoulli_normalized(const Array& prob, const std::vector<int>& shape);
         static Tensor fill(const double& scalar,
                            const std::vector<int>& shape,
                            const DType& dtype=DTYPE_FLOAT,
                            const memory::Device& preferred_device=memory::default_preferred_device);
-
 
         template<typename T>
         Tensor& operator=(const std::vector<T>& values) = delete;
@@ -253,59 +211,34 @@ class Tensor {
         // forcing memory location
         void to_device(memory::Device) const;
         void to_cpu() const;
-
-        #ifdef DALI_USE_CUDA
-            void to_gpu(int number) const;
-        #endif
+        void to_gpu(int number) const;
 };
 
 std::ostream &operator <<(std::ostream &os, const Tensor& tensor);
-//
-// template<typename R>
-// Tensor operator+(int other, Tensor mat);
-// template<typename R>
-// Tensor operator+(float other, Tensor mat);
-// template<typename R>
-// Tensor operator+(double other, Tensor mat);
-//
-// template<typename R>
-// Tensor operator-(int other, Tensor mat);
-// template<typename R>
-// Tensor operator-(float other, Tensor mat);
-// template<typename R>
-// Tensor operator-(double other, Tensor mat);
-//
-// template<typename R>
-// Tensor operator*(int other, Tensor mat);
-// template<typename R>
-// Tensor operator*(float other, Tensor mat);
-// template<typename R>
-// Tensor operator*(double other, Tensor mat);
-//
-// template<typename R>
-// std::ostream& operator<<(std::ostream&, const Tensor&);
-//
-// // define hash code for matrices:
-// namespace std {
-//     template <typename R> struct hash<Tensor> {
-//         std::size_t operator()(const Tensor&) const;
-//     };
-// }
-//
-// namespace utils {
-//
-//     template<typename R>
-//     void save_matrices(std::vector<Tensor>, std::string);
-//
-//     template<typename R>
-//     void load_matrices(std::vector<Tensor>, std::string);
-//
-// }
-//
-// template <typename R>
-// bool operator!=(const Tensor&, const Tensor&);
-//
-// template <typename R>
-// bool operator==(const Tensor&, const Tensor&);
+
+#define DALI_DECLARE_TENSOR_INTERACTION_INPLACE(SYMBOL)\
+    Tensor& operator SYMBOL (Tensor&  left, const Tensor& right);\
+    void operator SYMBOL (Tensor&& left, const Tensor& right);\
+
+DALI_DECLARE_TENSOR_INTERACTION_INPLACE(+= );
+DALI_DECLARE_TENSOR_INTERACTION_INPLACE(-= );
+DALI_DECLARE_TENSOR_INTERACTION_INPLACE(*= );
+DALI_DECLARE_TENSOR_INTERACTION_INPLACE(/= );
+DALI_DECLARE_TENSOR_INTERACTION_INPLACE(^= );
+
+#define DALI_DECLARE_TENSOR_INTERACTION(SYMBOL)\
+    Tensor operator SYMBOL (const Tensor& left, const Tensor& right);\
+    Tensor operator SYMBOL (const Tensor& left, double right);\
+    Tensor operator SYMBOL (const Tensor& left, float right);\
+    Tensor operator SYMBOL (const Tensor& left, int right);\
+    Tensor operator SYMBOL (double left, const Tensor& right);\
+    Tensor operator SYMBOL (float left, const Tensor& right);\
+    Tensor operator SYMBOL (int left, const Tensor& right)
+
+DALI_DECLARE_TENSOR_INTERACTION(+);
+DALI_DECLARE_TENSOR_INTERACTION(-);
+DALI_DECLARE_TENSOR_INTERACTION(*);
+DALI_DECLARE_TENSOR_INTERACTION(/);
+DALI_DECLARE_TENSOR_INTERACTION(^);
 
 #endif

@@ -1,9 +1,7 @@
 #include "adagrad.h"
 
-#include "dali/array/op2/binary.h"
-#include "dali/array/op2/unary.h"
-#include "dali/array/op_overload/common.h"
-#include "dali/array/op_overload/nonlazy.h"
+#include "dali/array/op/binary.h"
+#include "dali/array/op/unary.h"
 #include "dali/utils/assert2.h"
 
 namespace tensor_ops {

@@ -1,7 +1,6 @@
 #include "tensor.h"
 
 #include "dali/array/op.h"
-#include "dali/array/op/initializer.h"
 #include "dali/tensor/op.h"
 #include "dali/tensor/op/other.h"
 #include "dali/tensor/op/dot.h"
@@ -14,20 +13,6 @@ using std::stringstream;
 using utils::assert2;
 using std::make_shared;
 
-////////////////////////////////////////////////////////////////////////////////
-//                             TENSOR                                         //
-////////////////////////////////////////////////////////////////////////////////
-Tensor::Tensor(const std::vector<int>& shape,
-               Assignable<Array> weights_initialization,
-               DType dtype_,
-               memory::Device preferred_device) :
-        w(shape,dtype_,preferred_device),
-        dw(shape,dtype_,preferred_device) {
-    w = weights_initialization;
-    dw.clear();
-}
-
-
 Tensor::Tensor(const Array& w_, const Array& dw_, bool constant_) :
         w(w_), dw(dw_), constant(constant_), name(nullptr) {
 }
@@ -37,15 +22,10 @@ Tensor::Tensor() {
 }
 
 Tensor::Tensor(const std::initializer_list<int>& shape,
-       DType dtype_,
-       memory::Device preferred_device) :
-   Tensor(shape,initializer::zeros(),dtype_,preferred_device) {
-}
-
-Tensor::Tensor(const std::vector<int>& shape,
-       DType dtype_,
-       memory::Device preferred_device) :
-   Tensor(shape,initializer::zeros(),dtype_,preferred_device) {
+               DType dtype,
+               memory::Device preferred_device) :
+    Tensor(Array::zeros(shape, dtype, preferred_device),
+           Array::zeros(shape, dtype, preferred_device), false) {
 }
 
 Tensor::Tensor(const Array& other, bool copy) {
@@ -60,7 +40,6 @@ Tensor::Tensor(const Array& other, bool copy) {
 Tensor::Tensor(const Tensor& other, bool copy_w, bool copy_dw) :
         name(other.name),
         constant(other.constant) {
-
     if (copy_w && !other.w.is_stateless()) {
         // This copies memory using copy constructor
         // The copy is only executed if matrix was actually initialized
@@ -113,13 +92,12 @@ void Tensor::clear() {
 const std::vector<int>& Tensor::shape() const {
     return w.shape();
 }
+const std::vector<int>& Tensor::strides() const {
+    return w.strides();
+}
 
 DType Tensor::dtype() const {
     return w.dtype();
-}
-
-Tensor Tensor::astype(const DType& dtype) const {
-    return tensor_ops::astype(*this, dtype);
 }
 
 memory::Device Tensor::preferred_device() const {
@@ -136,7 +114,6 @@ int Tensor::number_of_elements() const {
 bool Tensor::is_stateless() const {
     return w.is_stateless();
 }
-
 
 bool Tensor::is_scalar() const {
     return w.is_scalar();
@@ -178,115 +155,49 @@ Tensor Tensor::shallow_copy() {
     return Tensor(*this, false, true);
 }
 
+#define TENSOR_UNARY_OP( opname, RTYPE) \
+    RTYPE Tensor::opname() const {return tensor_ops::opname(*this);}\
 
+#define TENSOR_UNARY_OP_WITH_ARG( opname, ARGTYPE, RTYPE) \
+    RTYPE Tensor::opname(const ARGTYPE& argname) const {return tensor_ops::opname(*this, argname);}\
 
+#define TENSOR_UNARY_OP_WITH_VECINT_BOOL_ARG( opname, RTYPE) \
+    RTYPE Tensor::opname(const std::vector<int>& axes, bool keepdims) const {return tensor_ops::opname(*this, axes, keepdims);}\
 
-
-// Tensor Tensor::eltmul(R alpha) const {
-//     return TensorOps::eltmul(*this, alpha);
-// }
-//
-// #define MAT_OP_SPECIALIZATION(fname, opname, R, ScalarType) \
-//         template<>                                          \
-//         template<>                                          \
-//         Tensor Tensor::fname(ScalarType power) const {      \
-//             return TensorOps::opname(*this, (R)power);      \
-//         }
-//
-// #define MAT_OP_SPECIALIZATIONS(fname, opname)              \
-//         MAT_OP_SPECIALIZATION(fname,opname,float,float);   \
-//         MAT_OP_SPECIALIZATION(fname,opname,float,double);  \
-//         MAT_OP_SPECIALIZATION(fname,opname,float,int);     \
-//         MAT_OP_SPECIALIZATION(fname,opname,double,float);  \
-//         MAT_OP_SPECIALIZATION(fname,opname,double,double); \
-//         MAT_OP_SPECIALIZATION(fname,opname,double,int);    \
-//         MAT_OP_SPECIALIZATION(fname,opname,int,float);     \
-//         MAT_OP_SPECIALIZATION(fname,opname,int,double);    \
-//         MAT_OP_SPECIALIZATION(fname,opname,int,int);
-//
-// MAT_OP_SPECIALIZATIONS(pow,pow);
-// MAT_OP_SPECIALIZATIONS(operator^,pow);
-//
-// Tensor Tensor::steep_sigmoid(R aggressiveness) const {
-//     return TensorOps::steep_sigmoid(*this, aggressiveness);
-// }
-//
-bool Tensor::is_nan() const {
-    return tensor_ops::is_nan(*this);
-}
-
-bool Tensor::is_grad_nan() const {
-    return tensor_ops::is_grad_nan(*this);
-}
-//
-//
-// #define MAT_BINARY_OP( opname ) \
-//  \
-//     Tensor Tensor::opname(Tensor matrix) const {\
-//         return TensorOps::opname(*this, matrix);\
-//     }
-//
-// MAT_BINARY_OP( eltmul_broadcast_colwise )
-// MAT_BINARY_OP( eltmul )
-// MAT_BINARY_OP( eltmul_broadcast_rowwise )
-// MAT_BINARY_OP( eltmul_rowwise )
-// MAT_BINARY_OP( add )
-// MAT_BINARY_OP( sub )
-// MAT_BINARY_OP( add_broadcast_rowwise )
-// MAT_BINARY_OP( add_broadcast_colwise )
-// MAT_BINARY_OP( sub_broadcast )
-// MAT_BINARY_OP( sub_broadcast_reversed )
-// MAT_BINARY_OP( mul )
-//
-
-Tensor Tensor::dot(const Tensor& other) const {
-    return tensor_ops::dot(*this, other);
-}
-
-#define TENSOR_UNARY_OP( opname ) \
-    Tensor Tensor::opname() const {\
-        return tensor_ops::opname(*this);\
-    }\
-
-#define TENSOR_UNARY_OP_WITH_INT_ARG( opname ) \
-    Tensor Tensor::opname(const int& argname) const {\
-        return tensor_ops::opname(*this, argname);\
-    }\
-
-#define TENSOR_UNARY_OP_WITH_DOUBLE_ARG( opname ) \
-    Tensor Tensor::opname(const double& argname) const {\
-        return tensor_ops::opname(*this, argname);\
-    }\
-
-TENSOR_UNARY_OP(square);
-TENSOR_UNARY_OP(cube);
-TENSOR_UNARY_OP(sqrt);
-TENSOR_UNARY_OP(rsqrt);
-TENSOR_UNARY_OP(eltinv);
-TENSOR_UNARY_OP(tanh);
-TENSOR_UNARY_OP(softplus);
-TENSOR_UNARY_OP(sigmoid);
-TENSOR_UNARY_OP_WITH_DOUBLE_ARG(steep_sigmoid);
-TENSOR_UNARY_OP(sum);
-TENSOR_UNARY_OP_WITH_INT_ARG(sum);
-TENSOR_UNARY_OP(mean);
-TENSOR_UNARY_OP_WITH_INT_ARG(mean);
-TENSOR_UNARY_OP(min);
-TENSOR_UNARY_OP_WITH_INT_ARG(min);
-TENSOR_UNARY_OP(max);
-TENSOR_UNARY_OP_WITH_INT_ARG(max);
-TENSOR_UNARY_OP(L2_norm);
-TENSOR_UNARY_OP_WITH_INT_ARG(L2_norm);
-TENSOR_UNARY_OP(argsort);
-TENSOR_UNARY_OP_WITH_INT_ARG(argsort);
-TENSOR_UNARY_OP(argmax);
-TENSOR_UNARY_OP_WITH_INT_ARG(argmax);
-TENSOR_UNARY_OP(argmin);
-TENSOR_UNARY_OP_WITH_INT_ARG(argmin);
-TENSOR_UNARY_OP(log);
-TENSOR_UNARY_OP(exp);
-TENSOR_UNARY_OP(abs);
-TENSOR_UNARY_OP(relu);
+TENSOR_UNARY_OP_WITH_ARG(dot, Tensor, Tensor);
+TENSOR_UNARY_OP_WITH_ARG(astype, DType, Tensor);
+TENSOR_UNARY_OP(square, Tensor);
+TENSOR_UNARY_OP(cube, Tensor);
+TENSOR_UNARY_OP(is_grad_nan, bool);
+TENSOR_UNARY_OP(is_nan, bool);
+TENSOR_UNARY_OP(sqrt, Tensor);
+TENSOR_UNARY_OP(rsqrt, Tensor);
+TENSOR_UNARY_OP(eltinv, Tensor);
+TENSOR_UNARY_OP(tanh, Tensor);
+TENSOR_UNARY_OP(softplus, Tensor);
+TENSOR_UNARY_OP(sigmoid, Tensor);
+TENSOR_UNARY_OP(sum, Tensor);
+TENSOR_UNARY_OP_WITH_VECINT_BOOL_ARG(sum, Tensor);
+TENSOR_UNARY_OP(mean, Tensor);
+TENSOR_UNARY_OP_WITH_VECINT_BOOL_ARG(mean, Tensor);
+TENSOR_UNARY_OP(min, Tensor);
+TENSOR_UNARY_OP_WITH_VECINT_BOOL_ARG(min, Tensor);
+TENSOR_UNARY_OP(max, Tensor);
+TENSOR_UNARY_OP_WITH_VECINT_BOOL_ARG(max, Tensor);
+TENSOR_UNARY_OP(L2_norm, Tensor);
+TENSOR_UNARY_OP_WITH_VECINT_BOOL_ARG(L2_norm, Tensor);
+TENSOR_UNARY_OP(argsort, Tensor);
+TENSOR_UNARY_OP_WITH_ARG(argsort, int, Tensor);
+TENSOR_UNARY_OP(argmax, Tensor);
+TENSOR_UNARY_OP_WITH_ARG(argmax, int, Tensor);
+TENSOR_UNARY_OP(argmin, Tensor);
+TENSOR_UNARY_OP_WITH_ARG(argmin, int, Tensor);
+TENSOR_UNARY_OP(log, Tensor);
+TENSOR_UNARY_OP(exp, Tensor);
+TENSOR_UNARY_OP(abs, Tensor);
+TENSOR_UNARY_OP(relu, Tensor);
+TENSOR_UNARY_OP_WITH_ARG(reshape, std::vector<int>, Tensor);
+TENSOR_UNARY_OP_WITH_ARG(right_fit_ndim, int, Tensor);
 
 Tensor Tensor::operator[](int idx) const {
     return pluck_axis(0, idx);
@@ -295,7 +206,6 @@ Tensor Tensor::operator[](int idx) const {
 Tensor Tensor::operator[](const Tensor& indices) const {
     return tensor_ops::gather(*this, indices);
 }
-
 
 Tensor Tensor::operator[](const std::vector<int>& indices) const {
     Array indices_arr({(int)indices.size()}, DTYPE_INT32);
@@ -319,55 +229,21 @@ SlicingInProgress<Tensor> Tensor::operator[](const Broadcast& b) const {
     return ret[b];
 }
 
-Tensor Tensor::reshape(const std::vector<int>& new_shape) const {
-    return tensor_ops::reshape(*this, new_shape);
-}
-
-Tensor Tensor::copyless_reshape(const std::vector<int>& new_shape) const {
-    return Tensor::from_w_and_dw(w.copyless_reshape(new_shape), dw.copyless_reshape(new_shape), constant);
-}
-
-Tensor Tensor::right_fit_ndim(const int& dimensionality) const {
-    return tensor_ops::right_fit_ndim(*this, dimensionality);
-}
-
-Tensor Tensor::copyless_right_fit_ndim(const int& dimensionality) const {
-    return Tensor::from_w_and_dw(
-        w.copyless_right_fit_ndim(dimensionality),
-        dw.copyless_right_fit_ndim(dimensionality),
-        constant
-    );
-}
-
 Tensor Tensor::pluck_axis(int axis, const Slice& slice) const {
     return Tensor::from_w_and_dw(w.pluck_axis(axis, slice), dw.pluck_axis(axis, slice), constant);
-
 }
 
 Tensor Tensor::pluck_axis(int axis, int idx) const {
     return Tensor::from_w_and_dw(w.pluck_axis(axis, idx), dw.pluck_axis(axis, idx), constant);
-
 }
 
 Tensor Tensor::squeeze(int axis) const {
     return Tensor::from_w_and_dw(w.squeeze(axis), dw.squeeze(axis), constant);
-
 }
 
 Tensor Tensor::expand_dims(int new_axis) const {
     return Tensor::from_w_and_dw(w.expand_dims(new_axis), dw.expand_dims(new_axis), constant);
 }
-
-Tensor Tensor::broadcast_axis(int axis) const {
-    return Tensor::from_w_and_dw(w.broadcast_axis(axis), dw.broadcast_axis(axis), constant);
-}
-
-Tensor Tensor::insert_broadcast_axis(int new_axis) const {
-    return Tensor::from_w_and_dw(w.insert_broadcast_axis(new_axis), dw.insert_broadcast_axis(new_axis), constant);
-}
-
-
-
 
 Tensor Tensor::dimshuffle(const std::vector<int>& axes) const {
     return Tensor::from_w_and_dw(w.dimshuffle(axes), dw.dimshuffle(axes), constant);
@@ -382,28 +258,20 @@ Tensor Tensor::transpose(const std::vector<int>& axes) const {
 }
 
 Tensor Tensor::swapaxes(const int& axis1, const int& axis2) const {
-    return Tensor::from_w_and_dw(
-        w.swapaxes(axis1, axis2),
-        dw.swapaxes(axis1, axis2),
-        constant
-    );
+    return Tensor::from_w_and_dw(w.swapaxes(axis1, axis2), dw.swapaxes(axis1, axis2), constant);
 }
 
 Tensor Tensor::broadcast_scalar_to_ndim(int ndim) const {
     return Tensor::from_w_and_dw(w.broadcast_scalar_to_ndim(ndim),
-                  dw.broadcast_scalar_to_ndim(ndim),
-                  constant);
-}
-
-Tensor Tensor::copyless_ravel() const {
-    return Tensor::from_w_and_dw(w.copyless_ravel(), dw.copyless_ravel(), constant);
+                                 dw.broadcast_scalar_to_ndim(ndim),
+                                 constant);
 }
 
 Tensor Tensor::ravel() const {
     return tensor_ops::ravel(*this);
 }
 
-//
+// TODO(jonathan): recover the gather operations for Tensor:
 // Tensor Tensor::col(int col) {
 //     return TensorOps::col_pluck(*this, col);
 // }
@@ -443,134 +311,39 @@ Tensor Tensor::ravel() const {
 //         int col) const {
 //     return TensorOps::col_pluck(*this, col);
 // }
-
-
-//
-//
-// Tensor Tensor::operator+(Tensor other) const {
-//     return TensorOps::add(*this, other);
-// }
-//
-// Tensor Tensor::operator+(R other) const {
-//     return TensorOps::add(*this, other);
-// }
-//
-// Tensor& Tensor::operator+=(Tensor other) {
-//     auto sum = TensorOps::add(*this, other);
-//     this->m = sum.m;
-//     this->g = sum.g;
-//     return *this;
-// }
-//
-// Tensor& Tensor::operator+=(R other) {
-//     auto sum = TensorOps::add(*this, other);
-//     this->m = sum.m;
-//     this->g = sum.g;
-//     return *this;
-// }
-//
-// Tensor Tensor::operator-(Tensor other) const {
-//     return TensorOps::sub(*this, other);
-// }
-//
-// Tensor Tensor::operator-(R other) const {
-//     return TensorOps::add(*this, -other);
-// }
-//
-// Tensor& Tensor::operator-=(Tensor other) {
-//     auto diff = TensorOps::sub(*this, other);
-//     this->m = diff.m;
-//     this->g = diff.g;
-//     return *this;
-// }
-//
-// Tensor& Tensor::operator-=(R other) {
-//     auto diff = TensorOps::add(*this, -other);
-//     this->m = diff.m;
-//     this->g = diff.g;
-//     return *this;
-// }
-//
-// Tensor Tensor::operator*(Tensor other) const {
-//     return TensorOps::eltmul(*this, other);
-// }
-//
-// Tensor Tensor::operator*(R alpha) const {
-//     return TensorOps::eltmul(*this, alpha);
-// }
-//
-// Tensor& Tensor::operator*=(Tensor other) {
-//     auto prod = TensorOps::eltmul(*this, other);
-//     this->m = prod.m;
-//     this->g = prod.g;
-//     return *this;
-// }
-//
-// Tensor& Tensor::operator*=(R other) {
-//     auto prod = TensorOps::eltmul(*this, other);
-//     this->m = prod.m;
-//     this->g = prod.g;
-//     return *this;
-// }
-//
-//
-// Tensor Tensor::operator-() const {
-//     return (*this) * -1;
-// }
-//
-// Tensor Tensor::operator/(Tensor other) const {
-//     return TensorOps::eltdivide(*this, other);
-// }
-//
-// Tensor Tensor::operator/(R alpha) const {
-//     return TensorOps::eltdivide(*this, alpha);
-// }
-//
-// Tensor& Tensor::operator/=(Tensor other) {
-//     auto divided = TensorOps::eltdivide(*this, other);
-//     this->m = divided.m;
-//     this->g = divided.g;
-//     return *this;
-// }
-//
-// Tensor& Tensor::operator/=(R other) {
-//     auto divided = TensorOps::eltdivide(*this, other);
-//     this->m = divided.m;
-//     this->g = divided.g;
-//     return *this;
-// }
-//
 // Tensor Tensor::operator^(Tensor other) const {
 //     return TensorOps::pow(*this, other);
 // }
 //
 
 Tensor Tensor::zeros_like(const Tensor& other) {
-    return Tensor(other.shape(), initializer::zeros(), other.dtype(), other.preferred_device());
+    return Tensor(Array::zeros_like(other.w));
 }
 
 Tensor Tensor::ones_like(const Tensor& other) {
-    return Tensor(other.shape(), initializer::ones(), other.dtype(), other.preferred_device());
+    return Tensor(Array::ones_like(other.w));
 }
 
 Tensor Tensor::empty_like(const Tensor& other) {
-    return Tensor(other.shape(), initializer::empty(), other.dtype(), other.preferred_device());
+    return Tensor(Array::empty_like(other.w));
 }
 
 Tensor Tensor::fill_like(const double& scalar, const Tensor& other) {
-    return Tensor(other.shape(), initializer::fill(scalar), other.dtype(), other.preferred_device());
+    Array out = Array::empty_like(other.w);
+    out = scalar;
+    return Tensor(out);
 }
 
 Tensor Tensor::zeros(const std::vector<int>& shape,
                      const DType& dtype,
                      const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::zeros(), dtype, preferred_device);
+    return Tensor(Array::zeros(shape, dtype, preferred_device));
 }
 
 Tensor Tensor::ones(const std::vector<int>& shape,
-                     const DType& dtype,
-                     const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::ones(), dtype, preferred_device);
+                    const DType& dtype,
+                    const memory::Device& preferred_device) {
+    return Tensor(Array::ones(shape, dtype, preferred_device));
 }
 
 Tensor Tensor::empty(const std::vector<int>& shape,
@@ -579,72 +352,38 @@ Tensor Tensor::empty(const std::vector<int>& shape,
     // use an empty matrix and modify
     // it so as to not incur the filling
     // with zeros cost.
-    return Tensor(shape, initializer::empty(), dtype, preferred_device);
+    return Tensor(Array(shape, dtype, preferred_device));
 }
 
-Tensor Tensor::arange(const std::vector<int>& shape,
-                      const DType& dtype,
-                      const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::arange(0, 1.0), dtype, preferred_device);
+Tensor Tensor::normal(const Array& loc,
+                      const Array& scale,
+                      const std::vector<int>& shape) {
+    return Tensor(op::normal(loc, scale, shape), false);
 }
 
-Tensor Tensor::arange(const double& start, const double& stop, const double& step,
-                      const DType& dtype,
-                      const memory::Device& preferred_device) {
-
-    int length = ((stop - start) + step - 1) / (step);
-    ASSERT2(length > 0,
-        utils::MS() << "Tensor length must be non-zero (got start="
-                    << start
-                    << ", stop="
-                    << stop
-                    << ", step="
-                    << step << ").");
-    return Tensor({length}, initializer::arange(start, step), dtype, preferred_device);
+Tensor Tensor::uniform(const Array& low,
+                       const Array& high,
+                       const std::vector<int>& shape) {
+    return Tensor(op::uniform(low, high, shape), false);
 }
 
-Tensor Tensor::gaussian(const double& mean,
-                        const double& std,
-                        const std::vector<int>& shape,
-                        const DType& dtype,
-                        const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::gaussian(mean, std), dtype, preferred_device);
+Tensor Tensor::bernoulli(const Array& prob,
+                         const std::vector<int>& shape) {
+    return Tensor(op::bernoulli(prob, shape), false);
 }
 
-Tensor Tensor::uniform(const double& lower,
-                       const double& upper,
-                       const std::vector<int>& shape,
-                       const DType& dtype,
-                       const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::uniform(lower, upper), dtype, preferred_device);
-}
-
-Tensor Tensor::uniform(const double& limit,
-                       const std::vector<int>& shape,
-                       const DType& dtype,
-                       const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::uniform(-limit, limit), dtype, preferred_device);
-}
-
-Tensor Tensor::bernoulli(const double& prob,
-                         const std::vector<int>& shape,
-                         const DType& dtype,
-                         const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::bernoulli(prob), dtype, preferred_device);
-}
-
-Tensor Tensor::bernoulli_normalized(const double& prob,
-                                    const std::vector<int>& shape,
-                                    const DType& dtype,
-                                    const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::bernoulli_normalized(prob), dtype, preferred_device);
+Tensor Tensor::bernoulli_normalized(const Array& prob,
+                                    const std::vector<int>& shape) {
+    return Tensor(op::bernoulli_normalized(prob, shape), false);
 }
 
 Tensor Tensor::fill(const double& scalar,
                     const std::vector<int>& shape,
                     const DType& dtype,
                     const memory::Device& preferred_device) {
-    return Tensor(shape, initializer::fill(scalar), dtype, preferred_device);
+    Array out(shape, dtype, preferred_device);
+    out = scalar;
+    return Tensor(out);
 }
 
 Tensor Tensor::load(FILE * fp) {
@@ -679,139 +418,56 @@ void Tensor::to_cpu() const {
     to_device(memory::Device::cpu());
 }
 
+void Tensor::to_gpu(int number) const {
 #ifdef DALI_USE_CUDA
-    void Tensor::to_gpu(int number) const {
-        to_device(memory::Device::gpu(number));
-    }
+    to_device(memory::Device::gpu(number));
+#else
+    ASSERT2(false, "Dali compiled without CUDA support, cannot move Tensor to gpu.");
 #endif
+}
 
-// /* External operators */
-// Tensor operator+(int other, Tensor mat) {
-//     return TensorOps::add(mat, (R) other);
-// }
-// Tensor operator+(float other, Tensor mat) {
-//     return TensorOps::add(mat, other);
-// }
-// Tensor operator+(double other, Tensor mat) {
-//     return TensorOps::add(mat, other);
-// }
-//
-//
-// Tensor operator-(int other, Tensor mat) {
-//     return TensorOps::sub_broadcast_reversed(mat, (R) other);
-// }
-// Tensor operator-(float other, Tensor mat) {
-//     return TensorOps::sub_broadcast_reversed(mat, other);
-// }
-// Tensor operator-(double other, Tensor mat) {
-//     return TensorOps::sub_broadcast_reversed(mat, other);
-// }
-//
-//
-// Tensor operator*(int other, Tensor mat) {
-//     return TensorOps::eltmul(mat, (R)other);
-// }
-// Tensor operator*(float other, Tensor mat) {
-//     return TensorOps::eltmul(mat, other);
-// }
-// Tensor operator*(double other, Tensor mat) {
-//     return TensorOps::eltmul(mat, other);
-// }
-//
-// template Tensor<float> operator+(int, Tensor<float>);
-// template Tensor<float> operator+(float, Tensor<float>);
-// template Tensor<float> operator+(double, Tensor<float>);
-//
-// template Tensor<double> operator+(int, Tensor<double>);
-// template Tensor<double> operator+(float, Tensor<double>);
-// template Tensor<double> operator+(double, Tensor<double>);
-//
-//
-// template Tensor<float> operator-(int, Tensor<float>);
-// template Tensor<float> operator-(float, Tensor<float>);
-// template Tensor<float> operator-(double, Tensor<float>);
-//
-// template Tensor<double> operator-(int, Tensor<double>);
-// template Tensor<double> operator-(float, Tensor<double>);
-// template Tensor<double> operator-(double, Tensor<double>);
-//
-//
-// template Tensor<float> operator*(int, Tensor<float>);
-// template Tensor<float> operator*(float, Tensor<float>);
-// template Tensor<float> operator*(double, Tensor<float>);
-//
-// template Tensor<double> operator*(int, Tensor<double>);
-// template Tensor<double> operator*(float, Tensor<double>);
-// template Tensor<double> operator*(double, Tensor<double>);
-//
-//
-// std::ostream& operator<<(std::ostream& strm, const Tensor& a) {
-//     if (a.name != nullptr) {
-//         return strm << "<#Tensor name=\"" << *a.name<< "\" n=" << a.dims(0) << ", d=" << a.dims(1) << ">";
-//     } else {
-//         return strm << "<#Tensor n=" << a.dims(0) << ", d=" << a.dims(1) << ">";
-//     }
-// }
-//
-// template std::ostream& operator<< <float>(std::ostream& strm, const Tensor<float>& a);
-// template std::ostream& operator<< <double>(std::ostream& strm, const Tensor<double>& a);
-// template std::ostream& operator<< <int>(std::ostream& strm, const Tensor<int>& a);
-//
-// template <typename R>
-// std::size_t std::hash<Tensor>::operator()(const Tensor& k) const {
-//     auto ptr = &(k.w());
-//     auto hasher = std::hash<decltype(ptr)>();
-//     return hasher(ptr);
-// }
-//
-// template std::size_t std::hash<Tensor<float>>::operator()(const Tensor<float>& k)   const;
-// template std::size_t std::hash<Tensor<double>>::operator()(const Tensor<double>& k) const;
-// template std::size_t std::hash<Tensor<int>>::operator()(const Tensor<int>& k) const;
-//
-// template <typename R>
-// bool operator!=(const Tensor& A, const Tensor& B) {
-//     return &(A.w()) != &(B.w());
-// }
-//
-// template bool operator!=(const Tensor<float>&, const Tensor<float>&);
-// template bool operator!=(const Tensor<double>&, const Tensor<double>&);
-//
-// template <typename R>
-// bool operator==(const Tensor& A, const Tensor& B) {
-//     return &(A.w()) == &(B.w());
-// }
-//
-// template bool operator==<float>(const Tensor<float>&, const Tensor<float>&);
-// template bool operator==<double>(const Tensor<double>&, const Tensor<double>&);
-//
-// namespace utils {
-//
-//     void save_matrices(vector<Tensor> parameters, string dirname) {
-//         utils::ensure_directory(dirname);
-//         const char * c_dirname = dirname.c_str();
-//         utils::makedirs(c_dirname);
-//         int i = 0;
-//         for (auto& param : parameters) {
-//             stringstream param_location;
-//             param_location << dirname << "/param_" << i << ".npy";
-//             param.npy_save(param_location.str());
-//             i++;
-//         }
-//     }
-//
-//
-//     void load_matrices(vector<Tensor> parameters, string dirname) {
-//         utils::ensure_directory(dirname);
-//         int i = 0;
-//         for (auto& param : parameters) {
-//             stringstream param_location;
-//             param_location << dirname << "/param_" << i << ".npy";
-//             param.npy_load(param_location.str());
-//             i++;
-//         }
-//     }
 
 std::ostream &operator <<(std::ostream &os, const Tensor& tensor) {
     os << "Tensor(" << tensor.shape() << ", dtype=" << tensor.dtype() << ")";
     return os;
 }
+
+
+#define DALI_DEFINE_TENSOR_INTERACTION_INPLACE(SYMBOL, OPERATION_NAME)\
+    Tensor& operator SYMBOL (Tensor& left, const Tensor& right) {\
+        auto assignment = OPERATION_NAME(left, right);\
+        left = assignment;\
+        return left;\
+    }\
+    void operator SYMBOL (Tensor&& left, const Tensor& right) {\
+        auto assignment = OPERATION_NAME(left, right);\
+        left = assignment;\
+    }\
+
+DALI_DEFINE_TENSOR_INTERACTION_INPLACE(+=, tensor_ops::add);
+DALI_DEFINE_TENSOR_INTERACTION_INPLACE(-=, tensor_ops::subtract);
+DALI_DEFINE_TENSOR_INTERACTION_INPLACE(*=, tensor_ops::eltmul);
+DALI_DEFINE_TENSOR_INTERACTION_INPLACE(/=, tensor_ops::eltdiv);
+DALI_DEFINE_TENSOR_INTERACTION_INPLACE(^=, tensor_ops::pow);
+
+#define DALI_DEFINE_TENSOR_SCALAR_INTERACTION(SYMBOL, OPERATION_NAME, DTYPE)\
+    Tensor operator SYMBOL (const Tensor& left, DTYPE right) {\
+        return OPERATION_NAME(left, Array(right));\
+    }\
+    Tensor operator SYMBOL (DTYPE left, const Tensor& right) {\
+        return OPERATION_NAME(Array(left), right);\
+    }
+
+#define DALI_DEFINE_TENSOR_INTERACTION(SYMBOL, OPERATION_NAME)\
+    Tensor operator SYMBOL (const Tensor& left, const Tensor& right) {\
+        return OPERATION_NAME(left, right);\
+    }\
+    DALI_DEFINE_TENSOR_SCALAR_INTERACTION(SYMBOL, OPERATION_NAME, double);\
+    DALI_DEFINE_TENSOR_SCALAR_INTERACTION(SYMBOL, OPERATION_NAME, float);\
+    DALI_DEFINE_TENSOR_SCALAR_INTERACTION(SYMBOL, OPERATION_NAME, int);\
+
+DALI_DEFINE_TENSOR_INTERACTION(+, tensor_ops::add);
+DALI_DEFINE_TENSOR_INTERACTION(-, tensor_ops::subtract);
+DALI_DEFINE_TENSOR_INTERACTION(*, tensor_ops::eltmul);
+DALI_DEFINE_TENSOR_INTERACTION(/, tensor_ops::eltdiv);
+DALI_DEFINE_TENSOR_INTERACTION(^, tensor_ops::pow);

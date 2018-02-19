@@ -247,7 +247,7 @@ TEST(ArrayTest, eye_init_chunked) {
     double diag = 5.0;
 
     // initialize with different diagonal values:
-    myeye = op::assign(myeye, OPERATOR_T_EQL, op::diag(diag, 4, 5));
+    myeye.assign(op::diag(diag, 4, 5));
     for (int i = 0; i < myeye.shape()[0]; i++) {
         for (int j = 0; j < myeye.shape()[1]; j++) {
             auto el = myeye[i][j];
@@ -281,7 +281,7 @@ TEST(ArrayTest, eye_init_composite) {
     double diag = 5.0;
 
     // initialize with different diagonal values:
-    myeye = op::assign(myeye, OPERATOR_T_EQL, op::diag(diag, 4, 5));
+    myeye.assign(op::diag(diag, 4, 5));
     for (int i = 0; i < myeye.shape()[0]; i++) {
         for (int j = 0; j < myeye.shape()[1]; j++) {
             auto el = myeye[i][j];
@@ -877,7 +877,7 @@ TEST(ArrayCastTests, mean) {
     EXPECT_EQ(DTYPE_DOUBLE, mean.dtype());
     EXPECT_EQ((0.0 + 1.0 + 2.0 + 3.0 + 4.0 + 5.0)/6.0, (double)mean(0));
 
-    Array mean_axis = integer_arange.mean(-1);
+    Array mean_axis = integer_arange.mean({-1});
 
     EXPECT_EQ(DTYPE_DOUBLE, mean_axis.dtype());
     EXPECT_EQ((0.0 + 1.0 + 2.0)/3.0, (double)mean_axis(0));
@@ -958,7 +958,7 @@ namespace {
         Array out = Array::zeros({left.shape()[0], right.shape()[0]}, left.dtype());
         for (int i = 0; i < out.shape()[0]; i++) {
             for (int j = 0; j < out.shape()[1]; j++) {
-                op::assign(out[i][j], OPERATOR_T_EQL, left[i] * right[j]).eval();
+                out[i][j].assign(left[i] * right[j]).eval();
             }
         }
         return out;
@@ -999,6 +999,7 @@ namespace {
 
 TEST(ArrayTests, one_hot) {
     auto a = op::uniform(0, 6, {2, 3});
+    a.eval();
     EXPECT_TRUE(Array::equals(reference_one_hot(a, 7, 112.2, 42.0),
                               op::one_hot(a, 7, 112.2, 42.0)));
 }
@@ -1006,10 +1007,8 @@ TEST(ArrayTests, one_hot) {
 TEST(ArrayTests, one_hot_collapse) {
     auto a = op::uniform(0, 6, {2, 3});
     Array res = Array::zeros({2, 3, 7}, DTYPE_DOUBLE);
-    res = op::assign(res, OPERATOR_T_EQL, op::one_hot(a, 7, 112.2, 42.0));
-    res.eval();
-    EXPECT_TRUE(Array::equals(reference_one_hot(a, 7, 112.2, 42.0),
-                              res));
+    res.assign(op::one_hot(a, 7, 112.2, 42.0)).eval();
+    EXPECT_TRUE(Array::equals(reference_one_hot(a, 7, 112.2, 42.0), res));
 }
 
 
@@ -1257,7 +1256,7 @@ namespace {
         source = source.reshape({source_shape.front(), -1});
         auto result_view = result.reshape({-1, source.shape().back()});
         for (int i = 0; i < indices.number_of_elements(); i++) {
-            op::assign(result_view[i], OPERATOR_T_EQL, source[int(indices[i])]).eval();
+            result_view[i].assign(source[int(indices[i])]).eval();
         }
         return result;
     }
@@ -1288,7 +1287,7 @@ namespace {
         ASSERT2(indices.number_of_elements() == source.shape()[0], "wrong indices size.");
         Array result({source.shape()[0]}, source.dtype());
         for (int i = 0; i < indices.number_of_elements(); i++) {
-            op::assign(result[i], OPERATOR_T_EQL, source[i][int(indices[i])]).eval();
+            result[i].assign(source[i][int(indices[i])]).eval();
         }
         return result;
     }
@@ -1700,23 +1699,23 @@ namespace {
 
         if (input.ndim() == 2) {
             for (int i = 0; i < input.shape()[0]; i++) {
-                op::assign(out[i], OPERATOR_T_EQL, reference_scan(input[i], prod, inclusive)).eval();
+                out[i].assign(reference_scan(input[i], prod, inclusive)).eval();
             }
         } else if (input.ndim() == 1) {
             int offset = inclusive ? 0 : 1;
             if (!inclusive) {
                 int neutral_element = prod ? 1 : 0;
-                op::assign(out[0], OPERATOR_T_EQL, neutral_element).eval();
+                out[0].assign(neutral_element).eval();
             }
             for (int i = 0; i < input.shape()[0]; i++) {
                 int index = offset + i;
                 if (index == 0) {
-                    op::assign(out[i], OPERATOR_T_EQL, input[i]).eval();
+                    out[i].assign(input[i]).eval();
                 } else {
                     if (prod) {
-                        op::assign(out[index], OPERATOR_T_EQL, input[i] * out[index - 1]).eval();
+                        out[index].assign(input[i] * out[index - 1]).eval();
                     } else {
-                        op::assign(out[index], OPERATOR_T_EQL, input[i] + out[index - 1]).eval();
+                        out[index].assign(input[i] + out[index - 1]).eval();
                     }
                 }
             }
@@ -1833,7 +1832,7 @@ void test_binary_shapes(T op_f) {
 
     // assigning to preallocated output of wrong shape.
     Array q({12});
-    auto output_wrong_size = [&]() {   op::assign(q, OPERATOR_T_EQL, op_f(x, y.reshape(x.shape()))).eval();   };
+    auto output_wrong_size = [&]() {   q.assign(op_f(x, y.reshape(x.shape()))).eval();   };
     ASSERT_THROW(output_wrong_size(), std::runtime_error);
 
     // resetting q to baby array makes it stateless again.
@@ -1859,14 +1858,14 @@ TEST(ArrayOpsTests, eltdiv) {
 TEST(ArrayOpsTests, isnan) {
     Array x = Array::zeros({4,3,5});
     ASSERT_FALSE(x.any_isnan());
-    op::assign(x[2][2][1], OPERATOR_T_EQL, std::nan("")).eval();
+    x[2][2][1].assign(std::nan("")).eval();
     ASSERT_TRUE(x.any_isnan());
 }
 
 TEST(ArrayOpsTests, isinf) {
     Array x = Array::zeros({4,3,5});
     ASSERT_FALSE(x.any_isinf());
-    op::assign(x[2][2][1], OPERATOR_T_EQL, std::numeric_limits<double>::infinity()).eval();
+    x[2][2][1].assign(std::numeric_limits<double>::infinity()).eval();
     ASSERT_TRUE(x.any_isinf());
 }
 
@@ -1877,9 +1876,9 @@ TEST(ArrayOpsTests, isnan_axis) {
     auto expected_mask = Array::zeros_like(is_nan_axis);
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 
-    op::assign(x[0][0], OPERATOR_T_EQL, std::nan("")).eval();
+    x[0][0].assign(std::nan("")).eval();
 
-    op::assign(expected_mask[0], OPERATOR_T_EQL, 1.0).eval();
+    expected_mask[0].assign(1.0).eval();
     is_nan_axis = op::any_isnan(x, {0});
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 }
@@ -1891,9 +1890,9 @@ TEST(ArrayOpsTests, isinf_axis) {
     auto expected_mask = Array::zeros_like(is_nan_axis);
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 
-    op::assign(x[0][0], OPERATOR_T_EQL, std::numeric_limits<double>::infinity()).eval();
+    x[0][0].assign(std::numeric_limits<double>::infinity()).eval();
 
-    op::assign(expected_mask[0], OPERATOR_T_EQL, 1.0).eval();
+    expected_mask[0].assign(1.0).eval();
     is_nan_axis = op::any_isinf(x, {0});
     EXPECT_TRUE(Array::equals(is_nan_axis, expected_mask));
 }
@@ -1938,7 +1937,7 @@ TEST(ArrayOpsTests, strided_equals) {
     left.eval();
     Array right = Array::zeros({75}, DTYPE_INT32);
     right = right.reshape({3, 5, 1, 5}).transpose({2, 1, 0, 3});
-    op::assign(right, OPERATOR_T_EQL, op::arange(75).reshape({1, 5, 3, 5})).eval();
+    right.assign(op::arange(75).reshape({1, 5, 3, 5})).eval();
     EXPECT_TRUE(Array::equals(left, right));
 }
 

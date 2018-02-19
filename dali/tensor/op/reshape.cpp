@@ -1,7 +1,6 @@
 #include "reshape.h"
 #include "dali/tensor/tape.h"
-#include "dali/array/op/reshape.h"
-#include "dali/array/lazy_op.h"
+#include "dali/array/op/concatenate.h"
 #include "dali/tensor/tensor_macros.h"
 
 namespace tensor_ops {
@@ -22,7 +21,7 @@ namespace tensor_ops {
             constant = constant & t.constant;
         }
 
-        Tensor out(old_op::concatenate(arrays, axis));
+        Tensor out(op::concatenate(arrays, axis));
         out.constant = constant;
 
         if (graph::backprop_enabled()) {

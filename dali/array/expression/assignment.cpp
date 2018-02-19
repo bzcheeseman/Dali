@@ -111,7 +111,7 @@ namespace op {
 Array autoreduce_assign(const Array& left, const Array& right) {
     Array assigned_right = right;
     Array assigned_left = left;
-    if (!right.is_buffer()) {
+    if (!right.is_buffer() && !right.is_assignment()) {
         assigned_right = to_assignment(right);
     }
     if (!left.is_buffer() && !left.is_assignment()) {

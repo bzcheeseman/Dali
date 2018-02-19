@@ -67,6 +67,7 @@ struct SlicingInProgress {
     SlicingInProgress<Container> operator[](const Broadcast& b);
     SlicingInProgress<Container> operator[](const int& idx);
     operator Container();
+    Container assign(const Container& other);
 };
 
 std::ostream& operator<<(std::ostream&, const Slice&);
@@ -147,6 +148,13 @@ SlicingInProgress<Container>::operator Container() {
         }
     }
     return out;
+}
+
+template<typename Container>
+Container SlicingInProgress<Container>::assign(const Container& other) {
+    Container sliced = *this;
+    sliced.assign(other);
+    return sliced;
 }
 
 #endif  // DALI_ARRAY_SLICE_H

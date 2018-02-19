@@ -3,6 +3,7 @@
 #include "dali/array/op/col2im.h"
 #include "dali/array/op/dot.h"
 #include "dali/array/op/spatial_utils.h"
+#include "dali/array/op/reducers.h"
 #include "dali/array/jit/jit_runner.h"
 #include "dali/utils/make_message.h"
 #include "dali/utils/assert2.h"
@@ -389,6 +390,14 @@ namespace op {
             out_dw = out_dw.reshape({-1, out_dw.shape()[3]}).transpose();
             return op::dot(out_dw, im2col_image).reshape(filters_shape);
         }
+    }
+
+    Array conv2d_backward_bias(Array out_dw,
+                                     const std::string& data_format) {
+        DALI_CHECK_NDIM("conv2d_backward_bias", "out_dw", out_dw);
+        int n_dim, c_dim, h_dim, w_dim;
+        op::check_data_format(data_format, &n_dim, &c_dim, &h_dim, &w_dim);
+        return op::sum(out_dw, {n_dim, h_dim, w_dim});
     }
 
     Array pool2d(const Array& input,

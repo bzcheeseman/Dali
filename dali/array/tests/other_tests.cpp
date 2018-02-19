@@ -6,6 +6,7 @@
 TEST(ArgsortTests, argsort) {
     // shape of matrix has no influence on argsort
     auto A = op::uniform(-20.0, 20.0, {2, 3});
+    A.eval();
     Array res = A.argsort();
     double lowest = std::numeric_limits<double>::lowest();
     for (int i = 0; i < res.number_of_elements(); i++) {

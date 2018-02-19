@@ -146,6 +146,10 @@ Array::Array(const int& value) : Array(op::jit::wrap_scalar(value)) {}
 Array::Array(const double& value) : Array(op::jit::wrap_scalar(value)) {}
 Array::Array(const float& value) : Array(op::jit::wrap_scalar(value)) {}
 
+Array::Array(const int& value, DType dtype) : Array(op::jit::wrap_scalar(value, dtype)) {}
+Array::Array(const double& value, DType dtype) : Array(op::jit::wrap_scalar(value, dtype)) {}
+Array::Array(const float& value, DType dtype) : Array(op::jit::wrap_scalar(value, dtype)) {}
+
 Array Array::zeros(const std::vector<int>& shape, DType dtype, memory::Device preferred_device) {
     Array ret(shape, dtype, preferred_device);
     ret.memory()->lazy_clear();
@@ -645,47 +649,43 @@ Array Array::broadcast_scalar_to_ndim(const int& ndim) const {
         return op::OPNAME(*this);\
     }\
 
-#define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
-    Array Array::FUNCTION_NAME(const int& axis) const {\
-        return op::OPNAME(*this, {axis});\
+#define DALI_ARRAY_DEFINE_MULTIPLE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
+    Array Array::FUNCTION_NAME(const std::vector<int>& axes, bool keepdims) const {\
+        return op::OPNAME(*this, axes, keepdims);\
     }\
+
+#define DALI_ARRAY_DEFINE_SINGLE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
+    Array Array::FUNCTION_NAME(const int& axis) const {\
+        return op::OPNAME(*this, axis);\
+    }\
+
 
 #define DALI_ARRAY_DEFINE_REDUCER(FUNCTION_NAME, OPNAME)\
     DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME);\
-    DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME);\
+    DALI_ARRAY_DEFINE_MULTIPLE_AXIS_REDUCER(FUNCTION_NAME, OPNAME);\
+
+#define DALI_ARRAY_DEFINE_AXIS_REDUCER(FUNCTION_NAME, OPNAME)\
+    DALI_ARRAY_DEFINE_ALL_REDUCER(FUNCTION_NAME, OPNAME);\
+    DALI_ARRAY_DEFINE_SINGLE_AXIS_REDUCER(FUNCTION_NAME, OPNAME);\
 
 DALI_ARRAY_DEFINE_REDUCER(sum, sum);
 DALI_ARRAY_DEFINE_REDUCER(L2_norm, L2_norm);
 DALI_ARRAY_DEFINE_REDUCER(mean, mean);
 DALI_ARRAY_DEFINE_REDUCER(max, max);
 DALI_ARRAY_DEFINE_REDUCER(min, min);
-DALI_ARRAY_DEFINE_REDUCER(argmin, argmin);
-DALI_ARRAY_DEFINE_REDUCER(argmax, argmax);
 
-Array Array::abs() const {
-    return op::abs(*this);
-}
 
-Array Array::tanh() const {
-    return op::tanh(*this);
-}
+DALI_ARRAY_DEFINE_AXIS_REDUCER(argmin, argmin);
+DALI_ARRAY_DEFINE_AXIS_REDUCER(argmax, argmax);
+DALI_ARRAY_DEFINE_AXIS_REDUCER(argsort, argsort);
 
-Array Array::sigmoid() const {
-    return op::sigmoid(*this);
-}
+#define DALI_ARRAY_UNARY(FUNCTION_NAME)\
+    Array Array::FUNCTION_NAME() const {return op::FUNCTION_NAME(*this);}
 
-Array Array::argsort() const {
-    auto raveled = ravel();
-    return op::bottom_k(raveled, raveled.number_of_elements(), true);
-}
-
-Array Array::argsort(int axis) const {
-    if (ndim() == 0) return Array::zeros({}, DTYPE_INT32);
-    if (axis < 0) axis += ndim();
-    ASSERT2(axis >= 0 && axis < ndim(), utils::make_message(
-        "argsort axis must >= 0 and < ndim (", ndim(), "), got axis = ", axis, "."));
-    return op::bottom_k(swapaxes(axis, -1), shape()[axis], true).swapaxes(axis, -1);
-}
+DALI_ARRAY_UNARY(abs);
+DALI_ARRAY_UNARY(tanh);
+DALI_ARRAY_UNARY(exp);
+DALI_ARRAY_UNARY(sigmoid);
 
 Array::operator float() const {
     return scalar_value<float>();
@@ -715,6 +715,12 @@ Array& Array::operator=(const float& other) {
 
 Array& Array::operator=(const double& other) {
     auto assignment = op::assign(Array(expression()), OPERATOR_T_EQL, op::identity(other));
+    set_expression(assignment.expression());
+    return *this;
+}
+
+Array& Array::assign(const Array& other) {
+    auto assignment = op::assign(Array(expression()), OPERATOR_T_EQL, other);
     set_expression(assignment.expression());
     return *this;
 }

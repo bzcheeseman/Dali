@@ -69,15 +69,23 @@ struct ScalarFp64View : public ScalarView {
     }
 };
 
-Array wrap_scalar(int value) {
-	return Array(std::make_shared<ScalarInt32View>(value));
-}
-Array wrap_scalar(float value) {
-	return Array(std::make_shared<ScalarFp32View>(value));
-}
-Array wrap_scalar(double value) {
-	return Array(std::make_shared<ScalarFp64View>(value));
-}
+#define DALI_WRAP_SCALAR(DTYPE, CANONICAL)\
+    Array wrap_scalar(DTYPE value) {\
+        return Array(std::make_shared<CANONICAL>(value));\
+    }\
+    Array wrap_scalar(DTYPE value, DType dtype) {\
+        if (dtype == DTYPE_INT32) {return Array(std::make_shared<ScalarInt32View>(value));\
+        } else if (dtype == DTYPE_FLOAT) {return Array(std::make_shared<ScalarFp32View>(value));\
+        } else if (dtype == DTYPE_INT32) {return Array(std::make_shared<ScalarFp64View>(value));\
+        } else {\
+            ASSERT2(false, utils::make_message("wrap_scalar cannot wrap a scalar of type ", dtype, "."));\
+            return Array();\
+        }\
+    }
+DALI_WRAP_SCALAR(int, ScalarInt32View);
+DALI_WRAP_SCALAR(float, ScalarFp32View);
+DALI_WRAP_SCALAR(double, ScalarFp64View);
+
 
 
 struct TileScalar : public JITNode {

@@ -1,3 +1,5 @@
+#ifndef DALI_ARRAY_TESTS_TEST_UTILS_H
+#define DALI_ARRAY_TESTS_TEST_UTILS_H
 #include <gtest/gtest.h>
 
 #include "dali/array/array.h"
@@ -46,3 +48,16 @@ struct CountImplicitCopies {
                     &debug::array_as_contiguous)) {
     }
 };
+
+namespace {
+    template<typename T>
+    void assign_from_vec(Array out, const std::vector<std::vector<T>>& vec) {
+        for (int i = 0; i < vec.size(); i++) {
+            for (int j = 0; j < vec[i].size(); j++) {
+                out[i][j].assign(vec[i][j]).eval();
+            }
+        }
+    }
+}
+
+#endif

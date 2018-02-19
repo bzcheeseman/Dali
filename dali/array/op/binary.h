@@ -24,9 +24,9 @@ namespace op {
 
     Array lessthanequal(Array a, Array b);
     Array greaterthanequal(Array a, Array b);
-    Array eltmax(Array a, Array b);
+    Array maximum(Array a, Array b);
     Array clip(Array a, Array b);
-    Array eltmin(Array a, Array b);
+    Array minimum(Array a, Array b);
     Array binary_cross_entropy(Array a, Array b);
     Array binary_cross_entropy_grad(Array a, Array b);
 

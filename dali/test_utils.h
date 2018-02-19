@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "dali/array/test_utils.h"
+#include "dali/array/tests/test_utils.h"
 #include "dali/tensor/tensor.h"
 #include "dali/tensor/tape.h"
 
@@ -21,36 +21,36 @@ using ::testing::AssertionSuccess;
 using ::testing::AssertionFailure;
 
 
-#ifdef GPERFTOOLS_FOUND
+// #ifdef GPERFTOOLS_FOUND
+//     class MemorySafeTest : public ::testing::Test {
+//         private:
+//             std::shared_ptr<HeapLeakChecker> heap_checker;
+//         protected:
+//             virtual void SetUp() {
+//                 graph::clear();
+//                 if (HeapLeakChecker::IsActive())
+//                     heap_checker = std::make_shared<HeapLeakChecker>("memory_leak_checker");
+//             }
+
+//             virtual void TearDown() {
+//                 if (HeapLeakChecker::IsActive())
+//                     ASSERT_TRUE(heap_checker->NoLeaks()) << "Memory Leak";
+
+//                 graph::clear();
+//             }
+
+//     };
+// #else
     class MemorySafeTest : public ::testing::Test {
-        private:
-            std::shared_ptr<HeapLeakChecker> heap_checker;
         protected:
             virtual void SetUp() {
                 graph::clear();
-                if (HeapLeakChecker::IsActive())
-                    heap_checker = std::make_shared<HeapLeakChecker>("memory_leak_checker");
-            }
-
-            virtual void TearDown() {
-                if (HeapLeakChecker::IsActive())
-                    ASSERT_TRUE(heap_checker->NoLeaks()) << "Memory Leak";
-
-                graph::clear();
-            }
-
-    };
-#else
-    class MemorySafeTest : public ::testing::Test {
-        protected:
-            virtual void SetUp() {
-                graph::clear();
             }
             virtual void TearDown() {
                 graph::clear();
             }
     };
-#endif
+// #endif
 
 typedef Tensor(* vector_tensor_op)(const std::vector<Tensor>&);
 
@@ -214,7 +214,7 @@ namespace {
             for (auto arg : arguments) {
                 gpu_gradients.push_back(Tensor::zeros_like(arg));
                 for (int i = 0; i < arg.number_of_elements(); i++) {
-                    gpu_gradients.back().dw(i) = arg.dw(i);
+                    gpu_gradients.back().dw(i).assign(arg.dw(i)).eval();
                 }
             }
 
@@ -285,13 +285,13 @@ namespace {
 
         for (int i = 0; i < arg.number_of_elements(); i++) {
             const T prev_val    = (T)arg.w(i);
-            arg.w(i)            = prev_val + grad_epsilon;
+            arg.w(i).assign(prev_val + grad_epsilon).eval();
             T obj_positive      = (T)Array(functor().w.sum());
-            arg.w(i)            = prev_val - grad_epsilon;
+            arg.w(i).assign(prev_val - grad_epsilon).eval();
             T obj_negative      = (T)Array(functor().w.sum());
             // return to previous value
-            arg.w(i)            = prev_val;
-            res_grad(i)         = (obj_positive - obj_negative) / (2.0 * grad_epsilon);
+            arg.w(i).assign(prev_val).eval();
+            res_grad(i).assign((obj_positive - obj_negative) / (2.0 * grad_epsilon)).eval();
         }
         return res_grad;
     }
@@ -317,6 +317,7 @@ namespace {
         auto error = functor(arguments);
         error.grad();
         graph::backward();
+        error.dw.eval();
         bool worked_out = true;
         // from now on gradient is purely numerical:
 

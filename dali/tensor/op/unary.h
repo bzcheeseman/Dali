@@ -19,28 +19,14 @@ namespace tensor_ops {
     Tensor square(const Tensor&);
     Tensor cube(const Tensor&);
     Tensor rsqrt(const Tensor&);
-    Tensor eltmax(const Tensor&, const double& lower_bound);
-    Tensor eltmin(const Tensor&, const double& upper_bound);
+    Tensor maximum(const Tensor&, const double& lower_bound);
+    Tensor minimum(const Tensor&, const double& upper_bound);
     Tensor steep_sigmoid(const Tensor&, const double& agressiveness);
 
     Tensor relu100(const Tensor&);
     Tensor relu20(const Tensor&);
     Tensor relu6(const Tensor&);
     Tensor relu5(const Tensor&);
-
-    #define DALI_DECLARE_TENSOR_SCALAR_OP(OPNAME) \
-        Tensor OPNAME(const Tensor&,        const double& scalar); \
-        Tensor OPNAME(const Tensor&,        const float& scalar ); \
-        Tensor OPNAME(const Tensor&,        const int& scalar   ); \
-        Tensor OPNAME(const double& scalar, const Tensor&); \
-        Tensor OPNAME(const float& scalar,  const Tensor&); \
-        Tensor OPNAME(const int& scalar,    const Tensor&);
-
-    DALI_DECLARE_TENSOR_SCALAR_OP(scalar_add);
-    DALI_DECLARE_TENSOR_SCALAR_OP(scalar_sub);
-    DALI_DECLARE_TENSOR_SCALAR_OP(scalar_mul);
-    DALI_DECLARE_TENSOR_SCALAR_OP(scalar_div);
-    DALI_DECLARE_TENSOR_SCALAR_OP(scalar_pow);
 }  // namespace tensor_ops
 
 #endif  // DALI_TENSOR_OP_UNARY_H

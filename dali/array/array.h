@@ -53,6 +53,10 @@ class Array  {
     Array(const double& value);
     Array(const float& value);
 
+    Array(const int& value, DType dtype);
+    Array(const double& value, DType dtype);
+    Array(const float& value, DType dtype);
+
     static Array zeros(const std::vector<int>& shape, DType dtype=DTYPE_FLOAT, memory::Device preferred_device=memory::default_preferred_device);
     static Array zeros_like(const Array& other);
     static Array empty_like(const Array& other);
@@ -119,7 +123,6 @@ class Array  {
     bool spans_entire_memory() const;
     bool is_assignable() const;
 
-
     /* Creating a view into memory */
     Array operator[](const int& idx) const;
     Array operator[](const Array& indices) const;
@@ -173,22 +176,22 @@ class Array  {
     Array max() const;
     Array L2_norm() const;
     Array abs() const;
+    Array exp() const;
     Array tanh() const;
     Array sigmoid() const;
 
     // reduce over one axis
-    Array sum(const int& axis) const;
-    Array mean(const int& axis) const;
-    Array min(const int& axis) const;
-    Array max(const int& axis) const;
-    Array L2_norm(const int& axis) const;
+    Array sum(const std::vector<int>& axes, bool keepdims=false) const;
+    Array mean(const std::vector<int>& axes, bool keepdims=false) const;
+    Array min(const std::vector<int>& axes, bool keepdims=false) const;
+    Array max(const std::vector<int>& axes, bool keepdims=false) const;
+    Array L2_norm(const std::vector<int>& axes, bool keepdims=false) const;
 
     Array argmin(const int& axis) const;
     Array argmin() const;
     Array argmax(const int& axis) const;
     Array argmax() const;
-
-    Array argsort(int axis) const;
+    Array argsort(const int& axis) const;
     Array argsort() const;
 
     operator float() const;
@@ -199,6 +202,7 @@ class Array  {
     Array& operator=(const int& other);
     Array& operator=(const float& other);
     Array& operator=(const double& other);
+    Array& assign(const Array& other);
 
     // TODO(jonathan): bring back ability to assign from a vector
     // template<typename T>

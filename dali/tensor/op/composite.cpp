@@ -1,10 +1,8 @@
 #include "composite.h"
 
 #include "dali/array/array.h"
-#include "dali/array/op2/binary.h"
-#include "dali/array/op2/unary.h"
-#include "dali/array/op_overload/common.h"
-#include "dali/array/op_overload/nonlazy.h"
+#include "dali/array/op/binary.h"
+#include "dali/array/op/unary.h"
 #include "dali/array/op/dot.h"
 #include "dali/tensor/tape.h"
 #include "dali/tensor/tensor_macros.h"
@@ -40,12 +38,11 @@ namespace tensor_ops {
                                    "(got tensor of shape "  << weight.shape() << ")");
         }
 
-        auto out = Tensor::empty(
-                {max_num_examples, weights[0].shape()[1]},
-                weights[0].dtype(),
-                weights[0].preferred_device());
+        auto out = Tensor::empty({max_num_examples, weights[0].shape()[1]},
+                                 weights[0].dtype(),
+                                 weights[0].preferred_device());
 
-        out.w = op::identity(bias.w);
+        out.w.assign(bias.w);
 
         for (int i = 0; i < weights.size(); ++i) {
             try {
@@ -61,7 +58,7 @@ namespace tensor_ops {
             auto bias_constant = bias.constant;
             graph::emplace_back([weights, inputs, bias_dw, bias_constant, out_dw, max_num_examples]() mutable {
                 for (int i = 0; i < weights.size(); ++i) {
-                    if (inputs[i].w.bshape()[0] < 0) {
+                    if (inputs[i].w.shape()[0] < 0) {
                         Array temp = op::dot(out_dw, weights[i].w.transpose());
                         MAYBE_GRAD(inputs[i]) <<= temp;
                     } else {
@@ -98,15 +95,7 @@ namespace tensor_ops {
                 return (left.transpose().dot(middle)).dot(right);
             }
         } else {
-            return Tensor(
-                op::dot(
-                    op::dot(
-                        left.w.transpose(),
-                        middle.w
-                    ),
-                    right.w
-                )
-            );
+            return Tensor(op::dot(op::dot(left.w.transpose(), middle.w), right.w));
         }
     }
 }  // namespace tensor_ops

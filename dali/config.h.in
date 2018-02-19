@@ -7,7 +7,6 @@
 #cmakedefine DALI_USE_CUDNN              ${DALI_USE_CUDNN}
 #cmakedefine DALI_USE_VISUALIZER         ${DALI_USE_VISUALIZER}
 #cmakedefine DALI_DATA_DIR               ${DALI_DATA_DIR}
-#cmakedefine DALI_MAX_STRIDED_DIMENSION  ${DALI_MAX_STRIDED_DIMENSION}
 #cmakedefine DALI_MAX_GPU_DEVICES        ${DALI_MAX_GPU_DEVICES}
 
 // when a library is not used mshadow expects this to be 0

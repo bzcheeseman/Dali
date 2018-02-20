@@ -18,8 +18,13 @@ struct Computation {
 };
 
 typedef std::function<std::shared_ptr<Computation>(Array, OPERATOR_T, Array, Array) > to_computation_t;
+typedef std::function<bool(const Array&)> implementation_test_t;
 
-int register_implementation(const char*, to_computation_t impl);
+int register_implementation(const char* opname, to_computation_t impl);
+// register an implementation for opname, depending on the implementation_test_t. If implementation_test_t is true,
+// then use to_computation_t to pick an implementation.
+int register_implementation(const std::string& opname, implementation_test_t test, to_computation_t impl);
+
 std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root);
 
 template<typename Expression, typename Comp>

@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "dali/utils/hash_utils.h"
-#include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/jit.h"
 
 namespace op {
 namespace jit {

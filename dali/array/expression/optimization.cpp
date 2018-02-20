@@ -139,7 +139,6 @@ namespace {
         std::unordered_set<const Array*> visited_arrays;
         deduplicate_arrays(root, visited, visited_arrays);
     }
-
 }
 
 int register_optimization(std::function<bool(const Array&)> condition,

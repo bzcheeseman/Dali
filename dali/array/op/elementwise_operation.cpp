@@ -7,7 +7,7 @@
 #include "dali/utils/assert2.h"
 #include "dali/array/jit/jit_utils.h"
 #include "dali/array/jit/elementwise_kernel_utils.h"
-#include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/jit.h"
 #include "dali/array/jit/reshape.h"
 #include "dali/array/jit/scalar_view.h"
 #include "dali/array/expression/buffer.h"

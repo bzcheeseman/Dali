@@ -1,4 +1,4 @@
-#include "jit_runner.h"
+#include "jit.h"
 
 #include <unordered_set>
 #include <algorithm>
@@ -592,10 +592,11 @@ namespace {
         return node != nullptr;
     }
 
-    bool is_jit_assignment(const Array& node) {
+    bool is_nested_jit_assignment(const Array& node) {
         return (node.is_assignment() &&
                 is_jit_node(static_as_assignment(node)->right()) &&
-                !is_jit_runner(static_as_assignment(node)->right()));
+                !is_jit_runner(static_as_assignment(node)->right()) &&
+                static_as_assignment(node)->right().expression()->arguments().size() > 0);
     }
 }
 
@@ -1093,11 +1094,12 @@ Array jit_merge(const Array& root) {
     auto root_args = root_buffer.expression()->arguments();
     all_args.insert(all_args.end(), root_args.begin(), root_args.end());
     for (auto& arg : all_args) {
-        if (arg.is_assignment() &&
-            is_jit_runner(static_as_assignment(arg)->right())) {
-            // grab leaves from existing jit-runner recursively:
-            auto extra_leaves = static_as_jit_runner(static_as_assignment(arg)->right())->arguments_;
-            leaves.insert(leaves.end(), extra_leaves.begin(), extra_leaves.end());
+        if (arg.is_assignment() && is_jit_node(static_as_assignment(arg)->right())) {
+            if (is_jit_runner(static_as_assignment(arg)->right())) {
+                // grab leaves from existing jit-runner recursively:
+                auto extra_leaves = static_as_jit_runner(static_as_assignment(arg)->right())->arguments_;
+                leaves.insert(leaves.end(), extra_leaves.begin(), extra_leaves.end());
+            }
             // if the node is an assignment to a buffer, ensure that
             // the assignment op gets included within this op
             // (e.g. by spoofing the assignment and replacing it with
@@ -1297,10 +1299,19 @@ std::string get_call_code_nd(const Array& a,
     }
 }
 
-int registered_opt = register_optimization(is_jit_assignment, jit_merge, "jit_merge");
-int registered_impl = register_implementation_default<JITRunner, JITRunnerImpl>();
+int registered_opt = register_optimization(is_nested_jit_assignment, jit_merge, "jit_merge");
+int registered_jit_runner_impl = register_implementation_default<JITRunner, JITRunnerImpl>();
+// Detecting a JITNode that is not within a JITRunner requires a boolean check on the pointer:
+int registered_jit_node_impl = register_implementation(
+    typeid(JITNode).name(),
+    [](const Array& x) {return std::dynamic_pointer_cast<JITNode>(x.expression()) ? true : false;},
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+        Array runner(std::make_shared<JITRunner>(x, std::vector<Array>{}, operator_t, dest));
+        return std::make_shared<JITRunnerImpl>(dest, operator_t, runner, assignment);
+    });
 int registered_buffer = register_implementation(
     typeid(Buffer).name(),
+    [](const Array& x) {return x.is_buffer();},
     [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         Array runner(std::make_shared<JITRunner>(
             op::identity(x), std::vector<Array>({x}), operator_t, dest
@@ -1309,6 +1320,7 @@ int registered_buffer = register_implementation(
     });
 int registered_control_flow = register_implementation(
     typeid(ControlFlow).name(),
+    [](const Array& x) {return x.is_control_flow();},
     [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         Array runner(std::make_shared<JITRunner>(
             op::identity(x.buffer_arg()), std::vector<Array>({x}), operator_t, dest
@@ -1317,6 +1329,7 @@ int registered_control_flow = register_implementation(
     });
 int registered_assignment = register_implementation(
     typeid(Assignment).name(),
+    [](const Array& x) {return x.is_assignment();},
     [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
         Array runner(std::make_shared<JITRunner>(
             op::identity(x.buffer_arg()), std::vector<Array>({x}), operator_t, dest

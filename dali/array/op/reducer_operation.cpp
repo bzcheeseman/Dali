@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include "dali/array/op/elementwise_operation.h"
-#include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/jit.h"
 #include "dali/array/jit/all_reduce_kernel_utils.h"
 
 #include "dali/utils/hash_utils.h"

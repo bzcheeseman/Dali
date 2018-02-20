@@ -5,7 +5,7 @@
 #include "dali/array/array.h"
 #include "dali/array/dtype.h"
 #include "dali/array/memory/device.h"
-#include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/jit.h"
 
 // Create declaration code for wrapping a variable inside a new view
 std::string build_array_definition(const std::string& cpp_type,

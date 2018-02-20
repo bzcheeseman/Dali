@@ -31,8 +31,7 @@ Array reference_im2col(Array image,
         for (int height_idx = 0; height_idx + filter_h <= image.shape()[1]; height_idx += stride_h) {
             for (int width_idx = 0; width_idx + filter_w <= image.shape()[2]; width_idx += stride_w) {
                 Array sliced = image[batch_idx][Slice(height_idx, height_idx+filter_h)][Slice(width_idx, width_idx+filter_w)];
-                Array out_sliced = out[Slice()][frame_idx];
-                op::assign(out_sliced, OPERATOR_T_EQL, sliced.ravel()).eval();
+                out[Slice()][frame_idx].assign(sliced.ravel()).eval();
                 frame_idx += 1;
             }
         }

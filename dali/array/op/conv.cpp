@@ -4,7 +4,7 @@
 #include "dali/array/op/dot.h"
 #include "dali/array/op/spatial_utils.h"
 #include "dali/array/op/reducers.h"
-#include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/jit.h"
 #include "dali/utils/make_message.h"
 #include "dali/utils/assert2.h"
 

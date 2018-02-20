@@ -33,6 +33,16 @@ struct Noop : public Computation {
 };
 
 std::unordered_map<const char*, std::vector<to_computation_t> > IMPLEMENTATIONS;
+namespace {
+    struct ImplementationByFunction {
+        std::string opname_;
+        implementation_test_t test_;
+        std::vector<to_computation_t> implementations_;
+        ImplementationByFunction(const std::string& opname, implementation_test_t test, to_computation_t to_comp)
+            : implementations_({to_comp}), test_(test), opname_(opname) {}
+    };
+}
+std::vector<ImplementationByFunction> IMPLEMENTATIONS_BY_FUNC;
 
 void convert_array_to_ops(const Array& element,
                           std::vector<std::shared_ptr<Computation>>& steps,
@@ -40,30 +50,54 @@ void convert_array_to_ops(const Array& element,
     if (element.is_assignment()) {
         auto assignment = op::static_as_assignment(element);
         auto assignment_left = assignment->left();
-        auto hashname = typeid(*assignment->right().expression()).name();
         bool found_impl = false;
-        if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {
-            for (const auto& impl_creator : IMPLEMENTATIONS[hashname]) {
-                auto impl = impl_creator(assignment_left,
-                                         assignment->operator_t_,
-                                         assignment->right(),
-                                         element);
-                if (impl != nullptr) {
-                    steps.emplace_back(impl);
-                    found_impl = true;
+        // find implementations using the hashname:
+        {
+            auto hashname = typeid(*assignment->right().expression()).name();
+            if (IMPLEMENTATIONS.find(hashname) != IMPLEMENTATIONS.end()) {
+                for (const auto& impl_creator : IMPLEMENTATIONS[hashname]) {
+                    auto impl = impl_creator(assignment_left,
+                                             assignment->operator_t_,
+                                             assignment->right(),
+                                             element);
+                    if (impl != nullptr) {
+                        steps.emplace_back(impl);
+                        found_impl = true;
+                        break;
+                    }
+                }
+            }
+        }
+        // also find implementations using boolean checks:
+        if (!found_impl) {
+            for (auto& impl_by_func : IMPLEMENTATIONS_BY_FUNC) {
+                if (impl_by_func.test_(assignment->right())) {
+                    for (const auto& impl_creator : impl_by_func.implementations_) {
+                        auto impl = impl_creator(assignment_left,
+                                                 assignment->operator_t_,
+                                                 assignment->right(),
+                                                 element);
+                        if (impl != nullptr) {
+                            steps.emplace_back(impl);
+                            found_impl = true;
+                            break;
+                        }
+                    }
+                }
+                if (found_impl) {
                     break;
                 }
             }
-            if (found_impl) {
-                // TODO(jonathan): this is a hack and should be removed
-                if (assignment->right().is_assignment()) {
-                    elements.emplace_back(assignment->right());
-                } else {
-                    auto args = assignment->right().expression()->arguments();
-                    elements.insert(elements.end(), args.begin(), args.end());
-                }
-                elements.emplace_back(assignment->left());
+        }
+        if (found_impl) {
+            // TODO(jonathan): this is a hack and should be removed
+            if (assignment->right().is_assignment()) {
+                elements.emplace_back(assignment->right());
+            } else {
+                auto args = assignment->right().expression()->arguments();
+                elements.insert(elements.end(), args.begin(), args.end());
             }
+            elements.emplace_back(assignment->left());
         }
         if (!found_impl) {
             throw std::runtime_error(utils::make_message(
@@ -111,5 +145,20 @@ std::vector<std::shared_ptr<Computation>> convert_to_ops(Array root) {
 
 int register_implementation(const char* opname, to_computation_t impl) {
     IMPLEMENTATIONS[opname].emplace_back(impl);
+    return 0;
+}
+
+int register_implementation(const std::string& opname, implementation_test_t test, to_computation_t impl) {
+    bool found = false;
+    for (auto& imp_by_func : IMPLEMENTATIONS_BY_FUNC) {
+        if (imp_by_func.opname_ == opname) {
+            imp_by_func.implementations_.emplace_back(impl);
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        IMPLEMENTATIONS_BY_FUNC.emplace_back(opname, test, impl);
+    }
     return 0;
 }

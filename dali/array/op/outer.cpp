@@ -1,7 +1,7 @@
 #include "outer.h"
 #include "dali/utils/make_message.h"
 #include "dali/utils/assert2.h"
-#include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/jit.h"
 #include "dali/array/jit/jit_utils.h"
 #include "dali/array/op/elementwise_operation.h"
 namespace op {

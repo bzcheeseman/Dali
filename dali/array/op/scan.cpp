@@ -1,6 +1,6 @@
 #include "scan.h"
 
-#include "dali/array/jit/jit_runner.h"
+#include "dali/array/jit/jit.h"
 #include "dali/array/jit/scalar_view.h"
 #include "dali/utils/make_message.h"
 

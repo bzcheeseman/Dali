@@ -7,6 +7,7 @@
 #include "dali/array/array.h"
 #include "dali/utils/hash_utils.h"
 #include "dali/array/jit/jit_utils.h"
+#include "dali/array/expression/computation.h"
 
 
 namespace op {
@@ -87,6 +88,20 @@ DALI_WRAP_SCALAR(float, ScalarFp32View);
 DALI_WRAP_SCALAR(double, ScalarFp64View);
 
 
+// Provide a non-jit alternative to this operation using just plain pointer copies
+template<typename ExpressionType>
+struct ScalarViewImpl : public Computation {
+    using Computation::Computation;
+    void run() {
+        ExpressionType* scalar_view = static_cast<ExpressionType*>(right_.expression().get());
+        typedef decltype(scalar_view->value_) T;
+        T* dest_ptr = (T*)left_data(memory::Device::cpu());
+        *dest_ptr = scalar_view->value_;
+    }
+};
+int registered_scalar_view_int_impl = register_implementation_default<ScalarInt32View, ScalarViewImpl<ScalarInt32View>>();
+int registered_scalar_view_fp32_impl = register_implementation_default<ScalarFp32View, ScalarViewImpl<ScalarInt32View>>();
+int registered_scalar_view_fp64_impl = register_implementation_default<ScalarFp64View, ScalarViewImpl<ScalarInt32View>>();
 
 struct TileScalar : public JITNode {
     TileScalar(Array scalar, const std::vector<int>& shape) :
@@ -147,7 +162,6 @@ struct TileScalar : public JITNode {
         return std::make_shared<TileScalar>(arguments_[0], shape_);
     }
 };
-
 Array tile_scalar(Array node, const std::vector<int>& shape) {
     ASSERT2(node.is_scalar(), utils::make_message(
         "tile_scalar can only be called on a scalar array "
@@ -155,7 +169,5 @@ Array tile_scalar(Array node, const std::vector<int>& shape) {
     if (shape.size() == 0) return node;
     return Array(std::make_shared<TileScalar>(node, shape));
 }
-
 }
-
 }

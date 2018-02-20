@@ -87,21 +87,61 @@ DALI_WRAP_SCALAR(int, ScalarInt32View);
 DALI_WRAP_SCALAR(float, ScalarFp32View);
 DALI_WRAP_SCALAR(double, ScalarFp64View);
 
-
 // Provide a non-jit alternative to this operation using just plain pointer copies
 template<typename ExpressionType>
 struct ScalarViewImpl : public Computation {
     using Computation::Computation;
+
+    template<typename LeftT, typename RightT>
+    void operator_assign(LeftT* dest, const RightT& source) {
+        switch (operator_t_) {
+            case OPERATOR_T_EQL:
+                *dest = source;
+                break;
+            case OPERATOR_T_ADD:
+                *dest += source;
+                break;
+            case OPERATOR_T_SUB:
+                *dest -= source;
+                break;
+            case OPERATOR_T_MUL:
+                *dest *= source;
+                break;
+            case OPERATOR_T_DIV:
+                *dest /= source;
+                break;
+            default:
+                ASSERT2(false, utils::make_message("unknown operator in ScalarViewImpl ", operator_to_name(operator_t_), "."));
+        }
+    }
+
     void run() {
         ExpressionType* scalar_view = static_cast<ExpressionType*>(right_.expression().get());
-        typedef decltype(scalar_view->value_) T;
-        T* dest_ptr = (T*)left_data(memory::Device::cpu());
-        *dest_ptr = scalar_view->value_;
+        if (right_.dtype() == DTYPE_INT32) {
+            operator_assign((int*)left_data(memory::Device::cpu()), scalar_view->value_);
+        } else if (right_.dtype() == DTYPE_FLOAT) {
+            operator_assign((float*)left_data(memory::Device::cpu()), scalar_view->value_);
+        } else if (right_.dtype() == DTYPE_DOUBLE) {
+            operator_assign((double*)left_data(memory::Device::cpu()), scalar_view->value_);
+        }
     }
 };
-int registered_scalar_view_int_impl = register_implementation_default<ScalarInt32View, ScalarViewImpl<ScalarInt32View>>();
-int registered_scalar_view_fp32_impl = register_implementation_default<ScalarFp32View, ScalarViewImpl<ScalarInt32View>>();
-int registered_scalar_view_fp64_impl = register_implementation_default<ScalarFp64View, ScalarViewImpl<ScalarInt32View>>();
+
+int registered_scalar_view_int_impl = register_implementation(
+    typeid(ScalarInt32View).name(),
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+        return dest.is_scalar() ? std::make_shared<ScalarViewImpl<ScalarInt32View>>(dest, operator_t, x, assignment) : nullptr;
+    });
+int registered_scalar_view_fp32_impl = register_implementation(
+    typeid(ScalarFp32View).name(),
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+        return dest.is_scalar() ? std::make_shared<ScalarViewImpl<ScalarFp32View>>(dest, operator_t, x, assignment) : nullptr;
+    });
+int registered_scalar_view_fp64_impl = register_implementation(
+    typeid(ScalarFp64View).name(),
+    [](Array dest, OPERATOR_T operator_t, Array x, Array assignment) -> std::shared_ptr<Computation> {
+        return dest.is_scalar() ? std::make_shared<ScalarViewImpl<ScalarFp64View>>(dest, operator_t, x, assignment) : nullptr;
+    });
 
 struct TileScalar : public JITNode {
     TileScalar(Array scalar, const std::vector<int>& shape) :

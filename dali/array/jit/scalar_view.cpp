@@ -117,11 +117,11 @@ struct ScalarViewImpl : public Computation {
 
     void run() {
         ExpressionType* scalar_view = static_cast<ExpressionType*>(right_.expression().get());
-        if (right_.dtype() == DTYPE_INT32) {
+        if (left_.dtype() == DTYPE_INT32) {
             operator_assign((int*)left_data(memory::Device::cpu()), scalar_view->value_);
-        } else if (right_.dtype() == DTYPE_FLOAT) {
+        } else if (left_.dtype() == DTYPE_FLOAT) {
             operator_assign((float*)left_data(memory::Device::cpu()), scalar_view->value_);
-        } else if (right_.dtype() == DTYPE_DOUBLE) {
+        } else if (left_.dtype() == DTYPE_DOUBLE) {
             operator_assign((double*)left_data(memory::Device::cpu()), scalar_view->value_);
         }
     }

@@ -18,8 +18,6 @@ TEST_F(TensorBinaryTests, single_evaluation) {
     auto res = left + right;
     res.grad();
     graph::backward();
-    ELOG(res.dw.pretty_print_full_expression_name());
-    res.dw.print();
     EXPECT_TRUE(Array::equals(res.dw, Array::ones_like(res.dw)));
     EXPECT_TRUE(Array::equals(left.dw, Array::ones_like(left.dw)));
     EXPECT_TRUE(Array::equals(right.dw, Array::ones_like(right.dw)));

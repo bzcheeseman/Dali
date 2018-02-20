@@ -41,7 +41,7 @@ void check_strided_dot_result(DType dtype) {
     (b = 999).eval();
     b = b[Slice(0, 8, 2)];
     for (int i = 0; i < b.number_of_elements(); ++i) {
-        op::assign(b(i), OPERATOR_T_EQL, i).eval();
+        b(i).assign(i).eval();
     }
     Array c = op::dot(a, b.transpose());
     std::vector<float> expected = {3, 12, 21, 30,
